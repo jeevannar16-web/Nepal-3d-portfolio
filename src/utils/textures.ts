@@ -79,6 +79,49 @@ export function matcapTexture(): THREE.Texture {
   return matcapTex
 }
 
+let glossyTex: THREE.CanvasTexture | null = null
+/**
+ * High-contrast automotive matcap: a small hot specular highlight with a sharp
+ * falloff to near-black, faking a clear-coated painted panel.
+ */
+export function glossyMatcapTexture(): THREE.Texture {
+  if (glossyTex) return glossyTex
+  const size = 128
+  const c = document.createElement('canvas')
+  c.width = size
+  c.height = size
+  const ctx = c.getContext('2d')!
+
+  ctx.fillStyle = '#0d0b09'
+  ctx.fillRect(0, 0, size, size)
+
+  const g = ctx.createRadialGradient(
+    size * 0.38,
+    size * 0.36,
+    size * 0.03,
+    size * 0.38,
+    size * 0.36,
+    size * 0.62,
+  )
+  g.addColorStop(0, '#ffffff')
+  g.addColorStop(0.18, '#f4e9d8')
+  g.addColorStop(0.42, '#8a7561')
+  g.addColorStop(0.72, '#241d16')
+  g.addColorStop(1, '#0d0b09')
+  ctx.fillStyle = g
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size * 0.5, 0, Math.PI * 2)
+  ctx.fill()
+
+  // A secondary dim reflection band near the bottom edge (horizon reflection).
+  ctx.fillStyle = 'rgba(210, 196, 176, 0.35)'
+  ctx.fillRect(0, size * 0.66, size, size * 0.1)
+
+  glossyTex = new THREE.CanvasTexture(c)
+  glossyTex.colorSpace = THREE.SRGBColorSpace
+  return glossyTex
+}
+
 let shadowTex: THREE.CanvasTexture | null = null
 export function blobShadowTexture(): THREE.Texture {
   if (shadowTex) return shadowTex

@@ -4,22 +4,23 @@ import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/ra
 import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
-import { matcapTexture } from '../utils/textures'
+import { matcapTexture, glossyMatcapTexture } from '../utils/textures'
 import BlobShadow from './BlobShadow'
 
 // ---- Driving feel (tune these by feel, no physics hunting needed) ----
-export const MAX_SPEED = 15 // top speed in units/second
+export const MAX_SPEED = 15 // top forward speed in units/second
+export const REVERSE_MAX_SPEED = 6.5 // top reverse speed in units/second
 const ACCEL_RAMP_TIME = 0.5 // seconds to reach full throttle from rest
 const THROTTLE_DECAY = 0.15 // throttle let-off speed (fraction of ACCEL_RAMP_TIME)
 const THROTTLE_FORCE = 46 // forward force at full throttle
-const REVERSE_FORCE = 24 // reverse force
-const BRAKE_FORCE = 28 // opposing force while braking
+const REVERSE_FORCE = 20 // reverse force
+const BRAKE_DECEL = 30 // opposing force while braking against forward motion
 const DAMPING_COAST = 0.99 // per-frame drag while coasting (@60fps)
-const DAMPING_BRAKE = 0.962 // per-frame drag while braking/reversing (@60fps)
+const DAMPING_BRAKE = 0.962 // per-frame drag while braking (@60fps)
 const BASE_TURN_RATE = 2.6 // turn rate (rad/s) at standstill
 const STEER_TORQUE = 10 // how quickly yaw rate builds toward its target
 const STEER_DAMPING = 0.92 // per-frame decay of yaw rate after release (@60fps)
-const MAX_STEER_SPEED_FALLOFF = 0.6 // fraction of turn rate lost at top speed
+const STEER_SPEED_FALLOFF = 0.6 // fraction of turn rate lost at top speed
 
 interface Keys {
   forward: boolean
@@ -105,24 +106,26 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     // settles smoothly via angular damping once the key is released.
     const speed = Math.hypot(lin.x, lin.z)
     const speedNorm = Math.min(speed / MAX_SPEED, 1)
-    const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
-    if (steerInput !== 0) {
-      // Speed-dependent target: tight turns at low speed, wide sweeps at speed.
-      const turnRate = BASE_TURN_RATE * (1 - MAX_STEER_SPEED_FALLOFF * speedNorm)
-      const response = 1 - Math.pow(2, -delta * STEER_TORQUE)
-      yawVel.current += (steerInput * turnRate - yawVel.current) * response
-    } else {
-      // Angular damping: decay yaw rate so the car settles, doesn't spin on.
-      yawVel.current *= Math.pow(STEER_DAMPING, delta * 60)
-    }
-    heading.current += yawVel.current * delta
-
     const dir = new THREE.Vector3(
       Math.sin(heading.current),
       0,
       Math.cos(heading.current),
     )
     const signedSpeed = dir.x * lin.x + dir.z * lin.z
+    const isReversing = signedSpeed < -0.5
+    // Reversing steers inverted, like a real car.
+    const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
+    const effectiveSteer = isReversing ? -steerInput : steerInput
+    if (effectiveSteer !== 0) {
+      // Speed-dependent target: tight turns at low speed, wide sweeps at speed.
+      const turnRate = BASE_TURN_RATE * (1 - STEER_SPEED_FALLOFF * speedNorm)
+      const response = 1 - Math.pow(2, -delta * STEER_TORQUE)
+      yawVel.current += (effectiveSteer * turnRate - yawVel.current) * response
+    } else {
+      // Angular damping: decay yaw rate so the car settles, doesn't spin on.
+      yawVel.current *= Math.pow(STEER_DAMPING, delta * 60)
+    }
+    heading.current += yawVel.current * delta
 
     // Throttle ramp — smoothstep over the first ACCEL_RAMP_TIME: slow launch,
     // strong mid-range pull, and quick (but not instant) let-off on release.
@@ -149,7 +152,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
       if (signedSpeed > 0.5) {
         // Braking against forward motion: hard opposing bite, then smooth
         // linear damping continues the deceleration.
-        applied = -BRAKE_FORCE
+        applied = -BRAKE_DECEL
       } else {
         // Reversing: gentler force, same falloff as forward.
         applied = -REVERSE_FORCE * Math.max(0, 1 - speedNorm)
@@ -169,8 +172,9 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     vel.x *= damp
     vel.z *= damp
     const mag = Math.hypot(vel.x, vel.z)
-    if (mag > MAX_SPEED) {
-      const s = MAX_SPEED / mag
+    const topSpeed = isReversing ? REVERSE_MAX_SPEED : MAX_SPEED
+    if (mag > topSpeed) {
+      const s = topSpeed / mag
       vel.x *= s
       vel.z *= s
     }
@@ -202,49 +206,90 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     >
       <CuboidCollider args={[0.5, 0.5, 0.5]} />
       <group ref={visual}>
-        <mesh position={[0, -0.06, -0.45]}>
-          <boxGeometry args={[1.2, 0.42, 0.9]} />
-          <meshMatcapMaterial color="#d95d39" matcap={matcapTexture()} flatShading />
+        {/* Low, wide chassis */}
+        <mesh position={[0, 0.06, -0.05]}>
+          <boxGeometry args={[1.6, 0.12, 2.3]} />
+          <meshMatcapMaterial color="#16161c" matcap={glossyMatcapTexture()} flatShading />
         </mesh>
-        <mesh position={[0, -0.16, 0.5]}>
-          <boxGeometry args={[1.1, 0.32, 0.85]} />
-          <meshMatcapMaterial color="#c94f2f" matcap={matcapTexture()} flatShading />
+        {/* Main body shell — low and wide */}
+        <mesh position={[0, 0.22, -0.05]}>
+          <boxGeometry args={[1.52, 0.24, 2.25]} />
+          <meshMatcapMaterial color="#c1121f" matcap={glossyMatcapTexture()} flatShading />
         </mesh>
-        <mesh position={[0, 0.22, -0.55]}>
-          <boxGeometry args={[0.95, 0.38, 0.8]} />
-          <meshMatcapMaterial color="#f2e6d0" matcap={matcapTexture()} flatShading />
+        {/* Wedge nose — hood tapers down and forward */}
+        <mesh position={[0, 0.34, 1.06]} rotation={[0.18, 0, 0]}>
+          <boxGeometry args={[1.36, 0.2, 0.55]} />
+          <meshMatcapMaterial color="#c1121f" matcap={glossyMatcapTexture()} flatShading />
         </mesh>
-        <mesh position={[0, 0.3, -0.1]} rotation={[-0.55, 0, 0]}>
-          <boxGeometry args={[0.88, 0.3, 0.05]} />
-          <meshMatcapMaterial color="#bcd8e8" matcap={matcapTexture()} flatShading />
+        {/* Front splitter/lip */}
+        <mesh position={[0, 0.16, 1.28]}>
+          <boxGeometry args={[1.3, 0.1, 0.3]} />
+          <meshMatcapMaterial color="#16161c" matcap={glossyMatcapTexture()} flatShading />
         </mesh>
-        <mesh position={[0, -0.06, -0.88]}>
-          <boxGeometry args={[1.2, 0.25, 0.18]} />
-          <meshMatcapMaterial color="#8a5a3b" matcap={matcapTexture()} flatShading />
+        {/* Wide rear haunches */}
+        <mesh position={[0, 0.24, -0.72]}>
+          <boxGeometry args={[1.62, 0.24, 0.7]} />
+          <meshMatcapMaterial color="#a90f1b" matcap={glossyMatcapTexture()} flatShading />
         </mesh>
+        {/* Compact rear fascia */}
+        <mesh position={[0, 0.2, -1.1]}>
+          <boxGeometry args={[1.5, 0.2, 0.24]} />
+          <meshMatcapMaterial color="#16161c" matcap={glossyMatcapTexture()} flatShading />
+        </mesh>
+        {/* Low swept-back cabin */}
+        <mesh position={[0, 0.46, -0.18]} rotation={[-0.22, 0, 0]}>
+          <boxGeometry args={[0.92, 0.3, 0.95]} />
+          <meshMatcapMaterial color="#a90f1b" matcap={glossyMatcapTexture()} flatShading />
+        </mesh>
+        {/* Aggressively raked windshield */}
+        <mesh position={[0, 0.52, 0.2]} rotation={[-0.85, 0, 0]}>
+          <boxGeometry args={[0.84, 0.26, 0.03]} />
+          <meshMatcapMaterial color="#101820" matcap={glossyMatcapTexture()} flatShading />
+        </mesh>
+        {/* Raked rear glass */}
+        <mesh position={[0, 0.52, -0.5]} rotation={[0.35, 0, 0]}>
+          <boxGeometry args={[0.84, 0.2, 0.03]} />
+          <meshMatcapMaterial color="#101820" matcap={glossyMatcapTexture()} flatShading />
+        </mesh>
+        {/* Rear spoiler with supports */}
         {[
-          [-0.42, -0.14, 0.9],
-          [0.42, -0.14, 0.9],
+          [-0.58, 0.42, -1.0],
+          [0.58, 0.42, -1.0],
         ].map(([x, y, z], i) => (
-          <mesh key={`hl-${i}`} position={[x, y, z]}>
-            <boxGeometry args={[0.18, 0.12, 0.06]} />
-            <meshBasicMaterial color="#fff3c4" />
+          <mesh key={`sp-${i}`} position={[x, y, z]}>
+            <boxGeometry args={[0.06, 0.14, 0.05]} />
+            <meshMatcapMaterial color="#16161c" matcap={glossyMatcapTexture()} flatShading />
+          </mesh>
+        ))}
+        <mesh position={[0, 0.58, -1.0]} rotation={[0.18, 0, 0]}>
+          <boxGeometry args={[1.3, 0.05, 0.3]} />
+          <meshMatcapMaterial color="#c1121f" matcap={glossyMatcapTexture()} flatShading />
+        </mesh>
+        {/* Slim angular headlight slits */}
+        {[
+          [-0.48, 0.34, 1.28, 0.35],
+          [0.48, 0.34, 1.28, -0.35],
+        ].map(([x, y, z, ry], i) => (
+          <mesh key={`hl-${i}`} position={[x, y, z]} rotation={[0, ry, 0]}>
+            <boxGeometry args={[0.42, 0.05, 0.03]} />
+            <meshBasicMaterial color="#fff8d8" />
+          </mesh>
+        ))}
+        {/* Slim angular taillight slits */}
+        {[
+          [-0.56, 0.3, -1.08, -0.2],
+          [0.56, 0.3, -1.08, 0.2],
+        ].map(([x, y, z, ry], i) => (
+          <mesh key={`tl-${i}`} position={[x, y, z]} rotation={[0, ry, 0]}>
+            <boxGeometry args={[0.5, 0.05, 0.03]} />
+            <meshBasicMaterial color="#ff2a2a" />
           </mesh>
         ))}
         {[
-          [-0.5, -0.02, -0.9],
-          [0.5, -0.02, -0.9],
-        ].map(([x, y, z], i) => (
-          <mesh key={`tl-${i}`} position={[x, y, z]}>
-            <boxGeometry args={[0.22, 0.12, 0.06]} />
-            <meshBasicMaterial color="#ff4d4d" />
-          </mesh>
-        ))}
-        {[
-          [-0.55, -0.35, 0.7],
-          [0.55, -0.35, 0.7],
-          [-0.55, -0.35, -0.7],
-          [0.55, -0.35, -0.7],
+          [-0.6, 0.22, 0.75],
+          [0.6, 0.22, 0.75],
+          [-0.6, 0.22, -0.75],
+          [0.6, 0.22, -0.75],
         ].map(([x, y, z], i) => (
           <group
             key={i}
@@ -254,13 +299,17 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
             position={[x, y, z]}
           >
             <mesh rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.18, 0.18, 0.16, 10]} />
-              <meshMatcapMaterial color="#2b2b2b" matcap={matcapTexture()} flatShading />
+              <cylinderGeometry args={[0.22, 0.22, 0.18, 10]} />
+              <meshMatcapMaterial color="#15151a" matcap={matcapTexture()} flatShading />
+            </mesh>
+            <mesh rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.1, 0.1, 0.19, 8]} />
+              <meshMatcapMaterial color="#8a8a92" matcap={matcapTexture()} flatShading />
             </mesh>
           </group>
         ))}
       </group>
-      <BlobShadow radius={1.2} y={-0.49} />
+      <BlobShadow radius={1.3} y={-0.49} />
     </RigidBody>
   )
 }
