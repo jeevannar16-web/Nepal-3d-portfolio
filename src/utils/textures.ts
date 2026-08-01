@@ -122,6 +122,35 @@ export function glossyMatcapTexture(): THREE.Texture {
   return glossyTex
 }
 
+let glowTex: THREE.CanvasTexture | null = null
+/** Soft additive glow (white -> transparent) for headlight pools / light cones. */
+export function glowTexture(): THREE.Texture {
+  if (glowTex) return glowTex
+  const size = 128
+  const c = document.createElement('canvas')
+  c.width = size
+  c.height = size
+  const ctx = c.getContext('2d')!
+
+  const g = ctx.createRadialGradient(
+    size / 2,
+    size / 2,
+    0,
+    size / 2,
+    size / 2,
+    size / 2,
+  )
+  g.addColorStop(0, 'rgba(255,255,255,1)')
+  g.addColorStop(0.4, 'rgba(255,255,255,0.5)')
+  g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, size, size)
+
+  glowTex = new THREE.CanvasTexture(c)
+  glowTex.colorSpace = THREE.SRGBColorSpace
+  return glowTex
+}
+
 let shadowTex: THREE.CanvasTexture | null = null
 export function blobShadowTexture(): THREE.Texture {
   if (shadowTex) return shadowTex

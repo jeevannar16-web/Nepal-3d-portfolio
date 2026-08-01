@@ -26,6 +26,20 @@ interface FlagSpot {
   color: string
 }
 
+interface StupaSpot {
+  x: number
+  z: number
+  r: number
+  s: number
+}
+
+interface ManiSpot {
+  x: number
+  z: number
+  r: number
+  s: number
+}
+
 const SCATTER_RADIUS = 138
 const FLAG_COLORS = [
   '#e63946',
@@ -38,16 +52,21 @@ const FLAG_COLORS = [
   '#2a9d8f',
 ]
 const HOUSE_COLORS = ['#e8dcc8', '#d9b98c', '#c98d5f', '#b7a396']
+const STUPA_COLORS = ['#f5f0e6', '#efe7d8', '#fffaf0']
+const MANI_COLORS = ['#a8a291', '#b3ad9c', '#9c9685']
 
 export default function Decorations(): JSX.Element {
-  const { trees, houses, flags } = useMemo(() => {
+  const { trees, houses, flags, stupas, manis } = useMemo(() => {
     const rng = mulberry32(42)
     const trees: TreeSpot[] = []
     const houses: HouseSpot[] = []
     const flags: FlagSpot[] = []
+    const stupas: StupaSpot[] = []
+    const manis: ManiSpot[] = []
 
-    // Flank each road segment with trees, a few houses, and strings of flags
-    // so driving between landmarks feels like passing through a small town.
+    // Flank each road segment with trees, houses, strings of flags, and the
+    // occasional stupa or mani wall so driving feels like passing through
+    // the Kathmandu valley.
     for (const path of roadPaths) {
       for (let i = 0; i < path.length - 1; i++) {
         const a = path[i]
@@ -81,6 +100,14 @@ export default function Decorations(): JSX.Element {
               s: 0.9 + rng() * 0.8,
               color: HOUSE_COLORS[Math.floor(rng() * HOUSE_COLORS.length)],
             })
+          } else if (roll < 0.58) {
+            const off = 6 + rng() * 3
+            stupas.push({
+              x: rx + px * off * side,
+              z: rz + pz * off * side,
+              r: rng() * Math.PI * 2,
+              s: 0.8 + rng() * 0.5,
+            })
           }
           if (rng() < 0.22) {
             const off = 3.2 + rng() * 1.5
@@ -90,6 +117,15 @@ export default function Decorations(): JSX.Element {
               y: 1.3 + rng() * 1.1,
               r: rng() * 0.4 - 0.2,
               color: FLAG_COLORS[Math.floor(rng() * FLAG_COLORS.length)],
+            })
+          }
+          if (rng() < 0.12) {
+            const off = 4 + rng() * 3
+            manis.push({
+              x: rx + px * off * side,
+              z: rz + pz * off * side,
+              r: rng() < 0.5 ? 0 : Math.PI / 2,
+              s: 0.8 + rng() * 0.6,
             })
           }
         }
@@ -121,7 +157,7 @@ export default function Decorations(): JSX.Element {
       if (clear) trees.push({ x, z, s: 0.8 + rng() * 1.2 })
     }
 
-    return { trees, houses, flags }
+    return { trees, houses, flags, stupas, manis }
   }, [])
 
   const treeShadow = useMemo(() => blobShadowTexture(), [])
@@ -214,6 +250,61 @@ export default function Decorations(): JSX.Element {
             position={[f.x, f.y, f.z]}
             rotation={[0, f.r, 0]}
             color={f.color}
+          />
+        ))}
+      </Instances>
+
+      {/* Stupas — white base drum + squat dome + small spire */}
+      <Instances limit={stupas.length} frustumCulled={false}>
+        <cylinderGeometry args={[0.5, 0.55, 0.5, 6]} />
+        <meshStandardMaterial color="#f5f0e6" flatShading />
+        {stupas.map((st, i) => (
+          <Instance
+            key={`stupaBase-${i}`}
+            position={[st.x, 0.25 * st.s, st.z]}
+            rotation={[0, st.r, 0]}
+            scale={st.s}
+            color={STUPA_COLORS[i % STUPA_COLORS.length]}
+          />
+        ))}
+      </Instances>
+      <Instances limit={stupas.length} frustumCulled={false}>
+        <sphereGeometry args={[0.5, 8, 6]} />
+        <meshStandardMaterial color="#f5f0e6" flatShading />
+        {stupas.map((st, i) => (
+          <Instance
+            key={`stupaDome-${i}`}
+            position={[st.x, 0.75 * st.s, st.z]}
+            rotation={[0, st.r, 0]}
+            scale={[st.s * 0.9, st.s * 0.5, st.s * 0.9]}
+            color={STUPA_COLORS[i % STUPA_COLORS.length]}
+          />
+        ))}
+      </Instances>
+      <Instances limit={stupas.length} frustumCulled={false}>
+        <coneGeometry args={[0.08, 0.25, 4]} />
+        <meshStandardMaterial color="#c9a227" flatShading />
+        {stupas.map((st, i) => (
+          <Instance
+            key={`stupaSpire-${i}`}
+            position={[st.x, 1.13 * st.s, st.z]}
+            rotation={[0, st.r, 0]}
+            scale={st.s}
+          />
+        ))}
+      </Instances>
+
+      {/* Mani walls — low carved-stone blocks along the roads */}
+      <Instances limit={manis.length} frustumCulled={false}>
+        <boxGeometry args={[1.8, 0.7, 1.1]} />
+        <meshStandardMaterial color="#a8a291" flatShading />
+        {manis.map((m, i) => (
+          <Instance
+            key={`mani-${i}`}
+            position={[m.x, 0.35 * m.s, m.z]}
+            rotation={[0, m.r, 0]}
+            scale={m.s}
+            color={MANI_COLORS[i % MANI_COLORS.length]}
           />
         ))}
       </Instances>

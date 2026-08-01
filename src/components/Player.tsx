@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
 import { driveState } from '../store/driveState'
 import { useStore } from '../store/useStore'
-import { matcapTexture, glossyMatcapTexture } from '../utils/textures'
+import { matcapTexture, glossyMatcapTexture, glowTexture } from '../utils/textures'
 import BlobShadow from './BlobShadow'
 
 // ---- Driving feel (tune these by feel, no physics hunting needed) ----
@@ -57,6 +57,8 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
   const throttleTime = useRef(0)
   const yawVel = useRef(0)
   const introDone = useStore((s) => s.introDone)
+  const timeOfDay = useStore((s) => s.timeOfDay)
+  const lightsOn = timeOfDay === 'dusk' || timeOfDay === 'night'
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -290,6 +292,31 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
             <meshBasicMaterial color="#ff2a2a" />
           </mesh>
         ))}
+        {/* Headlight glow pools on the ground + soft fill light at dusk/night */}
+        {lightsOn && (
+          <>
+            {[-0.42, 0.42].map((x) => (
+              <mesh key={`beam-${x}`} position={[x, -0.42, 1.8]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[1.5, 2.6]} />
+                <meshBasicMaterial
+                  map={glowTexture()}
+                  color="#ffe9a8"
+                  transparent
+                  opacity={0.6}
+                  blending={THREE.AdditiveBlending}
+                  depthWrite={false}
+                />
+              </mesh>
+            ))}
+            <pointLight
+              position={[0, 0.35, 1.9]}
+              color="#ffe3a0"
+              intensity={6}
+              distance={11}
+              decay={2}
+            />
+          </>
+        )}
         {[
           [-0.6, 0.22, 0.75],
           [0.6, 0.22, 0.75],

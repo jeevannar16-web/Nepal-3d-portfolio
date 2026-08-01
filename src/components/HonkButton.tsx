@@ -15,9 +15,10 @@ export default function HonkButton(): JSX.Element {
       type="button"
       onClick={() => playHonk()}
       title="Honk (H)"
-      className="pointer-events-auto absolute bottom-24 right-5 z-10 rounded-xl border border-white/20 bg-black/40 p-3 text-white/90 backdrop-blur transition hover:bg-black/60 hover:text-white"
+      aria-label="Honk horn"
+      className="pointer-events-auto absolute bottom-[9rem] right-6 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/50 text-amber-200/90 backdrop-blur transition-transform duration-75 hover:border-white/40 hover:text-amber-100 active:scale-75 active:bg-amber-400/30"
     >
-      <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24" aria-hidden="true">
         <path d="M2 9v6h3l5 4V5L5 9H2z" />
         <path d="M14 5.5v13c2.8-1.4 4.7-4 4.7-6.5S16.8 6.9 14 5.5z" />
       </svg>
