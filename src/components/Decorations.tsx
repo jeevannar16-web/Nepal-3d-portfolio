@@ -328,21 +328,22 @@ export default function Decorations(): JSX.Element {
           />
         ))}
       </Instances>
-      {/* Colored additive glow around each flag so the vivid strings read as
-          light sources for the bloom pass instead of flat painted boxes. */}
+      {/* Tight colored halo hugging each flag (not a floating orb): small,
+          low-opacity additive sphere at the flag's exact position. */}
       <Instances limit={flagFlags.length} frustumCulled={false}>
         <icosahedronGeometry args={[1, 0]} />
         <meshBasicMaterial
           map={glowTexture()}
           transparent
+          opacity={0.4}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
         {flagFlags.map((f, i) => (
           <Instance
             key={`flagGlow-${i}`}
-            position={[f.x, f.y + 0.05, f.z]}
-            scale={0.55}
+            position={[f.x, f.y, f.z]}
+            scale={0.24}
             color={f.color}
           />
         ))}

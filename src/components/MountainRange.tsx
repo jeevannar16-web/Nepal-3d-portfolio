@@ -80,27 +80,27 @@ export default function MountainRange(): JSX.Element {
     <>
       {/* ---- Near ring ---- */}
       <Instances limit={peaks.length} frustumCulled={false}>
-        <coneGeometry args={[1, 1, 4]} />
+        <coneGeometry args={[1, 1, 7]} />
         <meshStandardMaterial color="#ffffff" flatShading />
         {peaks.map((p, i) => (
           <Instance
             key={`peak-${i}`}
             position={[p.x, p.h * 0.5, p.z]}
             rotation={[0, p.r, 0]}
-            scale={[p.s, p.h, p.s]}
+            scale={[p.s * 1.5, p.h, p.s * 1.5]}
             color={p.color}
           />
         ))}
       </Instances>
       <Instances limit={snowPeaks.length} frustumCulled={false}>
-        <coneGeometry args={[1, 1, 4]} />
+        <coneGeometry args={[1, 1, 7]} />
         <meshStandardMaterial color="#f4f8fc" flatShading />
         {snowPeaks.map((p, i) => (
           <Instance
             key={`snow-${i}`}
             position={[p.x, p.h * 0.62, p.z]}
             rotation={[0, p.r, 0]}
-            scale={[p.s * 0.5, p.h * 0.38, p.s * 0.5]}
+            scale={[p.s * 0.75, p.h * 0.38, p.s * 0.75]}
             color={SNOW_COLORS[i % SNOW_COLORS.length]}
           />
         ))}
@@ -108,27 +108,27 @@ export default function MountainRange(): JSX.Element {
 
       {/* ---- Distant layer: hazier, lower detail, sinks below the horizon ---- */}
       <Instances limit={farPeaks.length} frustumCulled={false}>
-        <coneGeometry args={[1, 1, 3]} />
+        <coneGeometry args={[1, 1, 6]} />
         <meshStandardMaterial color="#c5b8a8" flatShading />
         {farPeaks.map((p, i) => (
           <Instance
             key={`far-${i}`}
             position={[p.x, p.h * 0.5 - 8, p.z]}
             rotation={[0, p.r, 0]}
-            scale={[p.s, p.h, p.s]}
+            scale={[p.s * 1.4, p.h, p.s * 1.4]}
             color={p.color}
           />
         ))}
       </Instances>
       <Instances limit={farSnowPeaks.length} frustumCulled={false}>
-        <coneGeometry args={[1, 1, 3]} />
+        <coneGeometry args={[1, 1, 6]} />
         <meshStandardMaterial color="#e8edf4" flatShading />
         {farSnowPeaks.map((p, i) => (
           <Instance
             key={`farSnow-${i}`}
             position={[p.x, p.h * 0.62 - 8, p.z]}
             rotation={[0, p.r, 0]}
-            scale={[p.s * 0.5, p.h * 0.38, p.s * 0.5]}
+            scale={[p.s * 0.7, p.h * 0.38, p.s * 0.7]}
             color={SNOW_COLORS[i % SNOW_COLORS.length]}
           />
         ))}

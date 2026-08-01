@@ -269,23 +269,26 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
         {lightsOn && (
           <>
             {[-0.45, 0.45].map((x) => (
-              <mesh key={`beam-${x}`} position={[x, -0.42, 1.5]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[1.5, 2.6]} />
+              <mesh key={`beam-${x}`} position={[x, -0.42, 1.3]} rotation={[-Math.PI / 2, 0, 0]}>
+                {/* Small focused pool right in front of the car, kept below the
+                    bloom threshold so it reads as light on the ground — not a
+                    giant diffuse blob that swallows the scenery. */}
+                <planeGeometry args={[1.1, 2.0]} />
                 <meshBasicMaterial
                   map={glowTexture()}
-                  color="#fff3c4"
+                  color="#ffedbe"
                   transparent
-                  opacity={0.85}
+                  opacity={0.35}
                   blending={THREE.AdditiveBlending}
                   depthWrite={false}
                 />
               </mesh>
             ))}
             <pointLight
-              position={[0, 0.05, 1.4]}
+              position={[0, 0.05, 1.2]}
               color="#ffe3a0"
-              intensity={6}
-              distance={11}
+              intensity={2.2}
+              distance={8}
               decay={2}
             />
           </>
