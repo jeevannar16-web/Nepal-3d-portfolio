@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useStore } from '../store/useStore'
 import { detectCountry } from '../utils/geo'
@@ -10,6 +11,7 @@ import Ground from './Ground'
 import Roads from './Roads'
 import Decorations from './Decorations'
 import MountainRange from './MountainRange'
+import WaterPond from './WaterPond'
 import Rain from './Rain'
 import TireTracks from './TireTracks'
 import GradientSky from './GradientSky'
@@ -95,6 +97,7 @@ function Scene3D() {
           <Landmarks playerRef={playerBody} />
         </Physics>
         <MountainRange />
+        <WaterPond />
         <Decorations />
         <TireTracks target={playerBody} />
         {weather === 'rain' && <Rain target={playerBody} />}
@@ -104,6 +107,19 @@ function Scene3D() {
           <FollowCamera target={playerBody} />
         )}
         <FlyCamera />
+        {/* Subtle bloom so bright/emissive elements (headlight beams, prayer
+            flag glows, the golden horizon) bleed light. Threshold is high
+            enough that the sky and plain lit geometry mostly stay untouched.
+            Tune intensity/threshold/radius here if it reads too hot. */}
+        <EffectComposer>
+          <Bloom
+            mipmapBlur
+            intensity={0.5}
+            luminanceThreshold={0.8}
+            luminanceSmoothing={0.25}
+            radius={0.7}
+          />
+        </EffectComposer>
       </Canvas>
       <NavBar />
       <Hud />

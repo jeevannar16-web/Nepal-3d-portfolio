@@ -1,8 +1,10 @@
 import { useMemo, type JSX } from 'react'
 import { Instances, Instance } from '@react-three/drei'
-import { roadPaths, mulberry32, pointSegDist } from '../world'
+import * as THREE from 'three'
+import { roadPaths, mulberry32, pointSegDist, POND } from '../world'
 import { landmarks } from '../data'
-import { blobShadowTexture } from '../utils/textures'
+import { blobShadowTexture, glowTexture } from '../utils/textures'
+import { PALETTE } from '../utils/palette'
 
 interface TreeSpot {
   x: number
@@ -55,17 +57,18 @@ interface ManiSpot {
 }
 
 const SCATTER_RADIUS = 138
-const FLAG_COLORS = [
-  '#e63946',
-  '#f4a261',
-  '#e9c46a',
-  '#457b9d',
-  '#6a994e',
-  '#2a9d8f',
+const FLAG_COLORS = PALETTE.flags
+const HOUSE_COLORS = [
+  PALETTE.plaster,
+  PALETTE.sandstone,
+  PALETTE.sand,
+  '#b7a396',
 ]
-const HOUSE_COLORS = ['#e8dcc8', '#d9b98c', '#c98d5f', '#b7a396']
-const STUPA_COLORS = ['#f5f0e6', '#efe7d8', '#fffaf0']
-const MANI_COLORS = ['#a8a291', '#b3ad9c', '#9c9685']
+const STUPA_COLORS = PALETTE.stupaWarm
+const MANI_COLORS = PALETTE.maniStone
+
+const clearOfPond = (x: number, z: number) =>
+  Math.hypot(x - POND.x, z - POND.z) > POND.radius + 2.5
 
 export default function Decorations(): JSX.Element {
   const { trees, houses, flagPoles, flagStrings, flagFlags, stupas, manis } =
@@ -101,64 +104,78 @@ export default function Decorations(): JSX.Element {
           const roll = rng()
           if (roll < 0.5) {
             const off = 4.5 + rng() * 3.5
-            trees.push({
-              x: rx + px * off * side,
-              z: rz + pz * off * side,
-              s: 0.8 + rng() * 1.4,
-            })
+            const tx = rx + px * off * side
+            const tz = rz + pz * off * side
+            if (clearOfPond(tx, tz)) {
+              trees.push({ x: tx, z: tz, s: 0.8 + rng() * 1.4 })
+            }
           } else if (roll < 0.56) {
             const off = 10 + rng() * 5
-            houses.push({
-              x: rx + px * off * side,
-              z: rz + pz * off * side,
-              r: rng() * Math.PI * 2,
-              s: 0.9 + rng() * 0.8,
-              color: HOUSE_COLORS[Math.floor(rng() * HOUSE_COLORS.length)],
-            })
+            const hx = rx + px * off * side
+            const hz = rz + pz * off * side
+            if (clearOfPond(hx, hz)) {
+              houses.push({
+                x: hx,
+                z: hz,
+                r: rng() * Math.PI * 2,
+                s: 0.9 + rng() * 0.8,
+                color: HOUSE_COLORS[Math.floor(rng() * HOUSE_COLORS.length)],
+              })
+            }
           } else if (roll < 0.58) {
             const off = 6 + rng() * 3
-            stupas.push({
-              x: rx + px * off * side,
-              z: rz + pz * off * side,
-              r: rng() * Math.PI * 2,
-              s: 0.8 + rng() * 0.5,
-            })
+            const sx = rx + px * off * side
+            const sz = rz + pz * off * side
+            if (clearOfPond(sx, sz)) {
+              stupas.push({
+                x: sx,
+                z: sz,
+                r: rng() * Math.PI * 2,
+                s: 0.8 + rng() * 0.5,
+              })
+            }
           }
           if (rng() < 0.22) {
             const off = 3.2 + rng() * 1.5
             const bx = rx + px * off * side
             const bz = rz + pz * off * side
-            const y = 1.5 + rng() * 1.0
-            const angle = rng() * Math.PI * 2
-            const len = 1.3 + rng() * 0.5
-            const dx = Math.cos(angle)
-            const dz = Math.sin(angle)
-            for (const s of [-1, 1]) {
-              flagPoles.push({
-                x: bx + dx * (len / 2) * s,
-                z: bz + dz * (len / 2) * s,
-                y,
-              })
-            }
-            flagStrings.push({ x: bx, z: bz, y, angle, len })
-            for (let k = -1; k <= 1; k++) {
-              flagFlags.push({
-                x: bx + dx * (len / 2) * (k / 2),
-                z: bz + dz * (len / 2) * (k / 2),
-                y: y - 0.25,
-                angle,
-                color: FLAG_COLORS[Math.floor(rng() * FLAG_COLORS.length)],
-              })
+            if (clearOfPond(bx, bz)) {
+              const y = 1.5 + rng() * 1.0
+              const angle = rng() * Math.PI * 2
+              const len = 1.3 + rng() * 0.5
+              const dx = Math.cos(angle)
+              const dz = Math.sin(angle)
+              for (const s of [-1, 1]) {
+                flagPoles.push({
+                  x: bx + dx * (len / 2) * s,
+                  z: bz + dz * (len / 2) * s,
+                  y,
+                })
+              }
+              flagStrings.push({ x: bx, z: bz, y, angle, len })
+              for (let k = -1; k <= 1; k++) {
+                flagFlags.push({
+                  x: bx + dx * (len / 2) * (k / 2),
+                  z: bz + dz * (len / 2) * (k / 2),
+                  y: y - 0.25,
+                  angle,
+                  color: FLAG_COLORS[Math.floor(rng() * FLAG_COLORS.length)],
+                })
+              }
             }
           }
           if (rng() < 0.12) {
             const off = 4 + rng() * 3
-            manis.push({
-              x: rx + px * off * side,
-              z: rz + pz * off * side,
-              r: rng() < 0.5 ? 0 : Math.PI / 2,
-              s: 0.8 + rng() * 0.6,
-            })
+            const mx = rx + px * off * side
+            const mz = rz + pz * off * side
+            if (clearOfPond(mx, mz)) {
+              manis.push({
+                x: mx,
+                z: mz,
+                r: rng() < 0.5 ? 0 : Math.PI / 2,
+                s: 0.8 + rng() * 0.6,
+              })
+            }
           }
         }
       }
@@ -186,7 +203,7 @@ export default function Decorations(): JSX.Element {
         }
         if (!clear) break
       }
-      if (clear) trees.push({ x, z, s: 0.8 + rng() * 1.2 })
+      if (clear && clearOfPond(x, z)) trees.push({ x, z, s: 0.8 + rng() * 1.2 })
     }
 
     return { trees, houses, flagPoles, flagStrings, flagFlags, stupas, manis }
@@ -198,7 +215,7 @@ export default function Decorations(): JSX.Element {
     <>
       <Instances limit={trees.length} frustumCulled={false}>
         <cylinderGeometry args={[0.5, 0.65, 1, 5]} />
-        <meshStandardMaterial color="#5d4328" flatShading />
+        <meshStandardMaterial color={PALETTE.trunk} flatShading />
         {trees.map((t, i) => (
           <Instance
             key={`trunk-${i}`}
@@ -209,13 +226,13 @@ export default function Decorations(): JSX.Element {
       </Instances>
       <Instances limit={trees.length} frustumCulled={false}>
         <coneGeometry args={[1, 1, 6]} />
-        <meshStandardMaterial color="#3d7a44" flatShading />
+        <meshStandardMaterial color={PALETTE.foliage} flatShading />
         {trees.map((t, i) => (
           <Instance
             key={`leaf-${i}`}
             position={[t.x, t.s * 1.05, t.z]}
             scale={[t.s * 0.65, t.s * 1.5, t.s * 0.65]}
-            color={i % 3 === 0 ? '#4c8a52' : '#3d7a44'}
+            color={i % 3 === 0 ? PALETTE.foliageLight : PALETTE.foliage}
           />
         ))}
       </Instances>
@@ -248,14 +265,14 @@ export default function Decorations(): JSX.Element {
       </Instances>
       <Instances limit={houses.length} frustumCulled={false}>
         <coneGeometry args={[1, 1, 4]} />
-        <meshStandardMaterial color="#8a3b2e" flatShading />
+        <meshStandardMaterial color={PALETTE.clayRoof} flatShading />
         {houses.map((h, i) => (
           <Instance
             key={`roof-${i}`}
             position={[h.x, h.s * 1.6, h.z]}
             rotation={[0, Math.PI / 4, 0]}
             scale={[h.s * 1.7, h.s * 0.9, h.s * 1.7]}
-            color="#a0513f"
+            color={PALETTE.clayRoofLight}
           />
         ))}
       </Instances>
@@ -311,11 +328,30 @@ export default function Decorations(): JSX.Element {
           />
         ))}
       </Instances>
+      {/* Colored additive glow around each flag so the vivid strings read as
+          light sources for the bloom pass instead of flat painted boxes. */}
+      <Instances limit={flagFlags.length} frustumCulled={false}>
+        <icosahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial
+          map={glowTexture()}
+          transparent
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+        {flagFlags.map((f, i) => (
+          <Instance
+            key={`flagGlow-${i}`}
+            position={[f.x, f.y + 0.05, f.z]}
+            scale={0.55}
+            color={f.color}
+          />
+        ))}
+      </Instances>
 
       {/* Stupas — white base drum + squat dome + small spire */}
       <Instances limit={stupas.length} frustumCulled={false}>
         <cylinderGeometry args={[0.5, 0.55, 0.5, 6]} />
-        <meshStandardMaterial color="#f5f0e6" flatShading />
+        <meshStandardMaterial color={STUPA_COLORS[0]} flatShading />
         {stupas.map((st, i) => (
           <Instance
             key={`stupaBase-${i}`}
@@ -328,7 +364,7 @@ export default function Decorations(): JSX.Element {
       </Instances>
       <Instances limit={stupas.length} frustumCulled={false}>
         <sphereGeometry args={[0.5, 8, 6]} />
-        <meshStandardMaterial color="#f5f0e6" flatShading />
+        <meshStandardMaterial color={STUPA_COLORS[0]} flatShading />
         {stupas.map((st, i) => (
           <Instance
             key={`stupaDome-${i}`}
@@ -355,7 +391,7 @@ export default function Decorations(): JSX.Element {
       {/* Mani walls — low carved-stone blocks along the roads */}
       <Instances limit={manis.length} frustumCulled={false}>
         <boxGeometry args={[1.8, 0.7, 1.1]} />
-        <meshStandardMaterial color="#a8a291" flatShading />
+        <meshStandardMaterial color={MANI_COLORS[0]} flatShading />
         {manis.map((m, i) => (
           <Instance
             key={`mani-${i}`}

@@ -1,6 +1,7 @@
 import { useMemo, type JSX } from 'react'
 import { Instances, Instance } from '@react-three/drei'
 import { mulberry32 } from '../world'
+import { PALETTE } from '../utils/palette'
 
 interface Peak {
   x: number
@@ -12,21 +13,12 @@ interface Peak {
   snow: boolean
 }
 
-/** Grey-blue + warm slate hues so peaks aren't all identical. */
-const ROCK_COLORS = [
-  '#7b8ca6',
-  '#6d7f9c',
-  '#8598b0',
-  '#667999',
-  '#8a9bb4',
-  '#7589a6',
-  '#8f8fa6',
-  '#a09080',
-]
-const SNOW_COLORS = ['#f4f8fc', '#eef4fb', '#fafcff']
+/** Warm slate / mauve hues so peaks aren't all identical and catch golden light. */
+const ROCK_COLORS = PALETTE.rock
+const SNOW_COLORS = PALETTE.snow
 
-/** Desaturated, warm-haze palette for the far layer (faked atmospheric perspective). */
-const HAZE_COLORS = ['#b9b2a6', '#c5b8a8', '#a8a79f', '#bfb4a6', '#b0a99c']
+/** Warm-haze palette for the far layer (faked atmospheric perspective). */
+const HAZE_COLORS = PALETTE.haze
 
 /**
  * Low-poly Himalayan ring around the valley — purely atmospheric, no physics.

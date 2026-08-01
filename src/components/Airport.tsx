@@ -1,4 +1,5 @@
 import type { JSX } from 'react'
+import { PALETTE } from '../utils/palette'
 
 const RUNWAY_LENGTH = 60
 
@@ -24,11 +25,11 @@ export default function Airport(): JSX.Element {
       {/* Terminal building beside the runway */}
       <mesh position={[11.3, 1.75, 11.3]}>
         <boxGeometry args={[12, 3.5, 7]} />
-        <meshStandardMaterial color="#e8dcc8" flatShading />
+        <meshStandardMaterial color={PALETTE.plaster} flatShading />
       </mesh>
       <mesh position={[11.3, 3.75, 11.3]}>
         <boxGeometry args={[12.8, 0.5, 7.8]} />
-        <meshStandardMaterial color="#8a3b2e" flatShading />
+        <meshStandardMaterial color={PALETTE.clayRoof} flatShading />
       </mesh>
 
       {/* Control tower on the far side */}
@@ -42,7 +43,7 @@ export default function Airport(): JSX.Element {
       </mesh>
       <mesh position={[-15, 9.4, -8]}>
         <boxGeometry args={[1.2, 0.4, 1.2]} />
-        <meshStandardMaterial color="#8a3b2e" flatShading />
+        <meshStandardMaterial color={PALETTE.clayRoof} flatShading />
       </mesh>
 
       {/* Windsock */}

@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { PALETTE } from './palette'
 
 let grassTex: THREE.CanvasTexture | null = null
 export function grassTexture(): THREE.Texture {
@@ -9,7 +10,7 @@ export function grassTexture(): THREE.Texture {
   c.height = size
   const ctx = c.getContext('2d')!
 
-  ctx.fillStyle = '#79b383'
+  ctx.fillStyle = PALETTE.ground
   ctx.fillRect(0, 0, size, size)
 
   for (let i = 0; i < 1100; i++) {
@@ -17,7 +18,7 @@ export function grassTexture(): THREE.Texture {
     const y = Math.random() * size
     const r = 0.6 + Math.random() * 1.2
     ctx.fillStyle =
-      Math.random() > 0.5 ? 'rgba(62,118,72,0.5)' : 'rgba(148,198,130,0.5)'
+      Math.random() > 0.5 ? PALETTE.grassSpeckDark : PALETTE.grassSpeckLight
     ctx.beginPath()
     ctx.arc(x, y, r, 0, Math.PI * 2)
     ctx.fill()
@@ -29,7 +30,7 @@ export function grassTexture(): THREE.Texture {
     const len = 2 + Math.random() * 4
     const w = 0.7 + Math.random()
     ctx.strokeStyle =
-      Math.random() > 0.5 ? 'rgba(56,110,66,0.7)' : 'rgba(120,170,100,0.7)'
+      Math.random() > 0.5 ? PALETTE.grassBladeDark : PALETTE.grassBladeLight
     ctx.lineWidth = w
     ctx.lineCap = 'round'
     ctx.beginPath()
@@ -43,6 +44,86 @@ export function grassTexture(): THREE.Texture {
   grassTex.repeat.set(180, 180)
   grassTex.colorSpace = THREE.SRGBColorSpace
   return grassTex
+}
+
+let aoTex: THREE.CanvasTexture | null = null
+/**
+ * Baked soft ambient-occlusion map for the whole valley floor. Single
+ * non-repeating texture spanning the 300x300 world: dark radial pools under
+ * the four landmarks plus a scattering of faint blobs (tree clusters), so
+ * ground reads darker near object bases and lighter in open areas. Consumed by
+ * meshStandardMaterial.aoMap.
+ */
+export function groundAOTexture(): THREE.Texture {
+  if (aoTex) return aoTex
+  const size = 512
+  const c = document.createElement('canvas')
+  c.width = size
+  c.height = size
+  const ctx = c.getContext('2d')!
+
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, size, size)
+
+  const toPx = (wx: number, wz: number): [number, number] => [
+    ((wx + 150) / 300) * size,
+    ((wz + 150) / 300) * size,
+  ]
+
+  // Landmark bases — strongest, widest pools.
+  const landmarkSpots: Array<[number, number]> = [
+    [-95, -80],
+    [90, -90],
+    [-90, 95],
+    [95, 85],
+  ]
+  for (const [x, z] of landmarkSpots) {
+    const [px, pz] = toPx(x, z)
+    const g = ctx.createRadialGradient(px, pz, 4, px, pz, 44)
+    g.addColorStop(0, 'rgba(20, 26, 20, 0.38)')
+    g.addColorStop(1, 'rgba(20, 26, 20, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(px - 44, pz - 44, 88, 88)
+  }
+
+  // A few deterministic clusters for the scattered woodland.
+  const rng = (() => {
+    let a = 99
+    return () => {
+      a |= 0
+      a = (a + 0x6d2b79f5) | 0
+      let t = Math.imul(a ^ (a >>> 15), 1 | a)
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+  })()
+  for (let i = 0; i < 90; i++) {
+    const x = (rng() * 2 - 1) * 132
+    const z = (rng() * 2 - 1) * 132
+    const [px, pz] = toPx(x, z)
+    const r = 10 + rng() * 18
+    const g = ctx.createRadialGradient(px, pz, 2, px, pz, r)
+    g.addColorStop(0, 'rgba(18, 24, 18, 0.16)')
+    g.addColorStop(1, 'rgba(18, 24, 18, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(px - r, pz - r, r * 2, r * 2)
+  }
+
+  // Gentle large-scale mottling so open ground isn't perfectly flat.
+  for (let i = 0; i < 40; i++) {
+    const x = rng() * size
+    const z = rng() * size
+    const r = 40 + rng() * 80
+    const dark = rng() > 0.4
+    const g = ctx.createRadialGradient(x, z, 4, x, z, r)
+    g.addColorStop(0, dark ? 'rgba(24, 30, 24, 0.10)' : 'rgba(255,255,255,0.10)')
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(x - r, z - r, r * 2, r * 2)
+  }
+
+  aoTex = new THREE.CanvasTexture(c)
+  return aoTex
 }
 
 let matcapTex: THREE.CanvasTexture | null = null

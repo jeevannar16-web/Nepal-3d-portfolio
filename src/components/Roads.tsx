@@ -1,6 +1,7 @@
 import { useMemo, type JSX } from 'react'
 import * as THREE from 'three'
 import { roadPaths, type Point } from '../world'
+import { PALETTE } from '../utils/palette'
 
 interface RoadProps {
   a: Point
@@ -9,7 +10,7 @@ interface RoadProps {
   color?: string
 }
 
-function Road({ a, b, width = 3.2, color = '#c2a06e' }: RoadProps): JSX.Element {
+function Road({ a, b, width = 3.2, color = PALETTE.sand }: RoadProps): JSX.Element {
   const { length, angle, x, z } = useMemo(() => {
     const dx = b[0] - a[0]
     const dz = b[1] - a[1]
@@ -44,7 +45,7 @@ export default function Roads(): JSX.Element {
 
   const centerPlaza = useMemo(
     () =>
-      new THREE.MeshStandardMaterial({ color: '#b4915f', flatShading: true }),
+      new THREE.MeshStandardMaterial({ color: PALETTE.sandDeep, flatShading: true }),
     [],
   )
 

@@ -273,9 +273,9 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
                 <planeGeometry args={[1.5, 2.6]} />
                 <meshBasicMaterial
                   map={glowTexture()}
-                  color="#ffe9a8"
+                  color="#fff3c4"
                   transparent
-                  opacity={0.6}
+                  opacity={0.85}
                   blending={THREE.AdditiveBlending}
                   depthWrite={false}
                 />

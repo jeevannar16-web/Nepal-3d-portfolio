@@ -33,6 +33,12 @@ export const roadPaths: Point[][] = [
   [gate, [-45, 48], [0, 0], [45, -45], tower],
 ]
 
+/**
+ * Decorative pond near the temple landmark. Scenery generators skip a margin
+ * around it so nothing spawns inside the water.
+ */
+export const POND = { x: -84, z: -92, radius: 4.5 }
+
 /** Deterministic PRNG so scenery stays in the same place every load. */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0
