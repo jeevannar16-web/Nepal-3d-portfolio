@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import type { RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
+import { minimapState } from '../store/minimapState'
 import { MAX_SPEED } from './Player'
 
 const BASE_FOV = 70 // matches the Canvas camera; wide enough to see the road ahead
@@ -10,6 +11,8 @@ const FOV_SPEED_GAIN = 6 // degrees added at top speed
 const LOOK_DRAG_SENSITIVITY = 0.006 // radians of orbit per pixel of right-drag
 const LOOK_KEY_RATE = 0.7 // orbit radians/second while Q/E is held
 const Y_AXIS = new THREE.Vector3(0, 1, 0)
+// Chase offset: directly behind the car, low and close for a real driving view.
+const OFFSET = new THREE.Vector3(0, 3.4, -8.5)
 
 interface FollowCameraProps {
   target: React.RefObject<RapierRigidBody | null>
@@ -18,15 +21,11 @@ interface FollowCameraProps {
 export default function FollowCamera({ target }: FollowCameraProps): JSX.Element {
   const { camera, gl } = useThree()
   const flyTarget = useStore((s) => s.flyTarget)
-  const offset = useRef(
-    new THREE.Vector3(6, 5, 6).setLength(9.5).setY(5.5),
-  )
+  const camYaw = useRef(0) // current camera orbit angle around the car
+  const lookYaw = useRef(0) // free-look orbit offset on top of the car heading
   const bobTime = useRef(0)
   // Free-look: orbit the camera around the car with right-click drag or Q/E.
-  // The yaw springs back to 0 (the normal follow angle) when released, and
-  // the default chase behavior is untouched while no look input is active.
-  const yaw = useRef(0)
-  const yawTarget = useRef(0)
+  // The offset springs back to 0 (behind the car) when released.
   const looking = useRef(false)
   const lastX = useRef(0)
   const orbitKeys = useRef({ left: false, right: false })
@@ -43,7 +42,7 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     }
     const onMove = (e: MouseEvent) => {
       if (!looking.current) return
-      yawTarget.current += (e.clientX - lastX.current) * LOOK_DRAG_SENSITIVITY
+      lookYaw.current += (e.clientX - lastX.current) * LOOK_DRAG_SENSITIVITY
       lastX.current = e.clientX
     }
     const onUp = (e: MouseEvent) => {
@@ -90,15 +89,24 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     cam.fov += (fovTarget - cam.fov) * (1 - Math.pow(2, -delta * 3))
     cam.updateProjectionMatrix()
 
-    // Free-look yaw: Q/E add a steady rate, right-drag adds per-pixel. With no
-    // look input the target eases back to 0 so the chase cam re-centers itself.
+    // Free-look: Q/E add a steady rate, right-drag adds per-pixel. With no
+    // look input the offset eases back to 0 so the chase cam sits behind again.
     const keys = orbitKeys.current
-    if (keys.left) yawTarget.current -= LOOK_KEY_RATE * delta
-    if (keys.right) yawTarget.current += LOOK_KEY_RATE * delta
-    if (!looking.current && !keys.left && !keys.right) yawTarget.current = 0
+    if (keys.left) lookYaw.current -= LOOK_KEY_RATE * delta
+    if (keys.right) lookYaw.current += LOOK_KEY_RATE * delta
     const active = looking.current || keys.left || keys.right
-    const settle = 1 - Math.pow(2, -delta * (active ? 12 : 4))
-    yaw.current += (yawTarget.current - yaw.current) * settle
+    if (!active) {
+      const settle = 1 - Math.pow(2, -delta * 3)
+      lookYaw.current += (0 - lookYaw.current) * settle
+    }
+
+    // Chase the car's heading plus the free-look offset: when the car steers,
+    // the camera swings around to stay behind it so the scenery sweeps across
+    // the screen — the core of a "driving" feel. Tight while actively looking,
+    // slightly loose otherwise for dynamic, readable corners.
+    const desiredYaw = minimapState.heading + lookYaw.current
+    const chase = 1 - Math.pow(2, -delta * (active ? 30 : 6))
+    camYaw.current += (desiredYaw - camYaw.current) * chase
 
     bobTime.current += delta * (1 + speed * 0.25)
 
@@ -107,15 +115,15 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     const sway = Math.sin(bobTime.current * 2.2) * 0.045 * bob
     const bobY = Math.sin(bobTime.current * 4.4) * 0.035 * bob
 
-    const rotated = offset.current.clone().applyAxisAngle(Y_AXIS, yaw.current)
+    const rotated = OFFSET.clone().applyAxisAngle(Y_AXIS, camYaw.current)
 
     const desired = new THREE.Vector3(
       pos.x + rotated.x + sway,
-      rotated.y + bobY,
+      pos.y + rotated.y + bobY,
       pos.z + rotated.z,
     )
 
-    const smooth = 1 - Math.pow(2, -delta * 4)
+    const smooth = 1 - Math.pow(2, -delta * 6)
     camera.position.lerp(desired, smooth)
     camera.lookAt(pos.x, pos.y + 0.5, pos.z)
   })

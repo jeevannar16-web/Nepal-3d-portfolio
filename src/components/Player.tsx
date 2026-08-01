@@ -33,7 +33,6 @@ const DOWNSHIFT_SPEED = [0, 0, 3.0, 6.4, 10.4]
 const THROTTLE_FORCE = 48 // peak drive force at full throttle in the power band
 const REVERSE_FORCE = 20 // reverse drive force
 const BRAKE_DECEL = 34 // brake force opposing current motion
-const CREEP_FORCE = 7 // automatic cars creep forward at idle
 const ENGINE_BRAKE = 3.5 // engine braking when coasting in gear
 const ROLLING_DECEL = 1.4 // rolling resistance
 const AERO_DRAG = 0.04 // aerodynamic drag (v²)
@@ -310,10 +309,9 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
         else if (fwdVel < -0.3) applied = BRAKE_DECEL
       }
       if (throttle === 0 && !brkKey) {
-        if (Math.abs(fwdVel) < 1.2) {
-          applied = (inReverse ? -1 : 1) * CREEP_FORCE // idle creep, like an auto
-        } else {
-          applied = -Math.sign(fwdVel) * ENGINE_BRAKE // engine braking while coasting
+        // Engine braking while coasting; the car stays still at idle.
+        if (Math.abs(fwdVel) >= 1.2) {
+          applied = -Math.sign(fwdVel) * ENGINE_BRAKE
         }
       }
     }
