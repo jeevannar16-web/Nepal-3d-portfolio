@@ -1,11 +1,12 @@
 import { useMemo, type JSX } from 'react'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
-import { DAY_THEMES } from '../utils/timeOfDay'
+import { DAY_THEMES, INTRO_THEME } from '../utils/timeOfDay'
 
 export default function GradientSky(): JSX.Element {
   const timeOfDay = useStore((s) => s.timeOfDay)
-  const theme = DAY_THEMES[timeOfDay]
+  const introDone = useStore((s) => s.introDone)
+  const theme = introDone ? DAY_THEMES[timeOfDay] : INTRO_THEME
 
   const material = useMemo(
     () =>

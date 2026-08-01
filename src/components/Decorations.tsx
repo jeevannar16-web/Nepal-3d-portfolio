@@ -18,11 +18,25 @@ interface HouseSpot {
   color: string
 }
 
-interface FlagSpot {
+interface FlagPoleSpot {
   x: number
   z: number
   y: number
-  r: number
+}
+
+interface FlagStringSpot {
+  x: number
+  z: number
+  y: number
+  angle: number
+  len: number
+}
+
+interface FlagFlagSpot {
+  x: number
+  z: number
+  y: number
+  angle: number
   color: string
 }
 
@@ -47,8 +61,6 @@ const FLAG_COLORS = [
   '#e9c46a',
   '#457b9d',
   '#6a994e',
-  '#a98467',
-  '#f1faee',
   '#2a9d8f',
 ]
 const HOUSE_COLORS = ['#e8dcc8', '#d9b98c', '#c98d5f', '#b7a396']
@@ -56,13 +68,16 @@ const STUPA_COLORS = ['#f5f0e6', '#efe7d8', '#fffaf0']
 const MANI_COLORS = ['#a8a291', '#b3ad9c', '#9c9685']
 
 export default function Decorations(): JSX.Element {
-  const { trees, houses, flags, stupas, manis } = useMemo(() => {
-    const rng = mulberry32(42)
-    const trees: TreeSpot[] = []
-    const houses: HouseSpot[] = []
-    const flags: FlagSpot[] = []
-    const stupas: StupaSpot[] = []
-    const manis: ManiSpot[] = []
+  const { trees, houses, flagPoles, flagStrings, flagFlags, stupas, manis } =
+    useMemo(() => {
+      const rng = mulberry32(42)
+      const trees: TreeSpot[] = []
+      const houses: HouseSpot[] = []
+      const flagPoles: FlagPoleSpot[] = []
+      const flagStrings: FlagStringSpot[] = []
+      const flagFlags: FlagFlagSpot[] = []
+      const stupas: StupaSpot[] = []
+      const manis: ManiSpot[] = []
 
     // Flank each road segment with trees, houses, strings of flags, and the
     // occasional stupa or mani wall so driving feels like passing through
@@ -111,13 +126,30 @@ export default function Decorations(): JSX.Element {
           }
           if (rng() < 0.22) {
             const off = 3.2 + rng() * 1.5
-            flags.push({
-              x: rx + px * off * side,
-              z: rz + pz * off * side,
-              y: 1.3 + rng() * 1.1,
-              r: rng() * 0.4 - 0.2,
-              color: FLAG_COLORS[Math.floor(rng() * FLAG_COLORS.length)],
-            })
+            const bx = rx + px * off * side
+            const bz = rz + pz * off * side
+            const y = 1.5 + rng() * 1.0
+            const angle = rng() * Math.PI * 2
+            const len = 1.3 + rng() * 0.5
+            const dx = Math.cos(angle)
+            const dz = Math.sin(angle)
+            for (const s of [-1, 1]) {
+              flagPoles.push({
+                x: bx + dx * (len / 2) * s,
+                z: bz + dz * (len / 2) * s,
+                y,
+              })
+            }
+            flagStrings.push({ x: bx, z: bz, y, angle, len })
+            for (let k = -1; k <= 1; k++) {
+              flagFlags.push({
+                x: bx + dx * (len / 2) * (k / 2),
+                z: bz + dz * (len / 2) * (k / 2),
+                y: y - 0.25,
+                angle,
+                color: FLAG_COLORS[Math.floor(rng() * FLAG_COLORS.length)],
+              })
+            }
           }
           if (rng() < 0.12) {
             const off = 4 + rng() * 3
@@ -157,7 +189,7 @@ export default function Decorations(): JSX.Element {
       if (clear) trees.push({ x, z, s: 0.8 + rng() * 1.2 })
     }
 
-    return { trees, houses, flags, stupas, manis }
+    return { trees, houses, flagPoles, flagStrings, flagFlags, stupas, manis }
   }, [])
 
   const treeShadow = useMemo(() => blobShadowTexture(), [])
@@ -170,8 +202,8 @@ export default function Decorations(): JSX.Element {
         {trees.map((t, i) => (
           <Instance
             key={`trunk-${i}`}
-            position={[t.x, t.s * 0.5, t.z]}
-            scale={[t.s * 0.2, t.s, t.s * 0.2]}
+            position={[t.x, t.s * 0.18, t.z]}
+            scale={[t.s * 0.24, t.s * 0.36, t.s * 0.24]}
           />
         ))}
       </Instances>
@@ -181,8 +213,8 @@ export default function Decorations(): JSX.Element {
         {trees.map((t, i) => (
           <Instance
             key={`leaf-${i}`}
-            position={[t.x, t.s * 1.1, t.z]}
-            scale={[t.s * 0.5, t.s * 1.1, t.s * 0.5]}
+            position={[t.x, t.s * 1.05, t.z]}
+            scale={[t.s * 0.65, t.s * 1.5, t.s * 0.65]}
             color={i % 3 === 0 ? '#4c8a52' : '#3d7a44'}
           />
         ))}
@@ -195,7 +227,7 @@ export default function Decorations(): JSX.Element {
             key={`treeShadow-${i}`}
             position={[t.x, 0.015, t.z]}
             rotation={[-Math.PI / 2, 0, 0]}
-            scale={t.s * 1.25}
+            scale={t.s * 1.5}
             color="#ffffff"
           />
         ))}
@@ -241,27 +273,40 @@ export default function Decorations(): JSX.Element {
         ))}
       </Instances>
 
-      {/* Prayer flags on poles (thin pole under each flag so they don't look
-          like floating squares) */}
-      <Instances limit={flags.length} frustumCulled={false}>
-        <boxGeometry args={[0.06, 1, 0.06]} />
+      {/* Prayer flags — two short poles with a string of bright flags between
+          them. Poles are thick enough to read at distance so the flags never
+          look like unsupported floating boxes. */}
+      <Instances limit={flagPoles.length} frustumCulled={false}>
+        <boxGeometry args={[0.1, 1, 0.1]} />
         <meshStandardMaterial color="#4a4236" flatShading />
-        {flags.map((f, i) => (
+        {flagPoles.map((p, i) => (
           <Instance
             key={`flagPole-${i}`}
-            position={[f.x, f.y / 2, f.z]}
-            scale={[1, f.y, 1]}
+            position={[p.x, p.y / 2, p.z]}
+            scale={[1, p.y, 1]}
           />
         ))}
       </Instances>
-      <Instances limit={flags.length} frustumCulled={false}>
-        <boxGeometry args={[0.7, 0.45, 0.05]} />
+      <Instances limit={flagStrings.length} frustumCulled={false}>
+        <boxGeometry args={[1, 0.05, 0.05]} />
+        <meshStandardMaterial color="#3a342c" flatShading />
+        {flagStrings.map((s, i) => (
+          <Instance
+            key={`flagString-${i}`}
+            position={[s.x, s.y, s.z]}
+            rotation={[0, s.angle, 0]}
+            scale={[s.len, 1, 1]}
+          />
+        ))}
+      </Instances>
+      <Instances limit={flagFlags.length} frustumCulled={false}>
+        <boxGeometry args={[0.3, 0.35, 0.04]} />
         <meshStandardMaterial color="#ffffff" flatShading />
-        {flags.map((f, i) => (
+        {flagFlags.map((f, i) => (
           <Instance
             key={`flag-${i}`}
             position={[f.x, f.y, f.z]}
-            rotation={[0, f.r, 0]}
+            rotation={[0, f.angle, 0]}
             color={f.color}
           />
         ))}

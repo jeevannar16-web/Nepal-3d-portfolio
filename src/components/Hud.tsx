@@ -5,6 +5,7 @@ import { useStore } from '../store/useStore'
 export default function Hud(): JSX.Element {
   const isPanelOpen = useStore((s) => s.isPanelOpen)
   const setPrefersSimple = useStore((s) => s.setPrefersSimple)
+  const introDone = useStore((s) => s.introDone)
   const [hintFaded, setHintFaded] = useState(false)
 
   useEffect(() => {
@@ -23,22 +24,26 @@ export default function Hud(): JSX.Element {
           {identity.role} · {identity.location}
         </p>
       </div>
-      <div
-        className={`flex flex-col items-end gap-2 transition-opacity duration-1000 ${
-          hintFaded ? 'opacity-40' : 'opacity-100'
-        }`}
-      >
-        <div className="hidden rounded-full bg-black/30 px-4 py-2 text-xs text-white/90 backdrop-blur xl:block">
-          WASD / Arrow keys to drive · Enter a landmark to explore
-        </div>
-        <button
-          type="button"
-          onClick={() => setPrefersSimple(true)}
-          className="pointer-events-auto text-xs text-white/70 underline decoration-white/40 underline-offset-4 transition hover:text-white hover:decoration-white"
+      {/* Hidden while the intro's Skip button owns the top-right corner, so
+          the two never collide; reappears once control hands to the player. */}
+      {introDone && (
+        <div
+          className={`flex flex-col items-end gap-2 transition-opacity duration-1000 ${
+            hintFaded ? 'opacity-40' : 'opacity-100'
+          }`}
         >
-          Prefer a simple page?
-        </button>
-      </div>
+          <div className="hidden rounded-full bg-black/30 px-4 py-2 text-xs text-white/90 backdrop-blur xl:block">
+            WASD / Arrow keys to drive · Enter a landmark to explore
+          </div>
+          <button
+            type="button"
+            onClick={() => setPrefersSimple(true)}
+            className="pointer-events-auto text-xs text-white/70 underline decoration-white/40 underline-offset-4 transition hover:text-white hover:decoration-white"
+          >
+            Prefer a simple page?
+          </button>
+        </div>
+      )}
     </div>
   )
 }

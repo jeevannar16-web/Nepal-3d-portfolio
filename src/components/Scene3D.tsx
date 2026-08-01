@@ -4,7 +4,7 @@ import { Physics } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useStore } from '../store/useStore'
 import { detectCountry } from '../utils/geo'
-import { getTimeOfDay, DAY_THEMES } from '../utils/timeOfDay'
+import { getTimeOfDay, DAY_THEMES, INTRO_THEME } from '../utils/timeOfDay'
 import { fetchKathmanduWeather } from '../utils/weather'
 import Ground from './Ground'
 import Roads from './Roads'
@@ -66,7 +66,7 @@ function Scene3D() {
     }
   }, [setTimeOfDay, setWeather])
 
-  const theme = DAY_THEMES[timeOfDay]
+  const theme = introDone ? DAY_THEMES[timeOfDay] : INTRO_THEME
   let fogNear = theme.fogNear
   let fogFar = theme.fogFar
   if (weather === 'rain') {

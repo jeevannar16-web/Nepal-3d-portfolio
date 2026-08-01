@@ -67,3 +67,22 @@ export const DAY_THEMES: Record<TimeOfDay, DayTheme> = {
     sunIntensity: 0.5,
   },
 }
+
+/**
+ * Fixed, attractive sky used ONLY during the arrival intro so the first
+ * impression never depends on the visitor's local clock (a flat orange dusk
+ * or near-black night reads poorly). Golden-hour tones with a clear blue
+ * zenith — not a flat orange wash. The scene hands back to the real
+ * DAY_THEMES[timeOfDay] once the intro completes.
+ */
+export const INTRO_THEME: DayTheme = {
+  skyTop: '#3d7bbf',
+  skyHorizon: '#ffd9a8',
+  skyZenith: '#f2a874',
+  fog: '#f0c9a2',
+  fogNear: 95,
+  fogFar: 330,
+  ambient: 0.6,
+  sunColor: '#ffeccb',
+  sunIntensity: 1.15,
+}

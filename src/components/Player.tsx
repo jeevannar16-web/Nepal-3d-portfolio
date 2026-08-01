@@ -263,7 +263,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
         <primitive
           object={carScene}
           scale={CAR_SCALE}
-          position={[CAR_CENTER_X, 0, CAR_CENTER_Z]}
+          position={[CAR_CENTER_X, -0.5, CAR_CENTER_Z]}
         />
         {/* Headlight glow pools on the ground + soft fill light at dusk/night */}
         {lightsOn && (
@@ -282,7 +282,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
               </mesh>
             ))}
             <pointLight
-              position={[0, 0.4, 1.4]}
+              position={[0, 0.05, 1.4]}
               color="#ffe3a0"
               intensity={6}
               distance={11}

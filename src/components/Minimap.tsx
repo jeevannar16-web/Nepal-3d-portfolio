@@ -9,6 +9,7 @@ const MAP_SIZE = 160
 export default function Minimap(): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const flyTo = useStore((s) => s.flyTo)
+  const introDone = useStore((s) => s.introDone)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -93,7 +94,11 @@ export default function Minimap(): JSX.Element {
   }, [flyTo])
 
   return (
-    <div className="pointer-events-auto absolute bottom-5 left-5 z-10 rounded-xl border border-white/20 bg-black/40 p-2 backdrop-blur">
+    <div
+      className={`pointer-events-auto absolute bottom-5 left-5 z-10 rounded-xl border border-white/20 bg-black/40 p-2 backdrop-blur transition-opacity duration-700 ${
+        introDone ? 'opacity-100' : 'opacity-75'
+      }`}
+    >
       <canvas
         ref={canvasRef}
         style={{ width: MAP_SIZE, height: MAP_SIZE }}
