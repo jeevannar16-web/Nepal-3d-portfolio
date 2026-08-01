@@ -10,9 +10,9 @@ import { glowTexture } from '../utils/textures'
 import BlobShadow from './BlobShadow'
 
 // ---- Real-car powertrain (engine, gearbox, torque — not arcade force) ----
-export const MAX_SPEED = 18 // top forward speed in units/second
+export const MAX_SPEED = 24 // top forward speed in units/second
 export const REVERSE_MAX_SPEED = 6 // top reverse speed in units/second
-export const KMH_FACTOR = 8 // world units/sec -> km/h (MAX_SPEED = 144 km/h)
+export const KMH_FACTOR = 8 // world units/sec -> km/h (MAX_SPEED = 192 km/h)
 
 // Engine
 export const IDLE_RPM = 900
@@ -25,17 +25,19 @@ const THROTTLE_DECAY = 0.15 // throttle let-off speed (fraction of ramp time)
 // up/down shifts happen near those limits, redline sits at the gear top.
 // Shift hysteresis (downshift point < previous gear's upshift point) stops the
 // box hunting between gears at the same speed.
-const GEAR_TOPS = [0, 4.2, 8.5, 13, MAX_SPEED]
-const UPSHIFT_SPEED = [0, 3.6, 7.2, 11.4, Infinity]
-const DOWNSHIFT_SPEED = [0, 0, 3.0, 6.4, 10.4]
+const GEAR_TOPS = [0, 4.5, 9.5, 16, MAX_SPEED]
+const UPSHIFT_SPEED = [0, 3.8, 8.2, 14, Infinity]
+const DOWNSHIFT_SPEED = [0, 0, 3.2, 7.2, 13.2]
 
 // Forces (u/s² applied to a unit-mass body)
-const THROTTLE_FORCE = 48 // peak drive force at full throttle in the power band
+const THROTTLE_FORCE = 70 // peak drive force at full throttle in the power band
 const REVERSE_FORCE = 20 // reverse drive force
 const BRAKE_DECEL = 34 // brake force opposing current motion
 const ENGINE_BRAKE = 3.5 // engine braking when coasting in gear
 const ROLLING_DECEL = 1.4 // rolling resistance
-const AERO_DRAG = 0.04 // aerodynamic drag (v²)
+const AERO_DRAG = 0.02 // aerodynamic drag (v²)
+const MIN_FORCE_FRAC = 0.22 // force floor near gear top, so the final gear can
+// actually reach top speed instead of fizzling out against drag
 const LATERAL_GRIP = 0.86 // per-frame@60fps decay of sideways slip (planted feel)
 
 // Steering
@@ -295,7 +297,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     if (engineOn) {
       const rpmNorm = clamp((rpm - IDLE_RPM) / (REDLINE_RPM - IDLE_RPM), 0, 1)
       const tf = torqueFactor(rpmNorm)
-      const falloff = Math.max(0, 1 - absSpeed / gearTop)
+      const falloff = Math.max(MIN_FORCE_FRAC, 1 - absSpeed / gearTop)
       if (throttle > 0) {
         applied =
           (inReverse ? -1 : 1) *
