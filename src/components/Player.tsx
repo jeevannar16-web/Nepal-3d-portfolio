@@ -1,11 +1,12 @@
 import { useRef, useEffect, type JSX } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
 import { driveState } from '../store/driveState'
 import { useStore } from '../store/useStore'
-import { matcapTexture, glossyMatcapTexture, glowTexture } from '../utils/textures'
+import { glowTexture } from '../utils/textures'
 import BlobShadow from './BlobShadow'
 
 // ---- Driving feel (tune these by feel, no physics hunting needed) ----
@@ -48,7 +49,25 @@ const keyMap: Record<string, keyof Keys> = {
 
 const keys: Keys = { forward: false, backward: false, left: false, right: false }
 
+// car.glb placement. The model's origin sits off the body's center (world bbox
+// min[-134.64,0.04,-271.77] max[95.56,117.59,217.67]), so it is recentered in
+// x/z at scale CAR_SCALE to sit on the rigid-body pivot like the old car did.
+const CAR_SCALE = 0.005
+const CAR_CENTER_X = ((-134.64 + 95.56) / 2) * CAR_SCALE // recenter to origin
+const CAR_CENTER_Z = ((-271.77 + 217.67) / 2) * CAR_SCALE
+// Wheel bboxes: x is the thin axle axis (~30 wide vs ~69 tall/deep) and each
+// wheel mesh is offset from its node's origin, so wheels are reparented into a
+// pivot placed at the wheel's geometry center (see setupWheelPivots).
+const WHEEL_RADIUS = 0.345
+const WHEEL_NAMES = [
+  'Lamborghini_Aventador_Wheel_FL',
+  'Lamborghini_Aventador_Wheel_FR',
+  'Lamborghini_Aventador_Wheel_RL',
+  'Lamborghini_Aventador_Wheel_RR',
+]
+
 export default function Player({ bodyRef }: PlayerProps): JSX.Element {
+  const { scene: carScene } = useGLTF('/models/car.glb')
   const body = useRef<RapierRigidBody>(null)
   const heading = useRef(0)
   const visual = useRef<THREE.Group>(null)
@@ -59,6 +78,31 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
   const introDone = useStore((s) => s.introDone)
   const timeOfDay = useStore((s) => s.timeOfDay)
   const lightsOn = timeOfDay === 'dusk' || timeOfDay === 'night'
+
+  useEffect(() => {
+    // Reparent each wheel mesh into a pivot placed at its geometry center so
+    // rotation.x spins the wheel around its own axle (the raw nodes' origins
+    // are far from the wheel centers, so rotating them directly would orbit
+    // the wheel around the car's origin). Idempotent across remounts.
+    WHEEL_NAMES.forEach((name, i) => {
+      const wheel = carScene.getObjectByName(name)
+      if (!wheel) return
+      let pivot = wheel.userData.spinPivot as THREE.Group | undefined
+      if (!pivot) {
+        const geometry = (wheel as THREE.Mesh).geometry
+        geometry.computeBoundingBox()
+        const center = geometry.boundingBox
+          ? geometry.boundingBox.getCenter(new THREE.Vector3())
+          : new THREE.Vector3()
+        pivot = new THREE.Group()
+        pivot.position.copy(center)
+        wheel.parent!.add(pivot)
+        pivot.attach(wheel)
+        wheel.userData.spinPivot = pivot
+      }
+      wheels.current[i] = pivot
+    })
+  }, [carScene])
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -190,7 +234,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     if (visual.current) {
       visual.current.rotation.y = heading.current
 
-      const wheelSpin = delta * mag * 1.8
+      const wheelSpin = (delta * mag) / WHEEL_RADIUS
       for (const w of wheels.current) {
         if (w) w.rotation.x -= wheelSpin
       }
@@ -213,90 +257,19 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     >
       <CuboidCollider args={[0.5, 0.5, 0.5]} />
       <group ref={visual}>
-        {/* Low, wide chassis */}
-        <mesh position={[0, 0.06, -0.05]}>
-          <boxGeometry args={[1.6, 0.12, 2.3]} />
-          <meshMatcapMaterial color="#16161c" matcap={glossyMatcapTexture()} flatShading />
-        </mesh>
-        {/* Main body shell — low and wide */}
-        <mesh position={[0, 0.22, -0.05]}>
-          <boxGeometry args={[1.52, 0.24, 2.25]} />
-          <meshMatcapMaterial color="#c1121f" matcap={glossyMatcapTexture()} flatShading />
-        </mesh>
-        {/* Wedge nose — hood tapers down and forward */}
-        <mesh position={[0, 0.34, 1.06]} rotation={[0.18, 0, 0]}>
-          <boxGeometry args={[1.36, 0.2, 0.55]} />
-          <meshMatcapMaterial color="#c1121f" matcap={glossyMatcapTexture()} flatShading />
-        </mesh>
-        {/* Front splitter/lip */}
-        <mesh position={[0, 0.16, 1.28]}>
-          <boxGeometry args={[1.3, 0.1, 0.3]} />
-          <meshMatcapMaterial color="#16161c" matcap={glossyMatcapTexture()} flatShading />
-        </mesh>
-        {/* Wide rear haunches */}
-        <mesh position={[0, 0.24, -0.72]}>
-          <boxGeometry args={[1.62, 0.24, 0.7]} />
-          <meshMatcapMaterial color="#a90f1b" matcap={glossyMatcapTexture()} flatShading />
-        </mesh>
-        {/* Compact rear fascia */}
-        <mesh position={[0, 0.2, -1.1]}>
-          <boxGeometry args={[1.5, 0.2, 0.24]} />
-          <meshMatcapMaterial color="#16161c" matcap={glossyMatcapTexture()} flatShading />
-        </mesh>
-        {/* Low swept-back cabin */}
-        <mesh position={[0, 0.46, -0.18]} rotation={[-0.22, 0, 0]}>
-          <boxGeometry args={[0.92, 0.3, 0.95]} />
-          <meshMatcapMaterial color="#a90f1b" matcap={glossyMatcapTexture()} flatShading />
-        </mesh>
-        {/* Aggressively raked windshield */}
-        <mesh position={[0, 0.52, 0.2]} rotation={[-0.85, 0, 0]}>
-          <boxGeometry args={[0.84, 0.26, 0.03]} />
-          <meshMatcapMaterial color="#101820" matcap={glossyMatcapTexture()} flatShading />
-        </mesh>
-        {/* Raked rear glass */}
-        <mesh position={[0, 0.52, -0.5]} rotation={[0.35, 0, 0]}>
-          <boxGeometry args={[0.84, 0.2, 0.03]} />
-          <meshMatcapMaterial color="#101820" matcap={glossyMatcapTexture()} flatShading />
-        </mesh>
-        {/* Rear spoiler with supports */}
-        {[
-          [-0.58, 0.42, -1.0],
-          [0.58, 0.42, -1.0],
-        ].map(([x, y, z], i) => (
-          <mesh key={`sp-${i}`} position={[x, y, z]}>
-            <boxGeometry args={[0.06, 0.14, 0.05]} />
-            <meshMatcapMaterial color="#16161c" matcap={glossyMatcapTexture()} flatShading />
-          </mesh>
-        ))}
-        <mesh position={[0, 0.58, -1.0]} rotation={[0.18, 0, 0]}>
-          <boxGeometry args={[1.3, 0.05, 0.3]} />
-          <meshMatcapMaterial color="#c1121f" matcap={glossyMatcapTexture()} flatShading />
-        </mesh>
-        {/* Slim angular headlight slits */}
-        {[
-          [-0.48, 0.34, 1.28, 0.35],
-          [0.48, 0.34, 1.28, -0.35],
-        ].map(([x, y, z, ry], i) => (
-          <mesh key={`hl-${i}`} position={[x, y, z]} rotation={[0, ry, 0]}>
-            <boxGeometry args={[0.42, 0.05, 0.03]} />
-            <meshBasicMaterial color="#fff8d8" />
-          </mesh>
-        ))}
-        {/* Slim angular taillight slits */}
-        {[
-          [-0.56, 0.3, -1.08, -0.2],
-          [0.56, 0.3, -1.08, 0.2],
-        ].map(([x, y, z, ry], i) => (
-          <mesh key={`tl-${i}`} position={[x, y, z]} rotation={[0, ry, 0]}>
-            <boxGeometry args={[0.5, 0.05, 0.03]} />
-            <meshBasicMaterial color="#ff2a2a" />
-          </mesh>
-        ))}
+        {/* Real low-poly car model (car.glb). Nose faces +Z to match the
+            heading math; recentered on the physics pivot. Wheels are reparented
+            into spin pivots by the effect above. */}
+        <primitive
+          object={carScene}
+          scale={CAR_SCALE}
+          position={[CAR_CENTER_X, 0, CAR_CENTER_Z]}
+        />
         {/* Headlight glow pools on the ground + soft fill light at dusk/night */}
         {lightsOn && (
           <>
-            {[-0.42, 0.42].map((x) => (
-              <mesh key={`beam-${x}`} position={[x, -0.42, 1.8]} rotation={[-Math.PI / 2, 0, 0]}>
+            {[-0.45, 0.45].map((x) => (
+              <mesh key={`beam-${x}`} position={[x, -0.42, 1.5]} rotation={[-Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[1.5, 2.6]} />
                 <meshBasicMaterial
                   map={glowTexture()}
@@ -309,7 +282,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
               </mesh>
             ))}
             <pointLight
-              position={[0, 0.35, 1.9]}
+              position={[0, 0.4, 1.4]}
               color="#ffe3a0"
               intensity={6}
               distance={11}
@@ -317,29 +290,6 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
             />
           </>
         )}
-        {[
-          [-0.6, 0.22, 0.75],
-          [0.6, 0.22, 0.75],
-          [-0.6, 0.22, -0.75],
-          [0.6, 0.22, -0.75],
-        ].map(([x, y, z], i) => (
-          <group
-            key={i}
-            ref={(el) => {
-              wheels.current[i] = el
-            }}
-            position={[x, y, z]}
-          >
-            <mesh rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.22, 0.22, 0.18, 10]} />
-              <meshMatcapMaterial color="#15151a" matcap={matcapTexture()} flatShading />
-            </mesh>
-            <mesh rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.1, 0.1, 0.19, 8]} />
-              <meshMatcapMaterial color="#8a8a92" matcap={matcapTexture()} flatShading />
-            </mesh>
-          </group>
-        ))}
       </group>
       <BlobShadow radius={1.3} y={-0.49} />
     </RigidBody>
