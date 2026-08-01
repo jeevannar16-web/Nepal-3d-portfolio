@@ -126,11 +126,11 @@ export default function Menu(): JSX.Element | null {
           </div>
           <ul className="space-y-1.5 text-sm text-slate-300">
             <li>
-              <b className="text-white">G</b> — start / stop the engine
+              <b className="text-white">W / S</b> — throttle / brake (the engine
+              auto-starts; in R, S accelerates backward)
             </li>
             <li>
-              <b className="text-white">W / S</b> — throttle / brake (in R, S
-              accelerates backward)
+              <b className="text-white">G</b> — start / stop the engine
             </li>
             <li>
               <b className="text-white">A / D</b> or <b className="text-white">Arrows</b> — steer

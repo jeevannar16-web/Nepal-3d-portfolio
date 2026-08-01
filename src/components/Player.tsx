@@ -10,9 +10,9 @@ import { glowTexture } from '../utils/textures'
 import BlobShadow from './BlobShadow'
 
 // ---- Real-car powertrain (engine, gearbox, torque — not arcade force) ----
-export const MAX_SPEED = 16 // top forward speed in units/second
+export const MAX_SPEED = 18 // top forward speed in units/second
 export const REVERSE_MAX_SPEED = 6 // top reverse speed in units/second
-export const KMH_FACTOR = 8 // world units/sec -> km/h (MAX_SPEED = 128 km/h)
+export const KMH_FACTOR = 8 // world units/sec -> km/h (MAX_SPEED = 144 km/h)
 
 // Engine
 export const IDLE_RPM = 900
@@ -23,18 +23,20 @@ const THROTTLE_DECAY = 0.15 // throttle let-off speed (fraction of ramp time)
 
 // Gearbox: automatic 4-speed in D. Each gear tops out at GEAR_TOPS[u/s];
 // up/down shifts happen near those limits, redline sits at the gear top.
+// Shift hysteresis (downshift point < previous gear's upshift point) stops the
+// box hunting between gears at the same speed.
 const GEAR_TOPS = [0, 4.2, 8.5, 13, MAX_SPEED]
-const UPSHIFT_SPEED = [0, 3.6, 7.4, 11.6, Infinity]
-const DOWNSHIFT_SPEED = [0, 2.4, 5.2, 8.8, 0]
+const UPSHIFT_SPEED = [0, 3.6, 7.2, 11.4, Infinity]
+const DOWNSHIFT_SPEED = [0, 0, 3.0, 6.4, 10.4]
 
 // Forces (u/s² applied to a unit-mass body)
-const THROTTLE_FORCE = 42 // peak drive force at full throttle in the power band
+const THROTTLE_FORCE = 48 // peak drive force at full throttle in the power band
 const REVERSE_FORCE = 20 // reverse drive force
 const BRAKE_DECEL = 34 // brake force opposing current motion
 const CREEP_FORCE = 7 // automatic cars creep forward at idle
 const ENGINE_BRAKE = 3.5 // engine braking when coasting in gear
 const ROLLING_DECEL = 1.4 // rolling resistance
-const AERO_DRAG = 0.055 // aerodynamic drag (v²)
+const AERO_DRAG = 0.04 // aerodynamic drag (v²)
 const LATERAL_GRIP = 0.86 // per-frame@60fps decay of sideways slip (planted feel)
 
 // Steering
@@ -109,7 +111,6 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
   const gear = useRef<'D' | 'R'>('D')
   const autoGear = useRef(1)
   const rpmSmooth = useRef(0)
-  const startHintShown = useRef(false)
   const introDone = useStore((s) => s.introDone)
   const timeOfDay = useStore((s) => s.timeOfDay)
   const lightsOn = timeOfDay === 'dusk' || timeOfDay === 'night'
@@ -208,14 +209,9 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     const dt = Math.min(delta, 0.05)
     const lin = rb.linvel()
 
-    // ---- Engine state machine ----
-    if (engineState.current === 'starting') {
-      crank.current += dt
-      if (crank.current >= CRANK_TIME) engineState.current = 'on'
-    }
-    const engineOn = engineState.current === 'on'
-
-    // ---- Automatic gearbox ----
+    // ---- Pedals ----
+    // In D: W = throttle, S = brake. In R the pedals swap (S accelerates
+    // backward), exactly like a real automatic.
     const inReverse = gear.current === 'R'
     const dir = new THREE.Vector3(
       Math.sin(heading.current),
@@ -225,6 +221,24 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     const right = new THREE.Vector3(-dir.z, 0, dir.x)
     const fwdVel = dir.x * lin.x + dir.z * lin.z
     const absSpeed = Math.abs(fwdVel)
+    const fwdKey = inReverse ? keys.backward : keys.forward
+    const brkKey = inReverse ? keys.forward : keys.backward
+
+    // ---- Engine state machine ----
+    // Auto-start: the moment the driver presses the accelerator while the
+    // engine is off, fire the ignition so the car always answers W — no hidden
+    // prerequisite. G still starts/stops the engine manually.
+    if (engineState.current === 'off' && fwdKey && !brkKey) {
+      engineState.current = 'starting'
+      crank.current = 0
+    }
+    if (engineState.current === 'starting') {
+      crank.current += dt
+      if (crank.current >= CRANK_TIME) engineState.current = 'on'
+    }
+    const engineOn = engineState.current === 'on'
+
+    // ---- Automatic gearbox ----
     if (gear.current === 'D' && engineOn) {
       if (autoGear.current < 4 && absSpeed > UPSHIFT_SPEED[autoGear.current]) {
         autoGear.current += 1
@@ -235,10 +249,6 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     const gearTop = inReverse ? REVERSE_MAX_SPEED : GEAR_TOPS[autoGear.current]
 
     // ---- Throttle pedal ----
-    // In D: W = throttle, S = brake. In R the pedals swap (S accelerates
-    // backward), exactly like a real automatic.
-    const fwdKey = inReverse ? keys.backward : keys.forward
-    const brkKey = inReverse ? keys.forward : keys.backward
     if (engineOn && fwdKey && !brkKey) {
       throttleTime.current = Math.min(throttleTime.current + dt, THROTTLE_RAMP_TIME)
     } else {
@@ -323,13 +333,6 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     const nx = dir.x * newFwd + right.x * newLat
     const nz = dir.z * newFwd + right.z * newLat
     rb.setLinvel({ x: nx, y: lin.y, z: nz }, true)
-
-    // ---- Beginner help: nudge toward starting the engine ----
-    if (!engineOn && (fwdKey || brkKey) && !startHintShown.current) {
-      startHintShown.current = true
-      useStore.getState().showToast('Press G to start the engine')
-    }
-    if (engineOn) startHintShown.current = false
 
     // ---- Publish for DOM overlays ----
     driveState.speedKmh = Math.abs(newFwd) * KMH_FACTOR
