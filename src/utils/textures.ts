@@ -40,7 +40,7 @@ export function grassTexture(): THREE.Texture {
 
   grassTex = new THREE.CanvasTexture(c)
   grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping
-  grassTex.repeat.set(60, 60)
+  grassTex.repeat.set(180, 180)
   grassTex.colorSpace = THREE.SRGBColorSpace
   return grassTex
 }

@@ -5,6 +5,8 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { useStore } from '../store/useStore'
 import Ground from './Ground'
 import Roads from './Roads'
+import Decorations from './Decorations'
+import MountainRange from './MountainRange'
 import GradientSky from './GradientSky'
 import Player from './Player'
 import IntroCamera from './IntroCamera'
@@ -29,7 +31,7 @@ function Scene3D() {
   return (
     <div className="relative h-full w-full">
       <Canvas camera={{ position: [0, 26, 42], fov: 60 }}>
-        <fog attach="fog" args={['#f0a585', 40, 90]} />
+        <fog attach="fog" args={['#f0a585', 90, 320]} />
         <GradientSky />
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 15, 10]} intensity={1} />
@@ -39,6 +41,8 @@ function Scene3D() {
           <Player bodyRef={playerBody} />
           <Landmarks playerRef={playerBody} />
         </Physics>
+        <MountainRange />
+        <Decorations />
         {!introDone ? (
           <IntroCamera duration={3} onComplete={skipIntro} />
         ) : (

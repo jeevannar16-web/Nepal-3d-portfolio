@@ -3,7 +3,7 @@ import { landmarks } from '../data'
 import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 
-const WORLD_SIZE = 100
+const WORLD_SIZE = 300
 const MAP_SIZE = 160
 
 export default function Minimap(): JSX.Element {

@@ -17,7 +17,9 @@ const BRAKE_FORCE = 28 // opposing force while braking
 const DAMPING_COAST = 0.99 // per-frame drag while coasting (@60fps)
 const DAMPING_BRAKE = 0.962 // per-frame drag while braking/reversing (@60fps)
 const BASE_TURN_RATE = 2.6 // turn rate (rad/s) at standstill
-const STEER_FALLOFF = 0.55 // fraction of turn rate lost at max speed
+const STEER_TORQUE = 10 // how quickly yaw rate builds toward its target
+const STEER_DAMPING = 0.92 // per-frame decay of yaw rate after release (@60fps)
+const MAX_STEER_SPEED_FALLOFF = 0.6 // fraction of turn rate lost at top speed
 
 interface Keys {
   forward: boolean
@@ -50,6 +52,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
   const wheels = useRef<Array<THREE.Group | null>>([])
   const roll = useRef(0)
   const throttleTime = useRef(0)
+  const yawVel = useRef(0)
   const introDone = useStore((s) => s.introDone)
 
   useEffect(() => {
@@ -89,6 +92,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
       rb.setTranslation({ x: 0, y: 0.5, z: 0 }, true)
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
       heading.current = 0
+      yawVel.current = 0
       return
     }
 
@@ -96,13 +100,22 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
 
     const lin = rb.linvel()
 
-    // Speed-based steering: sharp at low speed, wide sweeping at high speed.
+    // Continuous steering: yaw is an angular velocity that builds toward a
+    // target turn rate (torque feel) instead of an instant rotation snap, and
+    // settles smoothly via angular damping once the key is released.
     const speed = Math.hypot(lin.x, lin.z)
     const speedNorm = Math.min(speed / MAX_SPEED, 1)
-    const turnRate = BASE_TURN_RATE * (1 - STEER_FALLOFF * speedNorm)
-    const turn = delta * turnRate
-    if (keys.left) heading.current += turn
-    if (keys.right) heading.current -= turn
+    const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
+    if (steerInput !== 0) {
+      // Speed-dependent target: tight turns at low speed, wide sweeps at speed.
+      const turnRate = BASE_TURN_RATE * (1 - MAX_STEER_SPEED_FALLOFF * speedNorm)
+      const response = 1 - Math.pow(2, -delta * STEER_TORQUE)
+      yawVel.current += (steerInput * turnRate - yawVel.current) * response
+    } else {
+      // Angular damping: decay yaw rate so the car settles, doesn't spin on.
+      yawVel.current *= Math.pow(STEER_DAMPING, delta * 60)
+    }
+    heading.current += yawVel.current * delta
 
     const dir = new THREE.Vector3(
       Math.sin(heading.current),
@@ -171,7 +184,9 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
         if (w) w.rotation.x -= wheelSpin
       }
 
-      const targetRoll = (keys.left ? -0.1 : 0) + (keys.right ? 0.1 : 0)
+      // Body lean scales with actual yaw rate, so it eases in and out with the
+      // turn instead of snapping on/off with the key state.
+      const targetRoll = -yawVel.current * 0.08
       roll.current += (targetRoll - roll.current) * 0.15
       visual.current.rotation.z = roll.current
     }

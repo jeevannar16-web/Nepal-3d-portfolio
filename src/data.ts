@@ -96,7 +96,7 @@ export const landmarks: LandmarkConfig[] = [
   {
     id: 'temple',
     contentKey: 'about',
-    position: [-12, 0, -8],
+    position: [-95, 0, -80],
     triggerRadius: 3,
     label: 'Temple — About',
     color: '#e07a5f',
@@ -105,7 +105,7 @@ export const landmarks: LandmarkConfig[] = [
   {
     id: 'tower',
     contentKey: 'skills',
-    position: [10, 0, -14],
+    position: [90, 0, -90],
     triggerRadius: 3,
     label: 'Tower — Skills',
     color: '#81b29a',
@@ -114,7 +114,7 @@ export const landmarks: LandmarkConfig[] = [
   {
     id: 'gate',
     contentKey: 'projects',
-    position: [-10, 0, 10],
+    position: [-90, 0, 95],
     triggerRadius: 3,
     label: 'Gate — Projects',
     color: '#f2cc8f',
@@ -123,7 +123,7 @@ export const landmarks: LandmarkConfig[] = [
   {
     id: 'mountain',
     contentKey: 'contact',
-    position: [12, 0, 12],
+    position: [95, 0, 85],
     triggerRadius: 3,
     label: 'Mountain — Contact',
     color: '#3d405b',

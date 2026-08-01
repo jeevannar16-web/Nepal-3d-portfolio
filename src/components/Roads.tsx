@@ -1,10 +1,10 @@
 import { useMemo, type JSX } from 'react'
 import * as THREE from 'three'
-import { landmarks } from '../data'
+import { roadPaths, type Point } from '../world'
 
 interface RoadProps {
-  a: [number, number]
-  b: [number, number]
+  a: Point
+  b: Point
   width?: number
   color?: string
 }
@@ -34,22 +34,12 @@ function Road({ a, b, width = 3.2, color = '#c2a06e' }: RoadProps): JSX.Element 
 }
 
 export default function Roads(): JSX.Element {
-  const positions = useMemo(
+  const segments = useMemo(
     () =>
-      landmarks.map((l) => [l.position[0], l.position[2]] as [number, number]),
-    [],
-  )
-
-  const pairs = useMemo(
-    () =>
-      positions.map(
-        (pos, i) =>
-          [
-            pos,
-            positions[(i + 1) % positions.length],
-          ] as [[number, number], [number, number]],
+      roadPaths.flatMap((path) =>
+        path.slice(1).map((b, i) => [path[i], b] as [Point, Point]),
       ),
-    [positions],
+    [],
   )
 
   const centerPlaza = useMemo(
@@ -60,11 +50,11 @@ export default function Roads(): JSX.Element {
 
   return (
     <>
-      {pairs.map(([a, b], i) => (
+      {segments.map(([a, b], i) => (
         <Road key={i} a={a} b={b} />
       ))}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} material={centerPlaza}>
-        <circleGeometry args={[3.4, 24]} />
+        <circleGeometry args={[5, 24]} />
       </mesh>
     </>
   )
