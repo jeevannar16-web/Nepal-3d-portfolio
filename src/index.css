@@ -50,6 +50,35 @@ body,
   }
 }
 
+@keyframes intro-name {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nav-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.35);
+  }
+}
+
+.animate-nav-pulse {
+  animation: nav-pulse 1.2s ease-in-out 2;
+}
+
+.animate-intro-name {
+  animation: intro-name 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+}
+
 .animate-panel-in {
   animation: panel-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

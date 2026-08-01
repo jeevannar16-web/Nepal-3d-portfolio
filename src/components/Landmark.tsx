@@ -79,11 +79,13 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
   const pulse = useRef(0)
   const setActiveZone = useStore((s) => s.setActiveZone)
   const setIsPanelOpen = useStore((s) => s.setIsPanelOpen)
+  const markZoneVisited = useStore((s) => s.markZoneVisited)
 
   const enter = (e: { other: { rigidBody?: RapierRigidBody } }) => {
     if (e.other.rigidBody && e.other.rigidBody === playerRef.current) {
       setActiveZone(config.contentKey)
       setIsPanelOpen(true)
+      markZoneVisited(config.contentKey)
     }
   }
 

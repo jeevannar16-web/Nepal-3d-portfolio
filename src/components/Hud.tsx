@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore'
 
 export default function Hud(): JSX.Element {
   const isPanelOpen = useStore((s) => s.isPanelOpen)
+  const setPrefersSimple = useStore((s) => s.setPrefersSimple)
   const [hintFaded, setHintFaded] = useState(false)
 
   useEffect(() => {
@@ -23,11 +24,20 @@ export default function Hud(): JSX.Element {
         </p>
       </div>
       <div
-        className={`hidden rounded-full bg-black/30 px-4 py-2 text-xs text-white/90 backdrop-blur transition-opacity duration-1000 sm:block ${
+        className={`flex flex-col items-end gap-2 transition-opacity duration-1000 ${
           hintFaded ? 'opacity-40' : 'opacity-100'
         }`}
       >
-        WASD / Arrow keys to drive · Enter a landmark to explore
+        <div className="hidden rounded-full bg-black/30 px-4 py-2 text-xs text-white/90 backdrop-blur sm:block">
+          WASD / Arrow keys to drive · Enter a landmark to explore
+        </div>
+        <button
+          type="button"
+          onClick={() => setPrefersSimple(true)}
+          className="pointer-events-auto text-xs text-white/70 underline decoration-white/40 underline-offset-4 transition hover:text-white hover:decoration-white"
+        >
+          Prefer a simple page?
+        </button>
       </div>
     </div>
   )

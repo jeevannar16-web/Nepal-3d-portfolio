@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from 'react'
 import { useStore } from '../store/useStore'
-import { zones } from '../data'
+import { zones, landmarks } from '../data'
+import { playClick } from '../utils/sounds'
 
 const EXIT_MS = 220
 
@@ -8,6 +9,7 @@ export default function ContentPanel(): JSX.Element | null {
   const activeZone = useStore((s) => s.activeZone)
   const isPanelOpen = useStore((s) => s.isPanelOpen)
   const setIsPanelOpen = useStore((s) => s.setIsPanelOpen)
+  const flyTo = useStore((s) => s.flyTo)
 
   const [renderPanel, setRenderPanel] = useState(false)
   const [exiting, setExiting] = useState(false)
@@ -31,6 +33,8 @@ export default function ContentPanel(): JSX.Element | null {
   const zone = zones.find((z) => z.key === activeZone)
   if (!zone) return null
 
+  const landmark = landmarks.find((l) => l.contentKey === zone.key)
+
   const containerClass = exiting
     ? 'animate-panel-fade-out'
     : 'animate-panel-fade-in'
@@ -52,14 +56,32 @@ export default function ContentPanel(): JSX.Element | null {
             <h2 className="text-3xl font-extrabold tracking-tight text-white">
               {zone.title}
             </h2>
-            <button
-              type="button"
-              onClick={() => setIsPanelOpen(false)}
-              className="rounded-lg px-2 py-1 text-sm text-slate-400 transition hover:bg-white/10 hover:text-white"
-              aria-label="Close panel"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2">
+              {landmark && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick()
+                    setIsPanelOpen(false)
+                    flyTo(landmark.position[0], landmark.position[2])
+                  }}
+                  className="rounded-lg bg-white/10 px-3 py-1 text-xs font-medium text-white transition hover:bg-white/20"
+                >
+                  Locate on map
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  playClick()
+                  setIsPanelOpen(false)
+                }}
+                className="rounded-lg px-2 py-1 text-sm text-slate-400 transition hover:bg-white/10 hover:text-white"
+                aria-label="Close panel"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           <p className="mb-5 text-sm leading-relaxed text-slate-300">{zone.body}</p>

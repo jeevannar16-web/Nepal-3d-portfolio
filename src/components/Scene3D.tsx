@@ -2,24 +2,33 @@ import { useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
+import { useStore } from '../store/useStore'
 import Ground from './Ground'
 import Roads from './Roads'
 import GradientSky from './GradientSky'
 import Player from './Player'
+import IntroCamera from './IntroCamera'
 import FollowCamera from './FollowCamera'
+import FlyCamera from './FlyCamera'
 import Landmarks from './Landmarks'
 import ContentPanel from './ContentPanel'
+import NavBar from './NavBar'
 import Hud from './Hud'
+import TravelingIndicator from './TravelingIndicator'
 import Minimap from './Minimap'
+import ProgressTracker from './ProgressTracker'
 import LoadingScreen from './LoadingScreen'
 import SoundManager from './SoundManager'
+import IntroOverlay from './IntroOverlay'
 
 function Scene3D() {
   const playerBody = useRef<RapierRigidBody>(null)
+  const introDone = useStore((s) => s.introDone)
+  const skipIntro = useStore((s) => s.skipIntro)
 
   return (
     <div className="relative h-full w-full">
-      <Canvas camera={{ position: [8, 6, 8], fov: 60 }}>
+      <Canvas camera={{ position: [0, 26, 42], fov: 60 }}>
         <fog attach="fog" args={['#f0a585', 40, 90]} />
         <GradientSky />
         <ambientLight intensity={0.5} />
@@ -30,10 +39,19 @@ function Scene3D() {
           <Player bodyRef={playerBody} />
           <Landmarks playerRef={playerBody} />
         </Physics>
-        <FollowCamera target={playerBody} />
+        {!introDone ? (
+          <IntroCamera duration={3} onComplete={skipIntro} />
+        ) : (
+          <FollowCamera target={playerBody} />
+        )}
+        <FlyCamera />
       </Canvas>
+      <NavBar />
       <Hud />
       <Minimap />
+      <ProgressTracker />
+      <TravelingIndicator />
+      <IntroOverlay />
       <ContentPanel />
       <LoadingScreen />
       <SoundManager />

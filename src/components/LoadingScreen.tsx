@@ -1,10 +1,20 @@
-import type { JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import { useProgress } from '@react-three/drei'
+
+const MIN_MS = 700
 
 export default function LoadingScreen(): JSX.Element {
   const { active, progress } = useProgress()
+  const [minElapsed, setMinElapsed] = useState(false)
 
-  if (!active) return <></>
+  useEffect(() => {
+    const t = setTimeout(() => setMinElapsed(true), MIN_MS)
+    return () => clearTimeout(t)
+  }, [])
+
+  const visible = active || !minElapsed
+
+  if (!visible) return <></>
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900">
