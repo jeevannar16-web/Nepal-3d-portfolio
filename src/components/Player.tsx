@@ -12,7 +12,7 @@ import BlobShadow from './BlobShadow'
 // ---- Driving feel (tune these by feel, no physics hunting needed) ----
 export const MAX_SPEED = 15 // top forward speed in units/second
 export const REVERSE_MAX_SPEED = 6.5 // top reverse speed in units/second
-const ACCEL_RAMP_TIME = 0.5 // seconds to reach full throttle from rest
+const ACCEL_RAMP_TIME = 0.3 // seconds to reach full throttle from rest
 const THROTTLE_DECAY = 0.15 // throttle let-off speed (fraction of ACCEL_RAMP_TIME)
 const THROTTLE_FORCE = 46 // forward force at full throttle
 const REVERSE_FORCE = 20 // reverse force
@@ -20,7 +20,7 @@ const BRAKE_DECEL = 30 // opposing force while braking against forward motion
 const DAMPING_COAST = 0.99 // per-frame drag while coasting (@60fps)
 const DAMPING_BRAKE = 0.962 // per-frame drag while braking (@60fps)
 const BASE_TURN_RATE = 2.6 // turn rate (rad/s) at standstill
-const STEER_TORQUE = 10 // how quickly yaw rate builds toward its target
+const STEER_TORQUE = 12 // how quickly yaw rate builds toward its target
 const STEER_DAMPING = 0.92 // per-frame decay of yaw rate after release (@60fps)
 const STEER_SPEED_FALLOFF = 0.6 // fraction of turn rate lost at top speed
 export const KMH_FACTOR = 8 // world units/sec -> km/h (MAX_SPEED = 120 km/h)
@@ -175,8 +175,9 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     }
     heading.current += yawVel.current * delta
 
-    // Throttle ramp — smoothstep over the first ACCEL_RAMP_TIME: slow launch,
-    // strong mid-range pull, and quick (but not instant) let-off on release.
+    // Throttle ramp — ease-out over the first ACCEL_RAMP_TIME: a strong bite
+    // the instant a key is pressed (no laggy wind-up) that tapers toward full
+    // throttle, and quick (but not instant) let-off on release.
     if (keys.forward && !keys.backward) {
       throttleTime.current = Math.min(throttleTime.current + delta, ACCEL_RAMP_TIME)
     } else {
@@ -186,7 +187,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
       )
     }
     const t = throttleTime.current / ACCEL_RAMP_TIME
-    const throttle = t * t * (3 - 2 * t)
+    const throttle = t * (2 - t)
 
     const braking = keys.backward
     let damping = braking ? DAMPING_BRAKE : DAMPING_COAST
@@ -255,7 +256,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
       lockRotations
       ccd
     >
-      <CuboidCollider args={[0.5, 0.5, 0.5]} />
+      <CuboidCollider args={[0.5, 0.5, 0.5]} friction={0.2} />
       <group ref={visual}>
         {/* Real low-poly car model (car.glb). Nose faces +Z to match the
             heading math; recentered on the physics pivot. Wheels are reparented

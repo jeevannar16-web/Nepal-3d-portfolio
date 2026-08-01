@@ -29,6 +29,8 @@ interface PortfolioState {
   visitedZones: string[]
   prefersSimple: boolean
   flyTarget: { x: number; z: number } | null
+  toast: string | null
+  welcomeDismissed: boolean
   setActiveZone: (zone: string | null) => void
   setIsPanelOpen: (open: boolean) => void
   setDeviceType: (device: DeviceType) => void
@@ -37,10 +39,13 @@ interface PortfolioState {
   setIntroStage: (stage: IntroStage) => void
   setTimeOfDay: (time: TimeOfDay) => void
   setWeather: (weather: WeatherKind) => void
-  markZoneVisited: (zone: string) => void
+  markZoneVisited: (zone: string) => boolean
   setPrefersSimple: (prefer: boolean) => void
   flyTo: (x: number, z: number) => void
   clearFly: () => void
+  showToast: (text: string) => void
+  clearToast: () => void
+  dismissWelcome: () => void
 }
 
 export const useStore = create<PortfolioState>((set) => ({
@@ -57,6 +62,8 @@ export const useStore = create<PortfolioState>((set) => ({
   visitedZones: [],
   prefersSimple: false,
   flyTarget: null,
+  toast: null,
+  welcomeDismissed: false,
   setActiveZone: (zone) => set({ activeZone: zone }),
   setIsPanelOpen: (open) => set({ isPanelOpen: open }),
   setDeviceType: (device) => set({ deviceType: device }),
@@ -66,13 +73,18 @@ export const useStore = create<PortfolioState>((set) => ({
   setIntroStage: (stage) => set({ introStage: stage }),
   setTimeOfDay: (time) => set({ timeOfDay: time }),
   setWeather: (weather) => set({ weather }),
-  markZoneVisited: (zone) =>
-    set((state) =>
-      state.visitedZones.includes(zone)
-        ? state
-        : { visitedZones: [...state.visitedZones, zone] },
-    ),
+  // Returns true only the first time a zone is marked, so callers can fire a
+  // one-time "Zone unlocked!" toast without double-toasting.
+  markZoneVisited: (zone) => {
+    const state = useStore.getState()
+    if (state.visitedZones.includes(zone)) return false
+    set({ visitedZones: [...state.visitedZones, zone] })
+    return true
+  },
   setPrefersSimple: (prefer) => set({ prefersSimple: prefer }),
   flyTo: (x, z) => set({ flyTarget: { x, z } }),
   clearFly: () => set({ flyTarget: null }),
+  showToast: (text) => set({ toast: text }),
+  clearToast: () => set({ toast: null }),
+  dismissWelcome: () => set({ welcomeDismissed: true }),
 }))

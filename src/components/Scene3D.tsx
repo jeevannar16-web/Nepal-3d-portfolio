@@ -31,6 +31,8 @@ import SoundManager from './SoundManager'
 import IntroOverlay from './IntroOverlay'
 import Speedometer from './Speedometer'
 import HonkButton from './HonkButton'
+import Toast from './Toast'
+import WelcomeCard from './WelcomeCard'
 
 function Scene3D() {
   const playerBody = useRef<RapierRigidBody>(null)
@@ -81,7 +83,7 @@ function Scene3D() {
 
   return (
     <div className="relative h-full w-full">
-      <Canvas camera={{ position: [0, 26, 42], fov: 60 }}>
+      <Canvas camera={{ position: [0, 26, 42], fov: 70 }}>
         <fog attach="fog" args={[theme.fog, fogNear, fogFar]} />
         <GradientSky />
         <ambientLight intensity={theme.ambient} />
@@ -130,6 +132,8 @@ function Scene3D() {
       <TravelingIndicator />
       <IntroOverlay />
       <ContentPanel />
+      <Toast />
+      <WelcomeCard />
       <LoadingScreen />
       <SoundManager />
     </div>

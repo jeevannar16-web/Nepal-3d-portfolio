@@ -11,6 +11,7 @@ export default function NavBar(): JSX.Element {
   const setActiveZone = useStore((s) => s.setActiveZone)
   const setIsPanelOpen = useStore((s) => s.setIsPanelOpen)
   const markZoneVisited = useStore((s) => s.markZoneVisited)
+  const showToast = useStore((s) => s.showToast)
 
   const [pulse, setPulse] = useState(false)
 
@@ -30,15 +31,18 @@ export default function NavBar(): JSX.Element {
     // overlay and a ContentPanel can never render at the same time.
     if (!introDone) return
     playClick()
+    if (markZoneVisited(key)) {
+      const zone = zones.find((z) => z.key === key)
+      showToast(`${zone?.title ?? 'Zone'} unlocked!`)
+    }
     setActiveZone(key)
     setIsPanelOpen(true)
-    markZoneVisited(key)
   }
 
   return (
     <nav className="pointer-events-none absolute left-1/2 top-5 z-20 -translate-x-1/2">
       <div
-        className={`pointer-events-auto flex gap-1 rounded-full border border-white/15 bg-black/40 p-1.5 backdrop-blur ${
+        className={`pointer-events-auto flex gap-1.5 rounded-full border border-white/15 bg-black/40 p-1.5 backdrop-blur ${
           pulse ? 'animate-nav-pulse' : ''
         }`}
       >
@@ -51,7 +55,7 @@ export default function NavBar(): JSX.Element {
               title={zone.title}
               disabled={!introDone}
               onClick={() => openZone(zone.key)}
-              className={`group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
+              className={`group flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-medium transition-all duration-200 ${
                 active
                   ? 'bg-amber-400 text-slate-900'
                   : introDone
@@ -60,7 +64,7 @@ export default function NavBar(): JSX.Element {
               }`}
             >
               <span className={active ? 'text-slate-900' : 'text-amber-300'}>
-                <ZoneIcon zone={zone.key} />
+                <ZoneIcon zone={zone.key} className="h-3.5 w-3.5" />
               </span>
               <span className="hidden lg:inline">{zone.title}</span>
             </button>

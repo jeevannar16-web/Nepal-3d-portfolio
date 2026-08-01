@@ -5,8 +5,8 @@ import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { MAX_SPEED } from './Player'
 
-const BASE_FOV = 60 // matches the Canvas camera
-const FOV_SPEED_GAIN = 7 // degrees added at top speed (+5-8 suggested)
+const BASE_FOV = 70 // matches the Canvas camera; wide enough to see the road ahead
+const FOV_SPEED_GAIN = 6 // degrees added at top speed
 
 interface FollowCameraProps {
   target: React.RefObject<RapierRigidBody | null>
@@ -16,7 +16,7 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
   const { camera } = useThree()
   const flyTarget = useStore((s) => s.flyTarget)
   const offset = useRef(
-    new THREE.Vector3(6, 5, 6).setLength(7).setY(5),
+    new THREE.Vector3(6, 5, 6).setLength(9.5).setY(5.5),
   )
   const bobTime = useRef(0)
 

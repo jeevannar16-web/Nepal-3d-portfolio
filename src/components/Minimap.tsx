@@ -96,7 +96,7 @@ export default function Minimap(): JSX.Element {
 
   return (
     <div
-      className={`pointer-events-auto absolute bottom-5 left-5 z-10 rounded-xl border border-white/20 bg-black/40 p-2 backdrop-blur transition-opacity duration-700 ${
+      className={`pointer-events-auto absolute bottom-5 left-5 z-10 rounded-2xl border border-white/15 bg-black/40 p-2 backdrop-blur transition-opacity duration-700 ${
         introDone ? 'opacity-100' : 'opacity-75'
       }`}
     >

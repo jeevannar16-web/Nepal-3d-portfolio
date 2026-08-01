@@ -5,7 +5,7 @@ import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
-import type { LandmarkConfig } from '../data'
+import { zones, type LandmarkConfig } from '../data'
 import { matcapTexture } from '../utils/textures'
 import BlobShadow from './BlobShadow'
 
@@ -75,6 +75,7 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
   const setActiveZone = useStore((s) => s.setActiveZone)
   const setIsPanelOpen = useStore((s) => s.setIsPanelOpen)
   const markZoneVisited = useStore((s) => s.markZoneVisited)
+  const showToast = useStore((s) => s.showToast)
   const introDone = useStore((s) => s.introDone)
 
   const enter = (e: { other: { rigidBody?: RapierRigidBody } }) => {
@@ -82,9 +83,12 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
     // never open while the intro's name overlay is still on screen.
     if (!introDone) return
     if (e.other.rigidBody && e.other.rigidBody === playerRef.current) {
+      if (markZoneVisited(config.contentKey)) {
+        const zone = zones.find((z) => z.key === config.contentKey)
+        showToast(`${zone?.title ?? 'Zone'} unlocked!`)
+      }
       setActiveZone(config.contentKey)
       setIsPanelOpen(true)
-      markZoneVisited(config.contentKey)
     }
   }
 

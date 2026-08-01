@@ -19,7 +19,7 @@ export default function TravelingIndicator(): JSX.Element | null {
 
   return (
     <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
-      <div className="flex items-center gap-3 rounded-full border border-white/20 bg-black/60 px-5 py-2.5 text-sm text-white/90 shadow-2xl backdrop-blur">
+      <div className="flex items-center gap-3 rounded-full border border-white/15 bg-black/40 px-5 py-2.5 text-sm text-white/90 shadow-2xl backdrop-blur">
         <div className="h-2 w-2 animate-ping rounded-full bg-amber-400" />
         Traveling to {label}…
       </div>

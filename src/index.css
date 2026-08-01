@@ -71,8 +71,47 @@ body,
   }
 }
 
+/* Toast: slides in, holds, then fades out over its ~2.8s lifetime. */
+@keyframes toast-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  12% {
+    opacity: 1;
+    transform: none;
+  }
+  80% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+@keyframes welcome-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .animate-nav-pulse {
   animation: nav-pulse 1.2s ease-in-out 2;
+}
+
+.animate-toast {
+  animation: toast-in 2.8s ease both;
+}
+
+.animate-welcome {
+  animation: welcome-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-intro-name {

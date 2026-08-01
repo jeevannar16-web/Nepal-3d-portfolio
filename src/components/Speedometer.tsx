@@ -37,7 +37,7 @@ export default function Speedometer(): JSX.Element {
 
   return (
     <div className="pointer-events-none absolute bottom-5 right-5 z-10">
-      <div className="relative flex h-28 w-28 items-center justify-center rounded-full border border-white/20 bg-black/50 shadow-lg shadow-black/40 backdrop-blur">
+      <div className="relative flex h-28 w-28 items-center justify-center rounded-full border border-white/15 bg-black/40 shadow-lg shadow-black/40 backdrop-blur">
         {/* gauge ring */}
         <svg
           viewBox="0 0 100 100"
@@ -86,7 +86,7 @@ export default function Speedometer(): JSX.Element {
       </div>
       <span
         ref={gear}
-        className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-emerald-500 text-xs font-black text-white shadow"
+        className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-emerald-500 text-xs font-black text-white shadow"
       >
         D
       </span>
