@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
+import { driveState } from '../store/driveState'
 import { useStore } from '../store/useStore'
 import { matcapTexture, glossyMatcapTexture } from '../utils/textures'
 import BlobShadow from './BlobShadow'
@@ -21,6 +22,7 @@ const BASE_TURN_RATE = 2.6 // turn rate (rad/s) at standstill
 const STEER_TORQUE = 10 // how quickly yaw rate builds toward its target
 const STEER_DAMPING = 0.92 // per-frame decay of yaw rate after release (@60fps)
 const STEER_SPEED_FALLOFF = 0.6 // fraction of turn rate lost at top speed
+export const KMH_FACTOR = 8 // world units/sec -> km/h (MAX_SPEED = 120 km/h)
 
 interface Keys {
   forward: boolean
@@ -179,6 +181,9 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
       vel.z *= s
     }
     rb.setLinvel({ x: vel.x, y: vel.y, z: vel.z }, true)
+
+    driveState.speedKmh = Math.hypot(vel.x, vel.z) * KMH_FACTOR
+    driveState.reverse = isReversing
 
     if (visual.current) {
       visual.current.rotation.y = heading.current

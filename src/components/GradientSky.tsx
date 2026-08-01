@@ -1,7 +1,12 @@
 import { useMemo, type JSX } from 'react'
 import * as THREE from 'three'
+import { useStore } from '../store/useStore'
+import { DAY_THEMES } from '../utils/timeOfDay'
 
 export default function GradientSky(): JSX.Element {
+  const timeOfDay = useStore((s) => s.timeOfDay)
+  const theme = DAY_THEMES[timeOfDay]
+
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -9,9 +14,9 @@ export default function GradientSky(): JSX.Element {
         depthWrite: false,
         fog: false,
         uniforms: {
-          topColor: { value: new THREE.Color('#3f5b8c') },
-          horizonColor: { value: new THREE.Color('#f0a585') },
-          zenithColor: { value: new THREE.Color('#e88f74') },
+          topColor: { value: new THREE.Color(theme.skyTop) },
+          horizonColor: { value: new THREE.Color(theme.skyHorizon) },
+          zenithColor: { value: new THREE.Color(theme.skyZenith) },
         },
         vertexShader: `
           varying vec3 vWorldPosition;
@@ -35,7 +40,7 @@ export default function GradientSky(): JSX.Element {
           }
         `,
       }),
-    [],
+    [theme],
   )
 
   return (

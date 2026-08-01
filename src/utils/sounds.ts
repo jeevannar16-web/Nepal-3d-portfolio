@@ -2,11 +2,13 @@ import { Howl } from 'howler'
 
 let click: Howl | null = null
 let whoosh: Howl | null = null
+let honk: Howl | null = null
 
 function ensureSounds() {
-  if (click && whoosh) return
+  if (click && whoosh && honk) return
   click = new Howl({ src: ['/sounds/click.wav'], volume: 0.15 })
   whoosh = new Howl({ src: ['/sounds/whoosh.wav'], volume: 0.12 })
+  honk = new Howl({ src: ['/sounds/honk.wav'], volume: 0.4 })
 }
 
 function guardPlay(sound: Howl | null) {
@@ -26,4 +28,9 @@ export function playClick() {
 export function playWhoosh() {
   ensureSounds()
   guardPlay(whoosh)
+}
+
+export function playHonk() {
+  ensureSounds()
+  guardPlay(honk)
 }

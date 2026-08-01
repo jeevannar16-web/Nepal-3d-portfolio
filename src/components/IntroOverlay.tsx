@@ -4,6 +4,8 @@ import { identity } from '../data'
 
 export default function IntroOverlay(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
+  const introVariant = useStore((s) => s.introVariant)
+  const visitorCountry = useStore((s) => s.visitorCountry)
   const skipIntro = useStore((s) => s.skipIntro)
 
   if (introDone) return null
@@ -20,6 +22,15 @@ export default function IntroOverlay(): JSX.Element | null {
         <p className="mt-2 text-xs text-white/70 drop-shadow">
           {identity.location}
         </p>
+        {introVariant === 'air' && visitorCountry ? (
+          <p className="mt-3 text-sm font-semibold tracking-wide text-amber-300 drop-shadow">
+            Flying in from {visitorCountry}…
+          </p>
+        ) : introVariant === 'local' ? (
+          <p className="mt-3 text-sm font-semibold tracking-wide text-amber-300 drop-shadow">
+            Welcome home.
+          </p>
+        ) : null}
       </div>
       <button
         type="button"

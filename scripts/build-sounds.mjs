@@ -42,6 +42,23 @@ function click() {
   return s
 }
 
+function honk() {
+  const dur = 0.38
+  const n = Math.floor(SAMPLE_RATE * dur)
+  const s = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    const t = i / SAMPLE_RATE
+    const p = t / dur
+    const env = Math.sin(Math.PI * Math.min(p * 1.4, 1))
+    const f1 = 392
+    const f2 = 466
+    const phase1 = (2 * Math.PI * f1 * t) % (2 * Math.PI)
+    const phase2 = (2 * Math.PI * f2 * t) % (2 * Math.PI)
+    s[i] = env * (Math.sin(phase1) * 0.5 + Math.sin(phase2) * 0.5)
+  }
+  return s
+}
+
 function whoosh() {
   const dur = 0.45
   const n = Math.floor(SAMPLE_RATE * dur)
@@ -61,3 +78,4 @@ function whoosh() {
 
 writeWav(join(OUT, 'click.wav'), click())
 writeWav(join(OUT, 'whoosh.wav'), whoosh())
+writeWav(join(OUT, 'honk.wav'), honk())

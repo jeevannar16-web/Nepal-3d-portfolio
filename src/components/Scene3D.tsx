@@ -1,15 +1,20 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useStore } from '../store/useStore'
+import { detectCountry } from '../utils/geo'
+import { getTimeOfDay, DAY_THEMES } from '../utils/timeOfDay'
+import { fetchKathmanduWeather } from '../utils/weather'
 import Ground from './Ground'
 import Roads from './Roads'
 import Decorations from './Decorations'
 import MountainRange from './MountainRange'
+import Rain from './Rain'
+import TireTracks from './TireTracks'
 import GradientSky from './GradientSky'
 import Player from './Player'
-import IntroCamera from './IntroCamera'
+import IntroSequence from './IntroSequence'
 import FollowCamera from './FollowCamera'
 import FlyCamera from './FlyCamera'
 import Landmarks from './Landmarks'
@@ -22,19 +27,67 @@ import ProgressTracker from './ProgressTracker'
 import LoadingScreen from './LoadingScreen'
 import SoundManager from './SoundManager'
 import IntroOverlay from './IntroOverlay'
+import Speedometer from './Speedometer'
+import HonkButton from './HonkButton'
 
 function Scene3D() {
   const playerBody = useRef<RapierRigidBody>(null)
   const introDone = useStore((s) => s.introDone)
-  const skipIntro = useStore((s) => s.skipIntro)
+  const setGeo = useStore((s) => s.setGeo)
+  const timeOfDay = useStore((s) => s.timeOfDay)
+  const setTimeOfDay = useStore((s) => s.setTimeOfDay)
+  const weather = useStore((s) => s.weather)
+  const setWeather = useStore((s) => s.setWeather)
+
+  // Best-effort visitor geolocation. Never blocks the scene: on failure or
+  // timeout the standard intro plays instead.
+  useEffect(() => {
+    let mounted = true
+    void detectCountry().then((res) => {
+      if (!mounted) return
+      const variant = res.iso === 'NP' ? 'local' : res.country ? 'air' : 'standard'
+      setGeo(res.country, variant)
+    })
+    return () => {
+      mounted = false
+    }
+  }, [setGeo])
+
+  // Time-of-day from the visitor's local clock; real Kathmandu weather, which
+  // fails silently to 'clear'. Both set the initial sky/lighting state.
+  useEffect(() => {
+    setTimeOfDay(getTimeOfDay())
+    let mounted = true
+    void fetchKathmanduWeather().then((kind) => {
+      if (mounted) setWeather(kind)
+    })
+    return () => {
+      mounted = false
+    }
+  }, [setTimeOfDay, setWeather])
+
+  const theme = DAY_THEMES[timeOfDay]
+  let fogNear = theme.fogNear
+  let fogFar = theme.fogFar
+  if (weather === 'rain') {
+    fogNear += 10
+    fogFar -= 60
+  } else if (weather === 'fog') {
+    fogNear += 25
+    fogFar -= 110
+  }
 
   return (
     <div className="relative h-full w-full">
       <Canvas camera={{ position: [0, 26, 42], fov: 60 }}>
-        <fog attach="fog" args={['#f0a585', 90, 320]} />
+        <fog attach="fog" args={[theme.fog, fogNear, fogFar]} />
         <GradientSky />
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 15, 10]} intensity={1} />
+        <ambientLight intensity={theme.ambient} />
+        <directionalLight
+          position={[10, 15, 10]}
+          intensity={theme.sunIntensity}
+          color={theme.sunColor}
+        />
         <Physics gravity={[0, -9.81, 0]}>
           <Ground />
           <Roads />
@@ -43,8 +96,10 @@ function Scene3D() {
         </Physics>
         <MountainRange />
         <Decorations />
+        <TireTracks target={playerBody} />
+        {weather === 'rain' && <Rain target={playerBody} />}
         {!introDone ? (
-          <IntroCamera duration={3} onComplete={skipIntro} />
+          <IntroSequence />
         ) : (
           <FollowCamera target={playerBody} />
         )}
@@ -53,6 +108,8 @@ function Scene3D() {
       <NavBar />
       <Hud />
       <Minimap />
+      <Speedometer />
+      <HonkButton />
       <ProgressTracker />
       <TravelingIndicator />
       <IntroOverlay />
