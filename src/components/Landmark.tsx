@@ -1,4 +1,4 @@
-import { useRef, useMemo, type JSX } from 'react'
+import { useRef, type JSX } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
@@ -15,35 +15,30 @@ interface LandmarkProps {
 }
 
 /**
- * Blender-model loading slot.
- *
- * TODO (swap in real models):
- *  1. Export a .glb from Blender and drop it into public/models/.
- *  2. Set `modelPath` on the matching entry in src/data.ts,
- *     e.g. '/models/temple.glb'.
- *  3. No other code changes needed. The physics trigger stays separate.
+ * Blender-model loading slot. Renders the .glb with its own materials and
+ * textures, then applies per-landmark transform so the asset sits flat and
+ * matches the scene scale. The physics trigger stays separate.
  */
-function LandmarkModel({ path }: { path: string }): JSX.Element {
+function LandmarkModel({
+  path,
+  scale = 1,
+  rotationY = 0,
+  offsetY = 0,
+}: {
+  path: string
+  scale?: number
+  rotationY?: number
+  offsetY?: number
+}): JSX.Element {
   const gltf = useGLTF(path)
-  const clone = useMemo(() => {
-    const c = gltf.scene.clone()
-    const matcap = matcapTexture()
-    c.traverse((o) => {
-      const mesh = o as THREE.Mesh
-      if (!mesh.isMesh) return
-      const baseColor =
-        (mesh.material as THREE.MeshStandardMaterial)?.color?.getHex() ?? 0xffffff
-      const mat = new THREE.MeshMatcapMaterial({
-        color: baseColor,
-        matcap,
-        flatShading: true,
-      })
-      mesh.material = mat
-    })
-    return c
-  }, [gltf.scene])
-
-  return <primitive object={clone} position={[0, 0, 0]} />
+  return (
+    <primitive
+      object={gltf.scene}
+      position={[0, offsetY, 0]}
+      rotation={[0, rotationY, 0]}
+      scale={scale}
+    />
+  )
 }
 
 /**
@@ -135,7 +130,12 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
 
       <group ref={visual}>
         {config.modelPath ? (
-          <LandmarkModel path={config.modelPath} />
+          <LandmarkModel
+            path={config.modelPath}
+            scale={config.modelScale}
+            rotationY={config.modelRotationY}
+            offsetY={config.modelOffsetY}
+          />
         ) : (
           <ProceduralLandmark config={config} />
         )}

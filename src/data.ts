@@ -28,8 +28,14 @@ export interface LandmarkConfig {
   triggerRadius: number
   label: string
   color: string
-  /** TODO: drop a .glb path here (e.g. '/models/temple.glb') to replace the procedural mesh with a Blender model */
+  /** .glb path for the Blender/real-asset model, e.g. '/models/temple.glb' */
   modelPath?: string
+  /** Uniform scale so the asset matches the scene (car ~1.3 wide, landmarks ~5-8 tall). */
+  modelScale?: number
+  /** Y-axis rotation (radians) to face a sensible direction. */
+  modelRotationY?: number
+  /** Vertical offset so the model's base sits on the ground (some assets are centered on origin). */
+  modelOffsetY?: number
 }
 
 export const identity = {
@@ -100,7 +106,10 @@ export const landmarks: LandmarkConfig[] = [
     triggerRadius: 3,
     label: 'Temple — About',
     color: '#e07a5f',
-    modelPath: '/models/pagoda.glb',
+    modelPath: '/models/temple.glb',
+    modelScale: 0.13,
+    modelRotationY: 0,
+    modelOffsetY: 0,
   },
   {
     id: 'tower',
@@ -110,6 +119,9 @@ export const landmarks: LandmarkConfig[] = [
     label: 'Tower — Skills',
     color: '#81b29a',
     modelPath: '/models/dharahara.glb',
+    modelScale: 0.75,
+    modelRotationY: 0,
+    modelOffsetY: 0,
   },
   {
     id: 'gate',
@@ -119,6 +131,9 @@ export const landmarks: LandmarkConfig[] = [
     label: 'Gate — Projects',
     color: '#f2cc8f',
     modelPath: '/models/gate.glb',
+    modelScale: 14,
+    modelRotationY: 0,
+    modelOffsetY: 3.1,
   },
   {
     id: 'mountain',
@@ -128,5 +143,8 @@ export const landmarks: LandmarkConfig[] = [
     label: 'Mountain — Contact',
     color: '#3d405b',
     modelPath: '/models/mountain.glb',
+    modelScale: 0.65,
+    modelRotationY: 0,
+    modelOffsetY: 0,
   },
 ]
