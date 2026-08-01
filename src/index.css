@@ -9,3 +9,59 @@ body,
   overflow: hidden;
   font-family: system-ui, -apple-system, sans-serif;
 }
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes panel-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-panel-in {
+  animation: panel-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-panel-out {
+  animation: panel-out 0.22s ease-in both;
+}
+
+.animate-panel-fade-in {
+  animation: fade-in 0.3s ease both;
+}
+
+.animate-panel-fade-out {
+  animation: fade-out 0.22s ease both;
+}

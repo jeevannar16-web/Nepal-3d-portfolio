@@ -1,7 +1,17 @@
-import type { JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import { identity } from '../data'
+import { useStore } from '../store/useStore'
 
 export default function Hud(): JSX.Element {
+  const isPanelOpen = useStore((s) => s.isPanelOpen)
+  const [hintFaded, setHintFaded] = useState(false)
+
+  useEffect(() => {
+    setHintFaded(false)
+    const t = setTimeout(() => setHintFaded(true), 5000)
+    return () => clearTimeout(t)
+  }, [isPanelOpen])
+
   return (
     <div className="pointer-events-none absolute left-0 top-0 z-10 flex w-full items-start justify-between p-5">
       <div>
@@ -12,7 +22,11 @@ export default function Hud(): JSX.Element {
           {identity.role} · {identity.location}
         </p>
       </div>
-      <div className="hidden rounded-full bg-black/30 px-4 py-2 text-xs text-white/90 backdrop-blur sm:block">
+      <div
+        className={`hidden rounded-full bg-black/30 px-4 py-2 text-xs text-white/90 backdrop-blur transition-opacity duration-1000 sm:block ${
+          hintFaded ? 'opacity-40' : 'opacity-100'
+        }`}
+      >
         WASD / Arrow keys to drive · Enter a landmark to explore
       </div>
     </div>

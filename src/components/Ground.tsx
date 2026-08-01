@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { grassTexture } from '../utils/textures'
 
 const EDGE = 50
 const WALL_HEIGHT = 2
@@ -8,9 +9,9 @@ export default function Ground(): JSX.Element {
   return (
     <>
       <RigidBody type="fixed" colliders={false}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
           <planeGeometry args={[100, 100]} />
-          <meshStandardMaterial color="#7cb98c" />
+          <meshStandardMaterial map={grassTexture()} color="#79b383" />
         </mesh>
         <CuboidCollider args={[EDGE, 0.5, EDGE]} position={[0, -0.5, 0]} />
       </RigidBody>

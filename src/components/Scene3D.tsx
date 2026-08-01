@@ -3,6 +3,8 @@ import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import Ground from './Ground'
+import Roads from './Roads'
+import GradientSky from './GradientSky'
 import Player from './Player'
 import FollowCamera from './FollowCamera'
 import Landmarks from './Landmarks'
@@ -17,12 +19,14 @@ function Scene3D() {
 
   return (
     <div className="relative h-full w-full">
-      <Canvas shadows camera={{ position: [8, 6, 8], fov: 60 }}>
-        <color attach="background" args={['#aed8f0']} />
-        <ambientLight intensity={0.6} />
+      <Canvas camera={{ position: [8, 6, 8], fov: 60 }}>
+        <fog attach="fog" args={['#f0a585', 40, 90]} />
+        <GradientSky />
+        <ambientLight intensity={0.5} />
         <directionalLight position={[10, 15, 10]} intensity={1} />
         <Physics gravity={[0, -9.81, 0]}>
           <Ground />
+          <Roads />
           <Player bodyRef={playerBody} />
           <Landmarks playerRef={playerBody} />
         </Physics>

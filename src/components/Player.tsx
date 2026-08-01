@@ -3,6 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
+import { matcapTexture } from '../utils/textures'
+import BlobShadow from './BlobShadow'
 
 interface Keys {
   forward: boolean
@@ -110,11 +112,12 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     >
       <CuboidCollider args={[0.5, 0.5, 0.5]} />
       <group ref={visual}>
-        <mesh castShadow>
+        <mesh>
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial color="#d95d39" />
+          <meshMatcapMaterial color="#d95d39" matcap={matcapTexture()} flatShading />
         </mesh>
       </group>
+      <BlobShadow radius={1.1} y={-0.49} />
     </RigidBody>
   )
 }

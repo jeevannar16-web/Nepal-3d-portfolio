@@ -12,15 +12,24 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
   const offset = useRef(
     new THREE.Vector3(6, 5, 6).setLength(7).setY(5),
   )
+  const bobTime = useRef(0)
 
   useFrame((_, delta) => {
     const body = target.current
     if (!body) return
     const pos = body.translation()
+    const lin = body.linvel()
+    const speed = Math.hypot(lin.x, lin.z)
+
+    bobTime.current += delta * (1 + speed * 0.25)
+
+    const bob = Math.min(speed, 4)
+    const sway = Math.sin(bobTime.current * 2.2) * 0.045 * bob
+    const bobY = Math.sin(bobTime.current * 4.4) * 0.035 * bob
 
     const desired = new THREE.Vector3(
-      pos.x + offset.current.x,
-      offset.current.y,
+      pos.x + offset.current.x + sway,
+      offset.current.y + bobY,
       pos.z + offset.current.z,
     )
 
