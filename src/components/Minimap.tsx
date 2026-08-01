@@ -72,6 +72,7 @@ export default function Minimap(): JSX.Element {
     }
 
     const handleClick = (e: MouseEvent) => {
+      if (!introDone) return
       const rect = canvas.getBoundingClientRect()
       const mx = e.clientX - rect.left
       const my = e.clientY - rect.top
@@ -91,7 +92,7 @@ export default function Minimap(): JSX.Element {
       cancelAnimationFrame(raf)
       canvas.removeEventListener('click', handleClick)
     }
-  }, [flyTo])
+  }, [flyTo, introDone])
 
   return (
     <div

@@ -1,32 +1,8 @@
 import { useEffect, useState, type JSX } from 'react'
 import { useStore } from '../store/useStore'
 import { zones } from '../data'
+import { ZoneIcon } from './icons'
 import { playClick } from '../utils/sounds'
-
-const icons: Record<string, JSX.Element> = {
-  about: (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
-    </svg>
-  ),
-  skills: (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14.7 6.3a4.5 4.5 0 0 0-6 6L3 18v3h3l5.7-5.7a4.5 4.5 0 0 0 6-6L15 12l-3-3 2.7-2.7Z" />
-    </svg>
-  ),
-  projects: (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11Z" />
-    </svg>
-  ),
-  contact: (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2" />
-      <path d="m22 7-10 6L2 7" />
-    </svg>
-  ),
-}
 
 export default function NavBar(): JSX.Element {
   const activeZone = useStore((s) => s.activeZone)
@@ -50,6 +26,9 @@ export default function NavBar(): JSX.Element {
   }, [introDone])
 
   const openZone = (key: string) => {
+    // Nothing can open a panel while the intro is still playing, so the intro
+    // overlay and a ContentPanel can never render at the same time.
+    if (!introDone) return
     playClick()
     setActiveZone(key)
     setIsPanelOpen(true)
@@ -70,15 +49,18 @@ export default function NavBar(): JSX.Element {
               key={zone.key}
               type="button"
               title={zone.title}
+              disabled={!introDone}
               onClick={() => openZone(zone.key)}
               className={`group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
                 active
                   ? 'bg-amber-400 text-slate-900'
-                  : 'text-white/80 hover:bg-white/15 hover:text-white active:scale-95'
+                  : introDone
+                    ? 'text-white/80 hover:bg-white/15 hover:text-white active:scale-95'
+                    : 'cursor-not-allowed text-white/40 hover:bg-transparent hover:text-white/40'
               }`}
             >
               <span className={active ? 'text-slate-900' : 'text-amber-300'}>
-                {icons[zone.key]}
+                <ZoneIcon zone={zone.key} />
               </span>
               <span className="hidden lg:inline">{zone.title}</span>
             </button>

@@ -75,8 +75,12 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
   const setActiveZone = useStore((s) => s.setActiveZone)
   const setIsPanelOpen = useStore((s) => s.setIsPanelOpen)
   const markZoneVisited = useStore((s) => s.markZoneVisited)
+  const introDone = useStore((s) => s.introDone)
 
   const enter = (e: { other: { rigidBody?: RapierRigidBody } }) => {
+    // Landmark triggers stay inert until the intro completes, so a panel can
+    // never open while the intro's name overlay is still on screen.
+    if (!introDone) return
     if (e.other.rigidBody && e.other.rigidBody === playerRef.current) {
       setActiveZone(config.contentKey)
       setIsPanelOpen(true)
