@@ -5,10 +5,30 @@ import { identity } from '../data'
 export default function IntroOverlay(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
   const introVariant = useStore((s) => s.introVariant)
+  const introStage = useStore((s) => s.introStage)
   const visitorCountry = useStore((s) => s.visitorCountry)
   const skipIntro = useStore((s) => s.skipIntro)
 
   if (introDone) return null
+
+  const stageText =
+    introVariant === 'air'
+      ? introStage === 'airport' && visitorCountry
+        ? `Departing ${visitorCountry}…`
+        : introStage === 'flight'
+          ? 'Approaching Kathmandu…'
+          : introStage === 'descent'
+            ? 'Landing in Kathmandu…'
+            : null
+      : introVariant === 'local'
+        ? introStage === 'takeoff'
+          ? 'Taking off from Kathmandu…'
+          : introStage === 'flyover'
+            ? 'Soaring over the Himalayas…'
+            : introStage === 'landing'
+              ? 'Returning to Kathmandu…'
+              : null
+        : null
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
@@ -22,13 +42,9 @@ export default function IntroOverlay(): JSX.Element | null {
         <p className="mt-2 text-xs text-white/70 drop-shadow">
           {identity.location}
         </p>
-        {introVariant === 'air' && visitorCountry ? (
+        {stageText ? (
           <p className="mt-3 text-sm font-semibold tracking-wide text-amber-300 drop-shadow">
-            Flying in from {visitorCountry}…
-          </p>
-        ) : introVariant === 'local' ? (
-          <p className="mt-3 text-sm font-semibold tracking-wide text-amber-300 drop-shadow">
-            Arriving over Kathmandu…
+            {stageText}
           </p>
         ) : null}
       </div>

@@ -6,12 +6,22 @@ export type DeviceType = 'desktop' | 'mobile'
 
 export type IntroVariant = 'air' | 'local' | 'standard'
 
+export type IntroStage =
+  | 'airport'
+  | 'flight'
+  | 'descent'
+  | 'takeoff'
+  | 'flyover'
+  | 'landing'
+  | 'orbit'
+
 interface PortfolioState {
   activeZone: string | null
   isPanelOpen: boolean
   deviceType: DeviceType
   introDone: boolean
   introVariant: IntroVariant
+  introStage: IntroStage
   visitorCountry: string | null
   geoResolved: boolean
   timeOfDay: TimeOfDay
@@ -24,6 +34,7 @@ interface PortfolioState {
   setDeviceType: (device: DeviceType) => void
   skipIntro: () => void
   setGeo: (country: string | null, variant: IntroVariant) => void
+  setIntroStage: (stage: IntroStage) => void
   setTimeOfDay: (time: TimeOfDay) => void
   setWeather: (weather: WeatherKind) => void
   markZoneVisited: (zone: string) => void
@@ -38,6 +49,7 @@ export const useStore = create<PortfolioState>((set) => ({
   deviceType: 'desktop',
   introDone: false,
   introVariant: 'standard',
+  introStage: 'orbit',
   visitorCountry: null,
   geoResolved: false,
   timeOfDay: 'day',
@@ -51,6 +63,7 @@ export const useStore = create<PortfolioState>((set) => ({
   skipIntro: () => set({ introDone: true }),
   setGeo: (country, variant) =>
     set({ visitorCountry: country, introVariant: variant, geoResolved: true }),
+  setIntroStage: (stage) => set({ introStage: stage }),
   setTimeOfDay: (time) => set({ timeOfDay: time }),
   setWeather: (weather) => set({ weather }),
   markZoneVisited: (zone) =>
