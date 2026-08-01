@@ -1,11 +1,14 @@
 import { useEffect, useRef, type JSX } from 'react'
 import { Howl, Howler } from 'howler'
+import { useStore } from '../store/useStore'
 
 export default function SoundManager(): JSX.Element {
   const started = useRef(false)
+  const ambient = useRef<Howl | null>(null)
+  const muted = useStore((s) => s.settings.muted)
 
   useEffect(() => {
-    const ambient = new Howl({
+    ambient.current = new Howl({
       src: ['/sounds/ambient.wav'],
       loop: true,
       volume: 0.25,
@@ -16,7 +19,7 @@ export default function SoundManager(): JSX.Element {
       if (started.current) return
       started.current = true
       void Howler.ctx?.resume()
-      ambient.play()
+      ambient.current?.play()
       window.removeEventListener('pointerdown', resume)
       window.removeEventListener('keydown', resume)
     }
@@ -27,10 +30,15 @@ export default function SoundManager(): JSX.Element {
     return () => {
       window.removeEventListener('pointerdown', resume)
       window.removeEventListener('keydown', resume)
-      ambient.stop()
-      ambient.unload()
+      ambient.current?.stop()
+      ambient.current?.unload()
+      ambient.current = null
     }
   }, [])
+
+  useEffect(() => {
+    ambient.current?.mute(muted)
+  }, [muted])
 
   return <></>
 }

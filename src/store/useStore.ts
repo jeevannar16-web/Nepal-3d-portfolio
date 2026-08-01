@@ -31,6 +31,8 @@ interface PortfolioState {
   flyTarget: { x: number; z: number } | null
   toast: string | null
   welcomeDismissed: boolean
+  settings: { muted: boolean; lowGraphics: boolean }
+  targetLandmark: string | null
   setActiveZone: (zone: string | null) => void
   setIsPanelOpen: (open: boolean) => void
   setDeviceType: (device: DeviceType) => void
@@ -46,6 +48,9 @@ interface PortfolioState {
   showToast: (text: string) => void
   clearToast: () => void
   dismissWelcome: () => void
+  toggleMuted: () => void
+  toggleLowGraphics: () => void
+  setTargetLandmark: (id: string | null) => void
 }
 
 export const useStore = create<PortfolioState>((set) => ({
@@ -87,4 +92,11 @@ export const useStore = create<PortfolioState>((set) => ({
   showToast: (text) => set({ toast: text }),
   clearToast: () => set({ toast: null }),
   dismissWelcome: () => set({ welcomeDismissed: true }),
+  settings: { muted: false, lowGraphics: false },
+  targetLandmark: null,
+  toggleMuted: () =>
+    set((s) => ({ settings: { ...s.settings, muted: !s.settings.muted } })),
+  toggleLowGraphics: () =>
+    set((s) => ({ settings: { ...s.settings, lowGraphics: !s.settings.lowGraphics } })),
+  setTargetLandmark: (id) => set({ targetLandmark: id }),
 }))

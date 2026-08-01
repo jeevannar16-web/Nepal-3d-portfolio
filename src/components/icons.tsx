@@ -19,6 +19,12 @@ const paths: Record<string, JSX.Element> = {
       <path d="m22 7-10 6L2 7" />
     </>
   ),
+  story: (
+    <>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+    </>
+  ),
 }
 
 /**

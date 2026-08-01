@@ -1,5 +1,6 @@
 import { useEffect, useRef, type JSX } from 'react'
 import { landmarks } from '../data'
+import { roadPaths } from '../world'
 import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 
@@ -39,6 +40,21 @@ export default function Minimap(): JSX.Element {
       ctx.lineWidth = 1
       ctx.strokeRect(0.5, 0.5, MAP_SIZE - 1, MAP_SIZE - 1)
 
+      // Road network first so landmarks and labels read on top of it.
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.28)'
+      ctx.lineWidth = 2
+      ctx.lineJoin = 'round'
+      ctx.lineCap = 'round'
+      for (const path of roadPaths) {
+        ctx.beginPath()
+        path.forEach(([x, z], i) => {
+          const [px, pz] = toPx(x, z)
+          if (i === 0) ctx.moveTo(px, pz)
+          else ctx.lineTo(px, pz)
+        })
+        ctx.stroke()
+      }
+
       for (const landmark of landmarks) {
         const [lx, lz] = toPx(landmark.position[0], landmark.position[2])
         ctx.fillStyle = landmark.color
@@ -46,10 +62,12 @@ export default function Minimap(): JSX.Element {
         ctx.arc(lx, lz, 4, 0, Math.PI * 2)
         ctx.fill()
 
+        // Centered above the dot so labels never clip at the map edges.
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
         ctx.font = '9px system-ui, sans-serif'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(landmark.label.split(' — ')[0], lx + 7, lz)
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.fillText(landmark.label.split(' — ')[0], lx, lz - 5)
       }
 
       const [px, pz] = toPx(minimapState.x, minimapState.z)

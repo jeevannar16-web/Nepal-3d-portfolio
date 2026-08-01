@@ -1,6 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
 import { useStore } from '../store/useStore'
-import { zones } from '../data'
+import { zones, landmarks } from '../data'
 import { ZoneIcon } from './icons'
 import { playClick } from '../utils/sounds'
 
@@ -12,6 +12,7 @@ export default function NavBar(): JSX.Element {
   const setIsPanelOpen = useStore((s) => s.setIsPanelOpen)
   const markZoneVisited = useStore((s) => s.markZoneVisited)
   const showToast = useStore((s) => s.showToast)
+  const setTargetLandmark = useStore((s) => s.setTargetLandmark)
 
   const [pulse, setPulse] = useState(false)
 
@@ -35,6 +36,9 @@ export default function NavBar(): JSX.Element {
       const zone = zones.find((z) => z.key === key)
       showToast(`${zone?.title ?? 'Zone'} unlocked!`)
     }
+    // Remember the zone's landmark so the wayfinder can point the way back.
+    const landmark = landmarks.find((l) => l.contentKey === key)
+    setTargetLandmark(landmark ? landmark.id : null)
     setActiveZone(key)
     setIsPanelOpen(true)
   }

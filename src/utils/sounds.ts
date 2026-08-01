@@ -1,4 +1,5 @@
 import { Howl } from 'howler'
+import { useStore } from '../store/useStore'
 
 let click: Howl | null = null
 let whoosh: Howl | null = null
@@ -13,6 +14,7 @@ function ensureSounds() {
 
 function guardPlay(sound: Howl | null) {
   if (!sound) return
+  if (useStore.getState().settings.muted) return
   try {
     sound.play()
   } catch {

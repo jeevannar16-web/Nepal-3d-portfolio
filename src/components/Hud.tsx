@@ -3,7 +3,6 @@ import { identity } from '../data'
 import { useStore } from '../store/useStore'
 
 export default function Hud(): JSX.Element {
-  const setPrefersSimple = useStore((s) => s.setPrefersSimple)
   const introDone = useStore((s) => s.introDone)
   const [hintFaded, setHintFaded] = useState(false)
 
@@ -23,11 +22,12 @@ export default function Hud(): JSX.Element {
           {identity.role} · {identity.location}
         </p>
       </div>
-      {/* Hidden while the intro's Skip button owns the top-right corner, so
-          the two never collide; reappears once control hands to the player. */}
+      {/* Hidden while the intro's Skip button owns the top-right corner; sits
+          below the menu gear once control hands to the player. Fades to a
+          faint reminder after a few seconds. */}
       {introDone && (
         <div
-          className={`flex flex-col items-end gap-2 transition-opacity duration-1000 ${
+          className={`flex flex-col items-end gap-2 pt-14 transition-opacity duration-1000 ${
             hintFaded ? 'opacity-60' : 'opacity-100'
           }`}
         >
@@ -35,13 +35,6 @@ export default function Hud(): JSX.Element {
             <span className="font-semibold text-amber-300">WASD / Arrow keys</span>{' '}
             to drive · visit a landmark to open its info
           </div>
-          <button
-            type="button"
-            onClick={() => setPrefersSimple(true)}
-            className="pointer-events-auto text-xs text-white/70 underline decoration-white/40 underline-offset-4 transition hover:text-white hover:decoration-white"
-          >
-            Prefer a simple page?
-          </button>
         </div>
       )}
     </div>

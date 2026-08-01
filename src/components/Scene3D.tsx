@@ -25,14 +25,15 @@ import NavBar from './NavBar'
 import Hud from './Hud'
 import TravelingIndicator from './TravelingIndicator'
 import Minimap from './Minimap'
-import ProgressTracker from './ProgressTracker'
 import LoadingScreen from './LoadingScreen'
 import SoundManager from './SoundManager'
+import EngineSound from './EngineSound'
 import IntroOverlay from './IntroOverlay'
-import Speedometer from './Speedometer'
-import HonkButton from './HonkButton'
 import Toast from './Toast'
 import WelcomeCard from './WelcomeCard'
+import Menu from './Menu'
+import HudCluster from './HudCluster'
+import Wayfinder from './Wayfinder'
 
 function Scene3D() {
   const playerBody = useRef<RapierRigidBody>(null)
@@ -42,10 +43,18 @@ function Scene3D() {
   const setTimeOfDay = useStore((s) => s.setTimeOfDay)
   const weather = useStore((s) => s.weather)
   const setWeather = useStore((s) => s.setWeather)
+  const lowGraphics = useStore((s) => s.settings.lowGraphics)
 
   // Best-effort visitor geolocation. Never blocks the scene: on failure or
-  // timeout the standard intro plays instead.
+  // timeout the standard intro plays instead. A ?intro=air|local|standard
+  // query param overrides the lookup so a specific intro path can be tested
+  // without real geo data — normal visitors are unaffected.
   useEffect(() => {
+    const forced = new URLSearchParams(window.location.search).get('intro')
+    if (forced === 'air' || forced === 'local' || forced === 'standard') {
+      setGeo(forced === 'local' ? 'Nepal (test)' : 'International (test)', forced)
+      return
+    }
     let mounted = true
     void detectCountry().then((res) => {
       if (!mounted) return
@@ -83,7 +92,10 @@ function Scene3D() {
 
   return (
     <div className="relative h-full w-full">
-      <Canvas camera={{ position: [0, 26, 42], fov: 70 }}>
+      <Canvas
+        camera={{ position: [0, 26, 42], fov: 70 }}
+        dpr={lowGraphics ? [1, 1.5] : [1, 2]}
+      >
         <fog attach="fog" args={[theme.fog, fogNear, fogFar]} />
         <GradientSky />
         <ambientLight intensity={theme.ambient} />
@@ -112,23 +124,26 @@ function Scene3D() {
         {/* Subtle bloom so bright/emissive elements (headlight beams, prayer
             flag glows, the golden horizon) bleed light. Threshold is high
             enough that the sky and plain lit geometry mostly stay untouched.
-            Tune intensity/threshold/radius here if it reads too hot. */}
-        <EffectComposer>
-          <Bloom
-            mipmapBlur
-            intensity={0.5}
-            luminanceThreshold={0.8}
-            luminanceSmoothing={0.25}
-            radius={0.7}
-          />
-        </EffectComposer>
+            Tune intensity/threshold/radius here if it reads too hot. Disabled
+            by the reduced-graphics toggle. */}
+        {!lowGraphics && (
+          <EffectComposer>
+            <Bloom
+              mipmapBlur
+              intensity={0.5}
+              luminanceThreshold={0.8}
+              luminanceSmoothing={0.25}
+              radius={0.7}
+            />
+          </EffectComposer>
+        )}
       </Canvas>
       <NavBar />
       <Hud />
+      <Menu />
       <Minimap />
-      <Speedometer />
-      <HonkButton />
-      <ProgressTracker />
+      <HudCluster />
+      <Wayfinder />
       <TravelingIndicator />
       <IntroOverlay />
       <ContentPanel />
@@ -136,6 +151,7 @@ function Scene3D() {
       <WelcomeCard />
       <LoadingScreen />
       <SoundManager />
+      <EngineSound />
     </div>
   )
 }
