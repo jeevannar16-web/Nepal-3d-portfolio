@@ -241,6 +241,19 @@ export default function Decorations(): JSX.Element {
         ))}
       </Instances>
 
+      {/* Prayer flags on poles (thin pole under each flag so they don't look
+          like floating squares) */}
+      <Instances limit={flags.length} frustumCulled={false}>
+        <boxGeometry args={[0.06, 1, 0.06]} />
+        <meshStandardMaterial color="#4a4236" flatShading />
+        {flags.map((f, i) => (
+          <Instance
+            key={`flagPole-${i}`}
+            position={[f.x, f.y / 2, f.z]}
+            scale={[1, f.y, 1]}
+          />
+        ))}
+      </Instances>
       <Instances limit={flags.length} frustumCulled={false}>
         <boxGeometry args={[0.7, 0.45, 0.05]} />
         <meshStandardMaterial color="#ffffff" flatShading />
