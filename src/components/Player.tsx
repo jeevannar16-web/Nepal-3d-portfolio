@@ -4,26 +4,44 @@ import { useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
-import { driveState } from '../store/driveState'
+import { driveState, type EngineState, type GearLabel } from '../store/driveState'
 import { useStore } from '../store/useStore'
 import { glowTexture } from '../utils/textures'
 import BlobShadow from './BlobShadow'
 
-// ---- Driving feel (tune these by feel, no physics hunting needed) ----
-export const MAX_SPEED = 15 // top forward speed in units/second
-export const REVERSE_MAX_SPEED = 6.5 // top reverse speed in units/second
-const ACCEL_RAMP_TIME = 0.3 // seconds to reach full throttle from rest
-const THROTTLE_DECAY = 0.15 // throttle let-off speed (fraction of ACCEL_RAMP_TIME)
-const THROTTLE_FORCE = 46 // forward force at full throttle
-const REVERSE_FORCE = 20 // reverse force
-const BRAKE_DECEL = 30 // opposing force while braking against forward motion
-const DAMPING_COAST = 0.99 // per-frame drag while coasting (@60fps)
-const DAMPING_BRAKE = 0.962 // per-frame drag while braking (@60fps)
-const BASE_TURN_RATE = 2.6 // turn rate (rad/s) at standstill
-const STEER_TORQUE = 12 // how quickly yaw rate builds toward its target
+// ---- Real-car powertrain (engine, gearbox, torque — not arcade force) ----
+export const MAX_SPEED = 16 // top forward speed in units/second
+export const REVERSE_MAX_SPEED = 6 // top reverse speed in units/second
+export const KMH_FACTOR = 8 // world units/sec -> km/h (MAX_SPEED = 128 km/h)
+
+// Engine
+export const IDLE_RPM = 900
+export const REDLINE_RPM = 6200
+const CRANK_TIME = 0.7 // seconds of cranking before the engine catches
+const THROTTLE_RAMP_TIME = 0.35 // seconds to reach full throttle from rest
+const THROTTLE_DECAY = 0.15 // throttle let-off speed (fraction of ramp time)
+
+// Gearbox: automatic 4-speed in D. Each gear tops out at GEAR_TOPS[u/s];
+// up/down shifts happen near those limits, redline sits at the gear top.
+const GEAR_TOPS = [0, 4.2, 8.5, 13, MAX_SPEED]
+const UPSHIFT_SPEED = [0, 3.6, 7.4, 11.6, Infinity]
+const DOWNSHIFT_SPEED = [0, 2.4, 5.2, 8.8, 0]
+
+// Forces (u/s² applied to a unit-mass body)
+const THROTTLE_FORCE = 42 // peak drive force at full throttle in the power band
+const REVERSE_FORCE = 20 // reverse drive force
+const BRAKE_DECEL = 34 // brake force opposing current motion
+const CREEP_FORCE = 7 // automatic cars creep forward at idle
+const ENGINE_BRAKE = 3.5 // engine braking when coasting in gear
+const ROLLING_DECEL = 1.4 // rolling resistance
+const AERO_DRAG = 0.055 // aerodynamic drag (v²)
+const LATERAL_GRIP = 0.86 // per-frame@60fps decay of sideways slip (planted feel)
+
+// Steering
+const BASE_TURN_RATE = 2.4 // turn rate (rad/s) at standstill
+const STEER_TORQUE = 9 // how quickly yaw rate builds toward its target
 const STEER_DAMPING = 0.92 // per-frame decay of yaw rate after release (@60fps)
-const STEER_SPEED_FALLOFF = 0.6 // fraction of turn rate lost at top speed
-export const KMH_FACTOR = 8 // world units/sec -> km/h (MAX_SPEED = 120 km/h)
+const STEER_SPEED_FALLOFF = 0.5 // fraction of turn rate lost at top speed
 
 interface Keys {
   forward: boolean
@@ -66,6 +84,17 @@ const WHEEL_NAMES = [
   'Lamborghini_Aventador_Wheel_RR',
 ]
 
+const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
+
+/** Torque curve over normalized rpm (0 = idle, 1 = redline): weak just off
+ *  idle, peaks through the mid band, tapers toward redline. */
+function torqueFactor(n: number): number {
+  if (n <= 0.1) return 0.35
+  if (n <= 0.45) return 0.35 + (0.65 * (n - 0.1)) / 0.35
+  if (n <= 0.8) return 1.0
+  return 1.0 - (0.35 * (n - 0.8)) / 0.2
+}
+
 export default function Player({ bodyRef }: PlayerProps): JSX.Element {
   const { scene: carScene } = useGLTF('/models/car.glb')
   const body = useRef<RapierRigidBody>(null)
@@ -73,8 +102,14 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
   const visual = useRef<THREE.Group>(null)
   const wheels = useRef<Array<THREE.Group | null>>([])
   const roll = useRef(0)
-  const throttleTime = useRef(0)
   const yawVel = useRef(0)
+  const throttleTime = useRef(0)
+  const engineState = useRef<EngineState>('off')
+  const crank = useRef(0)
+  const gear = useRef<'D' | 'R'>('D')
+  const autoGear = useRef(1)
+  const rpmSmooth = useRef(0)
+  const startHintShown = useRef(false)
   const introDone = useStore((s) => s.introDone)
   const timeOfDay = useStore((s) => s.timeOfDay)
   const lightsOn = timeOfDay === 'dusk' || timeOfDay === 'night'
@@ -110,6 +145,27 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
       if (k) {
         keys[k] = true
         e.preventDefault()
+        return
+      }
+      if (e.code === 'KeyG') {
+        // Ignition: off -> starting -> on; a second press cuts the engine.
+        if (!useStore.getState().introDone) return
+        if (engineState.current === 'off') {
+          engineState.current = 'starting'
+          crank.current = 0
+        } else {
+          engineState.current = 'off'
+        }
+      } else if (e.code === 'KeyR') {
+        // Gear selector D/R, only while (nearly) stopped like a real automatic.
+        if (!useStore.getState().introDone) return
+        const lin = body.current?.linvel()
+        const speed = lin ? Math.hypot(lin.x, lin.z) : 0
+        if (speed < 1.5) {
+          gear.current = gear.current === 'D' ? 'R' : 'D'
+          throttleTime.current = 0
+          autoGear.current = 1
+        }
       }
     }
     const up = (e: KeyboardEvent) => {
@@ -142,100 +198,159 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
       heading.current = 0
       yawVel.current = 0
+      engineState.current = 'off'
+      rpmSmooth.current = 0
       return
     }
 
     if (!introDone) return
 
+    const dt = Math.min(delta, 0.05)
     const lin = rb.linvel()
 
-    // Continuous steering: yaw is an angular velocity that builds toward a
-    // target turn rate (torque feel) instead of an instant rotation snap, and
-    // settles smoothly via angular damping once the key is released.
-    const speed = Math.hypot(lin.x, lin.z)
-    const speedNorm = Math.min(speed / MAX_SPEED, 1)
+    // ---- Engine state machine ----
+    if (engineState.current === 'starting') {
+      crank.current += dt
+      if (crank.current >= CRANK_TIME) engineState.current = 'on'
+    }
+    const engineOn = engineState.current === 'on'
+
+    // ---- Automatic gearbox ----
+    const inReverse = gear.current === 'R'
     const dir = new THREE.Vector3(
       Math.sin(heading.current),
       0,
       Math.cos(heading.current),
     )
-    const signedSpeed = dir.x * lin.x + dir.z * lin.z
-    const isReversing = signedSpeed < -0.5
-    // Reversing steers inverted, like a real car.
-    const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
-    const effectiveSteer = isReversing ? -steerInput : steerInput
-    if (effectiveSteer !== 0) {
-      // Speed-dependent target: tight turns at low speed, wide sweeps at speed.
-      const turnRate = BASE_TURN_RATE * (1 - STEER_SPEED_FALLOFF * speedNorm)
-      const response = 1 - Math.pow(2, -delta * STEER_TORQUE)
-      yawVel.current += (effectiveSteer * turnRate - yawVel.current) * response
-    } else {
-      // Angular damping: decay yaw rate so the car settles, doesn't spin on.
-      yawVel.current *= Math.pow(STEER_DAMPING, delta * 60)
+    const right = new THREE.Vector3(-dir.z, 0, dir.x)
+    const fwdVel = dir.x * lin.x + dir.z * lin.z
+    const absSpeed = Math.abs(fwdVel)
+    if (gear.current === 'D' && engineOn) {
+      if (autoGear.current < 4 && absSpeed > UPSHIFT_SPEED[autoGear.current]) {
+        autoGear.current += 1
+      } else if (autoGear.current > 1 && absSpeed < DOWNSHIFT_SPEED[autoGear.current]) {
+        autoGear.current -= 1
+      }
     }
-    heading.current += yawVel.current * delta
+    const gearTop = inReverse ? REVERSE_MAX_SPEED : GEAR_TOPS[autoGear.current]
 
-    // Throttle ramp — ease-out over the first ACCEL_RAMP_TIME: a strong bite
-    // the instant a key is pressed (no laggy wind-up) that tapers toward full
-    // throttle, and quick (but not instant) let-off on release.
-    if (keys.forward && !keys.backward) {
-      throttleTime.current = Math.min(throttleTime.current + delta, ACCEL_RAMP_TIME)
+    // ---- Throttle pedal ----
+    // In D: W = throttle, S = brake. In R the pedals swap (S accelerates
+    // backward), exactly like a real automatic.
+    const fwdKey = inReverse ? keys.backward : keys.forward
+    const brkKey = inReverse ? keys.forward : keys.backward
+    if (engineOn && fwdKey && !brkKey) {
+      throttleTime.current = Math.min(throttleTime.current + dt, THROTTLE_RAMP_TIME)
     } else {
       throttleTime.current = Math.max(
-        throttleTime.current - delta * (ACCEL_RAMP_TIME / THROTTLE_DECAY),
+        throttleTime.current - dt * (THROTTLE_RAMP_TIME / THROTTLE_DECAY),
         0,
       )
     }
-    const t = throttleTime.current / ACCEL_RAMP_TIME
-    const throttle = t * (2 - t)
+    const throttle = (throttleTime.current / THROTTLE_RAMP_TIME) * (2 - throttleTime.current / THROTTLE_RAMP_TIME)
 
-    const braking = keys.backward
-    let damping = braking ? DAMPING_BRAKE : DAMPING_COAST
+    // ---- RPM ----
+    let rpmTarget = 0
+    if (engineState.current === 'starting') {
+      // Cranking: brief fire pulses as the cylinders catch.
+      rpmTarget = crank.current % 0.5 < 0.28 ? 0 : 260
+    } else if (engineOn) {
+      const speedNormInGear = clamp(absSpeed / gearTop, 0, 1)
+      let rpmFromSpeed = IDLE_RPM + (REDLINE_RPM - IDLE_RPM) * speedNormInGear
+      // Torque-converter slip: revs build above speed-matched rpm while
+      // throttling from low speed (the engine briefly out-runs the wheels).
+      const slip = throttle > 0 ? throttle * 1500 * (1 - speedNormInGear) : 0
+      rpmFromSpeed = clamp(rpmFromSpeed + slip, IDLE_RPM, REDLINE_RPM)
+      if (throttle === 0) rpmFromSpeed = clamp(rpmFromSpeed, IDLE_RPM, REDLINE_RPM)
+      rpmTarget = rpmFromSpeed
+    }
+    rpmSmooth.current += (rpmTarget - rpmSmooth.current) * (1 - Math.exp(-dt * 10))
+    const rpm = rpmSmooth.current
+
+    // ---- Steering ----
+    const speed = Math.hypot(lin.x, lin.z)
+    const speedNorm = clamp(speed / MAX_SPEED, 0, 1)
+    const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
+    const effectiveSteer = inReverse ? -steerInput : steerInput
+    if (effectiveSteer !== 0) {
+      const turnRate = BASE_TURN_RATE * (1 - STEER_SPEED_FALLOFF * speedNorm)
+      const response = 1 - Math.pow(2, -dt * STEER_TORQUE)
+      yawVel.current += (effectiveSteer * turnRate - yawVel.current) * response
+    } else {
+      yawVel.current *= Math.pow(STEER_DAMPING, dt * 60)
+    }
+    heading.current += yawVel.current * dt
+
+    // ---- Drive force (torque curve over rpm) ----
     let applied = 0
-
-    if (keys.forward && !braking) {
-      // Force fades toward zero as we approach MAX_SPEED, so top speed is
-      // reached asymptotically — it climbs gradually instead of snapping.
-      applied = THROTTLE_FORCE * throttle * Math.max(0, 1 - speedNorm)
-    } else if (braking) {
-      if (signedSpeed > 0.5) {
-        // Braking against forward motion: hard opposing bite, then smooth
-        // linear damping continues the deceleration.
-        applied = -BRAKE_DECEL
-      } else {
-        // Reversing: gentler force, same falloff as forward.
-        applied = -REVERSE_FORCE * Math.max(0, 1 - speedNorm)
+    if (engineOn) {
+      const rpmNorm = clamp((rpm - IDLE_RPM) / (REDLINE_RPM - IDLE_RPM), 0, 1)
+      const tf = torqueFactor(rpmNorm)
+      const falloff = Math.max(0, 1 - absSpeed / gearTop)
+      if (throttle > 0) {
+        applied =
+          (inReverse ? -1 : 1) *
+          (inReverse ? REVERSE_FORCE : THROTTLE_FORCE) *
+          tf *
+          throttle *
+          falloff
+      } else if (brkKey) {
+        // Brake against current motion only.
+        if (fwdVel > 0.3) applied = -BRAKE_DECEL
+        else if (fwdVel < -0.3) applied = BRAKE_DECEL
+      }
+      if (throttle === 0 && !brkKey) {
+        if (Math.abs(fwdVel) < 1.2) {
+          applied = (inReverse ? -1 : 1) * CREEP_FORCE // idle creep, like an auto
+        } else {
+          applied = -Math.sign(fwdVel) * ENGINE_BRAKE // engine braking while coasting
+        }
       }
     }
 
-    if (applied !== 0) {
-      rb.applyImpulse(
-        { x: dir.x * applied * delta, y: 0, z: dir.z * applied * delta },
-        true,
-      )
-    }
+    // ---- Resistances: rolling + aerodynamic drag, both opposing motion ----
+    applied -= Math.sign(fwdVel) * ROLLING_DECEL
+    applied -= Math.sign(fwdVel) * AERO_DRAG * fwdVel * fwdVel
 
-    // Frame-rate independent linear damping; coasts smoothly on release.
-    const vel = rb.linvel()
-    const damp = Math.pow(damping, delta * 60)
-    vel.x *= damp
-    vel.z *= damp
-    const mag = Math.hypot(vel.x, vel.z)
-    const topSpeed = isReversing ? REVERSE_MAX_SPEED : MAX_SPEED
-    if (mag > topSpeed) {
-      const s = topSpeed / mag
-      vel.x *= s
-      vel.z *= s
-    }
-    rb.setLinvel({ x: vel.x, y: vel.y, z: vel.z }, true)
+    // ---- Integrate with planted lateral grip ----
+    // Solve the car as forward + lateral components: drive/brake/resistance
+    // act along the heading, and any sideways slip is damped hard so the car
+    // tracks where it points instead of sliding.
+    const fwd = dir.x * lin.x + dir.z * lin.z
+    const lat = right.x * lin.x + right.z * lin.z
+    const newFwd = clamp(fwd + applied * dt, -REVERSE_MAX_SPEED, MAX_SPEED)
+    const newLat = lat * Math.pow(LATERAL_GRIP, dt * 60)
+    const nx = dir.x * newFwd + right.x * newLat
+    const nz = dir.z * newFwd + right.z * newLat
+    rb.setLinvel({ x: nx, y: lin.y, z: nz }, true)
 
-    driveState.speedKmh = Math.hypot(vel.x, vel.z) * KMH_FACTOR
-    driveState.reverse = isReversing
+    // ---- Beginner help: nudge toward starting the engine ----
+    if (!engineOn && (fwdKey || brkKey) && !startHintShown.current) {
+      startHintShown.current = true
+      useStore.getState().showToast('Press G to start the engine')
+    }
+    if (engineOn) startHintShown.current = false
+
+    // ---- Publish for DOM overlays ----
+    driveState.speedKmh = Math.abs(newFwd) * KMH_FACTOR
+    driveState.reverse = inReverse
+    driveState.rpm = Math.round(rpm)
+    driveState.throttle = throttle
+    driveState.engineState = engineState.current
+    driveState.gear = (
+      engineState.current === 'off'
+        ? 'OFF'
+        : engineState.current === 'starting'
+          ? 'ON'
+          : inReverse
+            ? 'R'
+            : String(autoGear.current)
+    ) as GearLabel
 
     if (visual.current) {
       visual.current.rotation.y = heading.current
 
-      const wheelSpin = (delta * mag) / WHEEL_RADIUS
+      const wheelSpin = (dt * absSpeed) / WHEEL_RADIUS
       for (const w of wheels.current) {
         if (w) w.rotation.x -= wheelSpin
       }

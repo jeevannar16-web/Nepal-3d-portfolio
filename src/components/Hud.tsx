@@ -32,7 +32,8 @@ export default function Hud(): JSX.Element {
           }`}
         >
           <div className="rounded-full border border-white/15 bg-black/40 px-4 py-2 text-center text-xs text-white/90 backdrop-blur">
-            <span className="font-semibold text-amber-300">WASD / Arrow keys</span>{' '}
+            Press <span className="font-semibold text-amber-300">G</span> to start
+            the engine, then <span className="font-semibold text-amber-300">WASD</span>{' '}
             to drive · visit a landmark to open its info
           </div>
         </div>

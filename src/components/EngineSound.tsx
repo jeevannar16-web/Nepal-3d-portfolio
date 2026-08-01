@@ -1,12 +1,13 @@
 import { useEffect, useRef, type JSX } from 'react'
 import { useStore } from '../store/useStore'
 import { driveState } from '../store/driveState'
-import { MAX_SPEED, KMH_FACTOR } from './Player'
+import { REDLINE_RPM } from './Player'
 
-const IDLE_FREQ = 48 // Hz at standstill
-const TOP_FREQ = 130 // Hz at top speed
+const IDLE_FREQ = 55 // Hz at idle rpm
+const TOP_FREQ = 155 // Hz at redline
 const IDLE_GAIN = 0.03 // gentle idle when parked
-const TOP_GAIN = 0.1 // full swell at top speed
+const TOP_GAIN = 0.1 // full swell at redline
+const CRANK_FREQ = 24 // low thump while cranking the starter
 
 interface EngineNodes {
   ctx: AudioContext
@@ -18,9 +19,11 @@ interface EngineNodes {
 
 /**
  * Procedural engine loop (no asset needed): a dual-oscillator drone whose
- * pitch, low-pass brightness and gain all scale with the car's speed, read
- * from driveState each frame. Respects the settings mute toggle and only
- * becomes audible once the intro hands control to the player.
+ * pitch, low-pass brightness and gain all scale with the engine's rpm and
+ * state, read from driveState each frame. Silent while the engine is off,
+ * thumps through the cranking phase, then idles/revs once running. Respects
+ * the settings mute toggle and only becomes audible once the intro hands
+ * control to the player.
  */
 export default function EngineSound(): JSX.Element {
   const muted = useStore((s) => s.settings.muted)
@@ -98,16 +101,31 @@ export default function EngineSound(): JSX.Element {
       const n = nodes.current
       if (n) {
         const now = n.ctx.currentTime
-        const speedNorm = Math.min(
-          Math.abs(driveState.speedKmh) / (MAX_SPEED * KMH_FACTOR),
-          1,
-        )
-        const freq = IDLE_FREQ + (TOP_FREQ - IDLE_FREQ) * speedNorm
-        n.osc1.frequency.setTargetAtTime(freq, now, 0.08)
-        n.osc2.frequency.setTargetAtTime(freq * 2, now, 0.08)
-        n.filter.frequency.setTargetAtTime(220 + 380 * speedNorm, now, 0.08)
-        const gain = introDone && !muted ? IDLE_GAIN + (TOP_GAIN - IDLE_GAIN) * speedNorm : 0
-        n.master.gain.setTargetAtTime(gain, now, 0.06)
+        const state = driveState.engineState
+        const audible = introDone && !muted
+
+        if (state === 'starting' && audible) {
+          // Starter motor: a slow, thumping cranking chug until it catches.
+          const pulse = 0.5 + 0.5 * Math.sin(now * 25)
+          const f = CRANK_FREQ + 10 * pulse
+          n.osc1.frequency.setTargetAtTime(f, now, 0.03)
+          n.osc2.frequency.setTargetAtTime(f * 2, now, 0.03)
+          n.filter.frequency.setTargetAtTime(160, now, 0.03)
+          n.master.gain.setTargetAtTime(0.09 * pulse, now, 0.02)
+        } else if (state === 'on' && audible) {
+          const rpmNorm = Math.min(Math.max(driveState.rpm / REDLINE_RPM, 0), 1)
+          const freq = IDLE_FREQ + (TOP_FREQ - IDLE_FREQ) * rpmNorm
+          n.osc1.frequency.setTargetAtTime(freq, now, 0.08)
+          n.osc2.frequency.setTargetAtTime(freq * 2, now, 0.08)
+          n.filter.frequency.setTargetAtTime(180 + 460 * rpmNorm, now, 0.08)
+          const gain = IDLE_GAIN + (TOP_GAIN - IDLE_GAIN) * rpmNorm
+          n.master.gain.setTargetAtTime(gain, now, 0.06)
+        } else {
+          // Engine off or muted: silence.
+          n.master.gain.setTargetAtTime(0, now, 0.06)
+          n.osc1.frequency.setTargetAtTime(IDLE_FREQ, now, 0.08)
+          n.osc2.frequency.setTargetAtTime(IDLE_FREQ * 2, now, 0.08)
+        }
       }
       raf = requestAnimationFrame(loop)
     }
