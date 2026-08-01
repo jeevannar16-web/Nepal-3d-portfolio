@@ -3,17 +3,19 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import ArrivalPlane from './ArrivalPlane'
+import ArrivalHelicopter from './ArrivalHelicopter'
 
 const DURATION: Record<string, number> = {
   air: 5,
-  local: 2.5,
+  local: 5,
   standard: 3,
 }
 
 /**
  * Cinematic arrival intro. Waits for IP geolocation, then plays the matching
  * sequence: an air arrival with a plane flying in for international visitors,
- * a short grounded welcome for Nepal, or the default orbit as fallback.
+ * a helicopter arriving low over the mountain ring for Nepal, or the default
+ * orbit as fallback. Skip is always available.
  */
 export default function IntroSequence(): JSX.Element {
   const { camera } = useThree()
@@ -21,6 +23,7 @@ export default function IntroSequence(): JSX.Element {
   const variant = useStore((s) => s.introVariant)
   const skipIntro = useStore((s) => s.skipIntro)
   const planeRef = useRef<THREE.Group>(null)
+  const heliRef = useRef<THREE.Group>(null)
   const elapsed = useRef(0)
   const done = useRef(false)
 
@@ -77,17 +80,41 @@ export default function IntroSequence(): JSX.Element {
         camera.lookAt(0, 0, 0)
       }
     } else if (variant === 'local') {
-      // Grounded arrival: start low beside the car, pull back into the orbit.
-      const sx = 5
-      const sy = 2.4
-      const sz = 8
-      const angle = eased * Math.PI * 1.8
-      camera.position.set(
-        sx + (Math.sin(angle) * 46 - sx) * eased,
-        sy + (26 - eased * 14 - sy) * eased,
-        sz + (Math.cos(angle) * 46 - sz) * eased,
-      )
-      camera.lookAt(0, 0, 0)
+      // Helicopter flies in low over the mountain ring, descending toward the
+      // center, then blends into the orbit as it settles.
+      const hx = -120 + 130 * eased
+      const hz = 80 - 90 * eased
+      const hy = 24 - 20 * eased
+      const heading = Math.atan2(130, -90)
+      if (heliRef.current) {
+        heliRef.current.visible = true
+        heliRef.current.position.set(hx, hy, hz)
+        heliRef.current.rotation.set(0, heading, -0.06)
+      }
+
+      const heliPos = new THREE.Vector3(hx, hy, hz)
+      if (eased < 0.6) {
+        // Chase cam behind and slightly above the helicopter.
+        const back = new THREE.Vector3(-Math.sin(heading), 0, -Math.cos(heading))
+        camera.position
+          .copy(heliPos)
+          .addScaledVector(back, 9)
+          .add(new THREE.Vector3(0, 1.5, 0))
+        const ahead = new THREE.Vector3(Math.sin(heading), 0, Math.cos(heading))
+        camera.lookAt(heliPos.clone().addScaledVector(ahead, 12))
+      } else {
+        // Blend into the standard orbit.
+        const ch = (eased - 0.6) / 0.4
+        const angle = ch * Math.PI * 1.8
+        const target = new THREE.Vector3(
+          Math.sin(angle) * 46,
+          26 - ch * 14,
+          Math.cos(angle) * 46,
+        )
+        const smooth = 1 - Math.pow(2, -delta * 3)
+        camera.position.lerp(target, smooth)
+        camera.lookAt(0, 0, 0)
+      }
     } else {
       // Default orbit (geo failed/timed out).
       const angle = eased * Math.PI * 1.8
@@ -105,5 +132,10 @@ export default function IntroSequence(): JSX.Element {
     }
   })
 
-  return <ArrivalPlane ref={planeRef} />
+  return (
+    <>
+      <ArrivalPlane ref={planeRef} />
+      <ArrivalHelicopter ref={heliRef} />
+    </>
+  )
 }

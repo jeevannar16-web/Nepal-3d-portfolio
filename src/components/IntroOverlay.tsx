@@ -28,7 +28,7 @@ export default function IntroOverlay(): JSX.Element | null {
           </p>
         ) : introVariant === 'local' ? (
           <p className="mt-3 text-sm font-semibold tracking-wide text-amber-300 drop-shadow">
-            Welcome home.
+            Arriving over Kathmandu…
           </p>
         ) : null}
       </div>
