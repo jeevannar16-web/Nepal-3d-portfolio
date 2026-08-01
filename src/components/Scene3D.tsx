@@ -8,6 +8,7 @@ import FollowCamera from './FollowCamera'
 import Landmarks from './Landmarks'
 import ContentPanel from './ContentPanel'
 import Hud from './Hud'
+import Minimap from './Minimap'
 import LoadingScreen from './LoadingScreen'
 import SoundManager from './SoundManager'
 
@@ -28,6 +29,7 @@ function Scene3D() {
         <FollowCamera target={playerBody} />
       </Canvas>
       <Hud />
+      <Minimap />
       <ContentPanel />
       <LoadingScreen />
       <SoundManager />

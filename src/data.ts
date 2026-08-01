@@ -100,6 +100,7 @@ export const landmarks: LandmarkConfig[] = [
     triggerRadius: 3,
     label: 'Temple — About',
     color: '#e07a5f',
+    modelPath: '/models/pagoda.glb',
   },
   {
     id: 'tower',
@@ -108,6 +109,7 @@ export const landmarks: LandmarkConfig[] = [
     triggerRadius: 3,
     label: 'Tower — Skills',
     color: '#81b29a',
+    modelPath: '/models/dharahara.glb',
   },
   {
     id: 'gate',
@@ -116,6 +118,7 @@ export const landmarks: LandmarkConfig[] = [
     triggerRadius: 3,
     label: 'Gate — Projects',
     color: '#f2cc8f',
+    modelPath: '/models/gate.glb',
   },
   {
     id: 'mountain',
@@ -124,5 +127,6 @@ export const landmarks: LandmarkConfig[] = [
     triggerRadius: 3,
     label: 'Mountain — Contact',
     color: '#3d405b',
+    modelPath: '/models/mountain.glb',
   },
 ]

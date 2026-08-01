@@ -2,6 +2,7 @@ import { useRef, useEffect, type JSX } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
+import { minimapState } from '../store/minimapState'
 
 interface Keys {
   forward: boolean
@@ -60,6 +61,18 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
       bodyRef.current = rb
     }
 
+    const pos = rb.translation()
+    minimapState.x = pos.x
+    minimapState.z = pos.z
+    minimapState.heading = heading.current
+
+    if (pos.y < -10) {
+      rb.setTranslation({ x: 0, y: 0.5, z: 0 }, true)
+      rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      heading.current = 0
+      return
+    }
+
     const turn = delta * 2.4
     if (keys.left) heading.current += turn
     if (keys.right) heading.current -= turn
@@ -69,10 +82,12 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
       0,
       Math.cos(heading.current),
     )
-    const forceMag = keys.forward ? 1.4 : keys.backward ? -0.9 : 0
+    // Force-based movement: impulse = force * dt, applied each frame.
+    // Frame-rate independent and handled entirely by the physics engine.
+    const forceMag = keys.forward ? 26 : keys.backward ? -16 : 0
     if (forceMag !== 0) {
       rb.applyImpulse(
-        { x: dir.x * forceMag, y: 0, z: dir.z * forceMag },
+        { x: dir.x * forceMag * delta, y: 0, z: dir.z * forceMag * delta },
         true,
       )
     }
@@ -88,9 +103,10 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
   return (
     <RigidBody
       ref={body}
-      position={[0, 1, 0]}
+      position={[0, 0.5, 0]}
       colliders={false}
       lockRotations
+      ccd
     >
       <CuboidCollider args={[0.5, 0.5, 0.5]} />
       <group ref={visual}>
