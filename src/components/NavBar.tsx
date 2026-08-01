@@ -69,6 +69,7 @@ export default function NavBar(): JSX.Element {
             <button
               key={zone.key}
               type="button"
+              title={zone.title}
               onClick={() => openZone(zone.key)}
               className={`group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
                 active
@@ -79,7 +80,7 @@ export default function NavBar(): JSX.Element {
               <span className={active ? 'text-slate-900' : 'text-amber-300'}>
                 {icons[zone.key]}
               </span>
-              {zone.title}
+              <span className="hidden lg:inline">{zone.title}</span>
             </button>
           )
         })}

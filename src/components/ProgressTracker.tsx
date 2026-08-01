@@ -8,7 +8,7 @@ export default function ProgressTracker(): JSX.Element {
   const visited = visitedZones.length
 
   return (
-    <div className="pointer-events-none absolute bottom-5 right-5 z-10 rounded-xl border border-white/20 bg-black/40 px-4 py-3 backdrop-blur">
+    <div className="pointer-events-none absolute bottom-[13rem] right-5 z-10 rounded-xl border border-white/20 bg-black/40 px-4 py-3 backdrop-blur">
       <div className="text-xs font-semibold uppercase tracking-widest text-white/80">
         Explored
       </div>

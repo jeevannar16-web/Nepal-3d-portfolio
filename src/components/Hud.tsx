@@ -28,7 +28,7 @@ export default function Hud(): JSX.Element {
           hintFaded ? 'opacity-40' : 'opacity-100'
         }`}
       >
-        <div className="hidden rounded-full bg-black/30 px-4 py-2 text-xs text-white/90 backdrop-blur sm:block">
+        <div className="hidden rounded-full bg-black/30 px-4 py-2 text-xs text-white/90 backdrop-blur xl:block">
           WASD / Arrow keys to drive · Enter a landmark to explore
         </div>
         <button

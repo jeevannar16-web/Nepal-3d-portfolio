@@ -170,8 +170,8 @@ export default function Decorations(): JSX.Element {
         {trees.map((t, i) => (
           <Instance
             key={`trunk-${i}`}
-            position={[t.x, t.s * 0.4, t.z]}
-            scale={[t.s * 0.12, t.s * 0.8, t.s * 0.12]}
+            position={[t.x, t.s * 0.5, t.z]}
+            scale={[t.s * 0.2, t.s, t.s * 0.2]}
           />
         ))}
       </Instances>
@@ -181,8 +181,8 @@ export default function Decorations(): JSX.Element {
         {trees.map((t, i) => (
           <Instance
             key={`leaf-${i}`}
-            position={[t.x, t.s, t.z]}
-            scale={[t.s, t.s * 1.3, t.s]}
+            position={[t.x, t.s * 1.1, t.z]}
+            scale={[t.s * 0.5, t.s * 1.1, t.s * 0.5]}
             color={i % 3 === 0 ? '#4c8a52' : '#3d7a44'}
           />
         ))}
@@ -195,7 +195,7 @@ export default function Decorations(): JSX.Element {
             key={`treeShadow-${i}`}
             position={[t.x, 0.015, t.z]}
             rotation={[-Math.PI / 2, 0, 0]}
-            scale={t.s * 1.6}
+            scale={t.s * 1.25}
             color="#ffffff"
           />
         ))}
