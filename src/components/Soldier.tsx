@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type JSX } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { assetUrl } from '../utils/assetUrl'
@@ -105,6 +105,7 @@ export default function Soldier({ ref, motionRef }: SoldierProps): JSX.Element {
   const applied = useRef<Record<string, number>>({})
   const ready = useRef(false)
   const bobRef = useRef<THREE.Group>(null)
+  const { camera } = useThree()
 
   const mixer = useMemo(() => new THREE.AnimationMixer(gltf.scene), [gltf])
   const action = useMemo(() => {
@@ -147,6 +148,27 @@ export default function Soldier({ ref, motionRef }: SoldierProps): JSX.Element {
       ((jump ? 1 : 0) - jumpWeight.current) * Math.min(1, delta * 14)
     const cw = crouchWeight.current
     const jw = jumpWeight.current
+
+    if ((window as any).__gaitRequested) {
+      const gp = new THREE.Vector3()
+      if (ref && ref.current) ref.current.getWorldPosition(gp)
+      ;(window as any).__gait = {
+        y: gp.y,
+        camY: camera.position.y,
+        camX: camera.position.x,
+        camZ: camera.position.z,
+        w,
+        cw,
+        jw,
+        uplegL: applied.current.uplegL ?? 0,
+        legL: applied.current.legL ?? 0,
+        shoulderL: applied.current.shoulderL ?? 0,
+        armL: applied.current.armL ?? 0,
+        spine: applied.current.spine ?? 0,
+        chest: applied.current.chest ?? 0,
+        bobY: bobRef.current ? bobRef.current.position.y : 0,
+      }
+    }
 
     if (action) {
       if (w > 0.02 || crouching || jump) {

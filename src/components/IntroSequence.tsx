@@ -389,6 +389,17 @@ export default function IntroSequence(): JSX.Element {
         planeRef.current.position.copy(planePos)
         orientAircraft(planeRef.current, flightForward.current, bankRef.current)
       }
+      if ((window as any).__probeRequested) {
+        ;(window as any).__probe = {
+          t: elapsed.current,
+          planeY: planePos.y,
+          planeX: planePos.x,
+          planeZ: planePos.z,
+          camY: camera.position.y,
+          camX: camera.position.x,
+          camZ: camera.position.z,
+        }
+      }
       const chase = (backDist: number, up: number, aheadDist: number, down: number) => {
         const back = new THREE.Vector3(
           -Math.sin(planeHeading.current),
