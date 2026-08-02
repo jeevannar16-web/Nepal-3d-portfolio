@@ -85,11 +85,11 @@ function stageInfo(
 const AIR_STAGE_1_HEADING = Math.atan2(-42.4, 42.4)
 
 /** Realistic flight controls: the nose follows the path and banks into turns. */
-const FORWARD_SMOOTH = 2.2
-const BANK_SMOOTH = 3.5
-const MAX_BANK = 0.5
+const FORWARD_SMOOTH = 1.8
+const BANK_SMOOTH = 3.0
+const MAX_BANK = 0.7
 const MAX_PITCH = 0.7
-const BANK_GAIN = 0.6
+const BANK_GAIN = 0.9
 
 /**
  * Cinematic arrival intro. Waits for IP geolocation, then plays the matching

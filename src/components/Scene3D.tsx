@@ -31,6 +31,7 @@ import Minimap from './Minimap'
 import LoadingScreen from './LoadingScreen'
 import SoundManager from './SoundManager'
 import EngineSound from './EngineSound'
+import PlaneSound from './PlaneSound'
 import IntroOverlay from './IntroOverlay'
 import Toast from './Toast'
 import WelcomeCard from './WelcomeCard'
@@ -189,6 +190,7 @@ function Scene3D() {
       <LoadingScreen />
       <SoundManager />
       <EngineSound />
+      <PlaneSound />
     </div>
   )
 }
