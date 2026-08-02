@@ -15,7 +15,7 @@ import Soldier from './Soldier'
 const WALK_SPEED = 3.4
 const SPRINT_SPEED = 6
 const CROUCH_SPEED = 1.6
-const ACCEL = 10
+const ACCEL = 8
 const JUMP_VEL = 4.6
 const ENTER_RADIUS = 3.6
 const ANTICIPATE_TIME = 0.15
@@ -128,7 +128,7 @@ export default function WalkController({
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
     }
-  })
+  }, [])
 
   useFrame((_, delta) => {
     const rb = body.current
