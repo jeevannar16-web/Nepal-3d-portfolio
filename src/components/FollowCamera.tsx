@@ -4,6 +4,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { minimapState } from '../store/minimapState'
+import { walkState } from '../store/walkState'
 import { MAX_SPEED } from './Player'
 
 const BASE_FOV = 70 // matches the Canvas camera; wide enough to see the road ahead
@@ -11,15 +12,17 @@ const FOV_SPEED_GAIN = 6 // degrees added at top speed
 const LOOK_DRAG_SENSITIVITY = 0.006 // radians of orbit per pixel of right-drag
 const LOOK_KEY_RATE = 0.7 // orbit radians/second while Q/E is held
 const Y_AXIS = new THREE.Vector3(0, 1, 0)
-// Chase offsets per mode: directly behind the actor, low and close. The walk
-// drops the camera down near the soldier's eye line; the horse sits a touch
-// higher and closer so the gallop reads.
+// Chase offsets per mode: directly behind the actor. The walk sits back and a
+// touch higher so the whole soldier is framed in a classic third-person view;
+// the horse sits a bit higher and closer so the gallop reads.
 const MODE_OFFSETS: Record<string, [number, number, number]> = {
-  walk: [0, 1.9, -4.4],
+  walk: [0, 3.5, -7.5],
   car: [0, 3.4, -8.5],
   bike: [0, 3.0, -7.5],
   horse: [0, 3.1, -7],
 }
+// Lower, tighter camera while the soldier crouches, at his eye height.
+const CROUCH_OFFSET: [number, number, number] = [0, 1.6, -5.2]
 // Top speed per mode, for the speed-based FOV kick to normalize evenly.
 const MODE_MAX_SPEED: Record<string, number> = {
   walk: 6,
@@ -97,6 +100,8 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     const lin = body.linvel()
     const speed = Math.hypot(lin.x, lin.z)
     const offset = new THREE.Vector3(...(MODE_OFFSETS[playerMode] ?? MODE_OFFSETS.car))
+    const crouching = playerMode === 'walk' && walkState.crouching
+    if (crouching) offset.set(...CROUCH_OFFSET)
     const maxSpeed = MODE_MAX_SPEED[playerMode] ?? MAX_SPEED
 
     // Speed-based FOV — widens with speed for a sense of velocity, eased back
@@ -142,7 +147,9 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
 
     const smooth = 1 - Math.pow(2, -delta * 6)
     camera.position.lerp(desired, smooth)
-    camera.lookAt(pos.x, pos.y + (playerMode === 'walk' ? 1.15 : 0.5), pos.z)
+    const lookY =
+      playerMode === 'walk' ? (crouching ? 0.7 : 1.3) : 0.5
+    camera.lookAt(pos.x, pos.y + lookY, pos.z)
   })
 
   return <></>

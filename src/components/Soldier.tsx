@@ -20,7 +20,7 @@ const SWING_BONES = [
 // folds the shin, shoulder +X swings the arm back, arm -X folds the elbow,
 // spine +X leans the torso forward. Verified against the baked idle pose.
 const WALK_AMP = 0.42
-const RUN_AMP = 0.62
+const RUN_AMP = 0.75
 const KNEE_BEND = 0.75
 const ARM_SWING = 0.35
 const ELBOW_FOLD = 0.22
@@ -29,9 +29,58 @@ const RUN_RATE = 12.5
 const LEAN = 0.08
 const BOB = 0.07
 
+// The run cycle is a distinctly more aggressive gait: higher knee drive,
+// deeper shin fold, arms bent well up and pumping, a forward torso lean and
+// a bigger body bob, all at a faster cadence.
+const RUN_KNEE_BEND = 1.05
+const RUN_ARM_SWING = 0.5
+const RUN_ELBOW_FOLD = 0.42
+const RUN_LEAN = 0.16
+const RUN_BOB = 0.13
+
+interface JumpPose {
+  upleg: number
+  leg: number
+  shoulder: number
+  arm: number
+  forearm: number
+  spine: number
+  chest: number
+}
+
+// Static pose offsets (radians) per jump phase, added on top of the standing
+// base. Anticipate crouches deep to load the legs, airborne tucks knees and
+// curls the torso, land absorbs the impact through bent knees.
+const JUMP_POSES: Record<string, JumpPose> = {
+  anticipate: { upleg: 0.38, leg: -1.15, shoulder: 0.45, arm: -0.3, forearm: -0.2, spine: -0.22, chest: -0.3 },
+  airborne: { upleg: 0.9, leg: -1.2, shoulder: 0.7, arm: -0.5, forearm: -0.35, spine: -0.12, chest: -0.18 },
+  land: { upleg: 0.2, leg: -0.6, shoulder: 0.2, arm: -0.15, forearm: -0.1, spine: -0.08, chest: -0.12 },
+}
+
+const CROUCH_POSE: JumpPose = {
+  upleg: 0.55,
+  leg: -1.35,
+  shoulder: -0.15,
+  arm: -0.85,
+  forearm: -0.6,
+  spine: -0.32,
+  chest: -0.45,
+}
+
+type JumpPhase = 'anticipate' | 'airborne' | 'land' | null
+
 interface Motion {
   moving: boolean
   running: boolean
+  crouching: boolean
+  jump: JumpPhase
+}
+
+const IDLE_MOTION: Motion = {
+  moving: false,
+  running: false,
+  crouching: false,
+  jump: null,
 }
 
 interface SoldierProps {
@@ -51,6 +100,9 @@ export default function Soldier({ ref, motionRef }: SoldierProps): JSX.Element {
   const base = useRef<Partial<Record<(typeof SWING_BONES)[number], THREE.Quaternion>>>({})
   const phase = useRef(0)
   const weight = useRef(0)
+  const crouchWeight = useRef(0)
+  const jumpWeight = useRef(0)
+  const applied = useRef<Record<string, number>>({})
   const ready = useRef(false)
   const bobRef = useRef<THREE.Group>(null)
 
@@ -82,13 +134,22 @@ export default function Soldier({ ref, motionRef }: SoldierProps): JSX.Element {
 
   useFrame((_, delta) => {
     if (!ready.current) return
-    const motion = motionRef?.current ?? { moving: false, running: false }
-    const target = motion.moving ? 1 : 0
+    const motion = motionRef?.current ?? IDLE_MOTION
+    const { moving, running, crouching, jump } = motion
+    const target = moving && !jump ? 1 : 0
     weight.current += (target - weight.current) * Math.min(1, delta * 8)
     const w = weight.current
 
+    // Smooth state weights so pose changes ease instead of snapping.
+    crouchWeight.current +=
+      ((crouching ? 1 : 0) - crouchWeight.current) * Math.min(1, delta * 10)
+    jumpWeight.current +=
+      ((jump ? 1 : 0) - jumpWeight.current) * Math.min(1, delta * 14)
+    const cw = crouchWeight.current
+    const jw = jumpWeight.current
+
     if (action) {
-      if (w > 0.02) {
+      if (w > 0.02 || crouching || jump) {
         if (!action.paused) {
           action.paused = true
           action.time = 0
@@ -98,13 +159,27 @@ export default function Soldier({ ref, motionRef }: SoldierProps): JSX.Element {
         mixer.update(delta)
       }
     }
-    if (w < 0.01) return
+    if (w < 0.01 && !crouching && !jump) return
 
-    phase.current += delta * (motion.running ? RUN_RATE : WALK_RATE)
+    if (!jump) phase.current += delta * (running ? RUN_RATE : WALK_RATE)
     const p = phase.current
-    const amp = motion.running ? RUN_AMP : WALK_AMP
+    const amp = crouching ? 0.18 : running ? RUN_AMP : WALK_AMP
+    const kneeBend = crouching ? 0.6 : running ? RUN_KNEE_BEND : KNEE_BEND
+    const armSwing = running ? RUN_ARM_SWING : ARM_SWING
+    const elbowFold = running ? RUN_ELBOW_FOLD : ELBOW_FOLD
+    const lean = running ? RUN_LEAN : LEAN
+
+    // Walk/run cycle weight: halved into a shuffling gait while crouched, and
+    // cancelled entirely mid-jump so the airborne pose owns the body.
+    const walkW = w * (1 - jw) * (crouching ? 0.5 : 1)
+    const crouchW = cw * (1 - jw) * (moving ? 0.5 : 1)
+    const jp: JumpPose | null = jump ? (JUMP_POSES[jump] ?? null) : null
+    const jx = (name: keyof JumpPose) => (jp ? jp[name] * jw : 0)
+
     const swing = amp * Math.sin(p)
     const swingR = amp * Math.sin(p + Math.PI)
+    const kneeL = -kneeBend * Math.max(0, Math.sin(p))
+    const kneeR = -kneeBend * Math.max(0, Math.sin(p + Math.PI))
 
     const swingBone = (name: (typeof SWING_BONES)[number], x: number) => {
       const bone = bones.current[name]
@@ -113,26 +188,52 @@ export default function Soldier({ ref, motionRef }: SoldierProps): JSX.Element {
       bone.quaternion.copy(q)
       if (x !== 0) {
         bone.quaternion.multiply(
-          new THREE.Quaternion().setFromEuler(new THREE.Euler(x * w, 0, 0)),
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(x, 0, 0)),
         )
       }
+      applied.current[name] = x
     }
 
-    swingBone('uplegL', swing)
-    swingBone('uplegR', swingR)
-    swingBone('legL', -KNEE_BEND * Math.max(0, Math.sin(p)))
-    swingBone('legR', -KNEE_BEND * Math.max(0, Math.sin(p + Math.PI)))
-    swingBone('shoulderL', ARM_SWING * Math.sin(p))
-    swingBone('shoulderR', ARM_SWING * Math.sin(p + Math.PI))
-    swingBone('armL', -ELBOW_FOLD - 0.08 * Math.max(0, Math.sin(p)))
-    swingBone('armR', -ELBOW_FOLD - 0.08 * Math.max(0, Math.sin(p + Math.PI)))
-    swingBone('forearmL', -ELBOW_FOLD * 0.6)
-    swingBone('forearmR', -ELBOW_FOLD * 0.6)
-    swingBone('spine', LEAN)
-    swingBone('chest', LEAN * 0.5)
+    swingBone('uplegL', swing * walkW + CROUCH_POSE.upleg * crouchW + jx('upleg'))
+    swingBone('uplegR', swingR * walkW + CROUCH_POSE.upleg * crouchW + jx('upleg'))
+    swingBone('legL', kneeL * walkW + CROUCH_POSE.leg * crouchW + jx('leg'))
+    swingBone('legR', kneeR * walkW + CROUCH_POSE.leg * crouchW + jx('leg'))
+    swingBone(
+      'shoulderL',
+      armSwing * Math.sin(p) * walkW + CROUCH_POSE.shoulder * crouchW + jx('shoulder'),
+    )
+    swingBone(
+      'shoulderR',
+      armSwing * Math.sin(p + Math.PI) * walkW +
+        CROUCH_POSE.shoulder * crouchW +
+        jx('shoulder'),
+    )
+    swingBone(
+      'armL',
+      (-elbowFold - 0.08 * Math.max(0, Math.sin(p))) * walkW +
+        CROUCH_POSE.arm * crouchW +
+        jx('arm'),
+    )
+    swingBone(
+      'armR',
+      (-elbowFold - 0.08 * Math.max(0, Math.sin(p + Math.PI))) * walkW +
+        CROUCH_POSE.arm * crouchW +
+        jx('arm'),
+    )
+    swingBone(
+      'forearmL',
+      -elbowFold * 0.6 * walkW + CROUCH_POSE.forearm * crouchW + jx('forearm'),
+    )
+    swingBone(
+      'forearmR',
+      -elbowFold * 0.6 * walkW + CROUCH_POSE.forearm * crouchW + jx('forearm'),
+    )
+    swingBone('spine', lean * walkW + CROUCH_POSE.spine * crouchW + jx('spine'))
+    swingBone('chest', lean * 0.5 * walkW + CROUCH_POSE.chest * crouchW + jx('chest'))
 
     if (bobRef.current) {
-      bobRef.current.position.y = BOB * w * Math.abs(Math.sin(p))
+      const bobAmp = crouching ? 0.03 : running ? RUN_BOB : BOB
+      bobRef.current.position.y = bobAmp * walkW * Math.abs(Math.sin(p))
     }
   })
 

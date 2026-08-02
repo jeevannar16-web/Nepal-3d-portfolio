@@ -70,105 +70,128 @@ function stageInfo(
 const SPLINE_POINTS = [
   new THREE.Vector3(-14, 0.06, 88),
   new THREE.Vector3(14, 0.06, 88),
-  new THREE.Vector3(60, 20, 100),
-  new THREE.Vector3(104, 48, 40),
-  new THREE.Vector3(118, 58, -35),
-  new THREE.Vector3(70, 60, -112),
-  new THREE.Vector3(-70, 60, -112),
-  new THREE.Vector3(-118, 58, 30),
-  new THREE.Vector3(-72, 56, 112),
-  new THREE.Vector3(30, 52, 112),
-  new THREE.Vector3(96, 30, 88),
+  new THREE.Vector3(42, 2.5, 88),
+  new THREE.Vector3(72, 12, 90),
+  new THREE.Vector3(104, 40, 56),
+  new THREE.Vector3(120, 82, -18),
+  new THREE.Vector3(120, 97, -60),
+  new THREE.Vector3(80, 99, -112),
+  new THREE.Vector3(-70, 99, -112),
+  new THREE.Vector3(-120, 97, 20),
+  new THREE.Vector3(-76, 94, 112),
+  new THREE.Vector3(24, 92, 112),
+  new THREE.Vector3(96, 55, 88),
   new THREE.Vector3(55, 8, 88),
   new THREE.Vector3(18, 0.06, 88),
   new THREE.Vector3(-16, 0.06, 88),
 ]
 
-const SEG_LENGTH_SAMPLES = 10
+const SEG_LENGTH_SAMPLES = 12
 
+/**
+ * Centripetal Catmull-Rom (alpha 0.5) flight path. Unlike uniform Catmull-Rom
+ * this parameterization is affine-invariant, so runway segments drawn through
+ * collinear control points stay exactly straight and level (uniform CR weaves
+ * off-line by up to ~8 units and dips below the runway). Cruise sits at ~100,
+ * well above the mountain ring (~52 near / ~58 far), so the plane visibly
+ * rounds the sky. The spline's tangent gives the plane's heading/pitch every
+ * frame, so it banks into every curve like a real airplane.
+ */
 class FlightPath {
   private cum: number[] = []
+  private tau: Array<[number, number, number]> = []
   private total = 0
   readonly rollout: number
 
   constructor(points: THREE.Vector3[]) {
     const n = points.length
+    for (let i = 0; i < n - 1; i++) {
+      const p0 = this.getPoint(points, i - 1)
+      const p1 = points[i]
+      const p2 = points[i + 1]
+      const p3 = this.getPoint(points, i + 2)
+      const t0 = 0
+      const t1 = t0 + Math.sqrt(p1.distanceTo(p0))
+      const t2 = t1 + Math.sqrt(p2.distanceTo(p1))
+      const t3 = t2 + Math.sqrt(p3.distanceTo(p2))
+      this.tau.push([t1, t2, t3])
+    }
     this.cum = [0]
     for (let i = 0; i < n - 1; i++) {
-      const segLen = this.segmentLength(points, i)
-      this.cum.push(this.cum[i] + segLen)
+      this.cum.push(this.cum[i] + this.segmentLength(points, i))
     }
     this.total = this.cum[n - 1]
     this.rollout = this.cum[n - 1] - this.cum[n - 2]
   }
 
   private getPoint(points: THREE.Vector3[], i: number): THREE.Vector3 {
-    return points[Math.max(0, Math.min(points.length - 1, i))]
+    const n = points.length
+    if (i < 0) {
+      // Virtual mirrored control point so the takeoff run keeps the runway
+      // tangent instead of bending toward the origin.
+      return points[0].clone().multiplyScalar(2).sub(points[1])
+    }
+    if (i >= n) {
+      return points[n - 1].clone().multiplyScalar(2).sub(points[n - 2])
+    }
+    return points[i]
+  }
+
+  private static lerpV(
+    a: THREE.Vector3,
+    b: THREE.Vector3,
+    ta: number,
+    tb: number,
+    t: number,
+  ): THREE.Vector3 {
+    const w = (tb - t) / (tb - ta)
+    return a.clone().multiplyScalar(w).addScaledVector(b, 1 - w)
+  }
+
+  private evalSeg(i: number, t: number): THREE.Vector3 {
+    const points = SPLINE_POINTS
+    const p0 = this.getPoint(points, i - 1)
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = this.getPoint(points, i + 2)
+    const [t1, t2, t3] = this.tau[i]
+    const A = FlightPath.lerpV(p0, p1, 0, t1, t)
+    const B = FlightPath.lerpV(p1, p2, t1, t2, t)
+    const C = FlightPath.lerpV(p2, p3, t2, t3, t)
+    const AB = FlightPath.lerpV(A, B, t1, t2, t)
+    const BC = FlightPath.lerpV(B, C, t2, t3, t)
+    return FlightPath.lerpV(AB, BC, t1, t2, t)
+  }
+
+  private evalSegTangent(i: number, t: number): THREE.Vector3 {
+    const h = 1e-4
+    return this.evalSeg(i, t + h).sub(this.evalSeg(i, t - h)).multiplyScalar(0.5 / h)
   }
 
   private segmentLength(points: THREE.Vector3[], i: number): number {
-    const p0 = this.getPoint(points, i - 1)
-    const p1 = this.getPoint(points, i)
-    const p2 = this.getPoint(points, i + 1)
-    const p3 = this.getPoint(points, i + 2)
-    const prev = p1.clone()
+    const [t1, t2] = this.tau[i]
+    const prev = points[i].clone()
     let len = 0
     for (let k = 1; k <= SEG_LENGTH_SAMPLES; k++) {
-      const u = k / SEG_LENGTH_SAMPLES
-      const cur = this.evalSeg(p0, p1, p2, p3, u)
+      const t = t1 + (t2 - t1) * (k / SEG_LENGTH_SAMPLES)
+      const cur = this.evalSeg(i, t)
       len += cur.distanceTo(prev)
       prev.copy(cur)
     }
     return len
   }
 
-  private evalSeg(
-    p0: THREE.Vector3,
-    p1: THREE.Vector3,
-    p2: THREE.Vector3,
-    p3: THREE.Vector3,
-    u: number,
-  ): THREE.Vector3 {
-    const u2 = u * u
-    const u3 = u2 * u
-    return new THREE.Vector3()
-      .copy(p1)
-      .multiplyScalar(2 * u3 - 3 * u2 + 1)
-      .addScaledVector(p2, -2 * u3 + 3 * u2)
-      .addScaledVector(p0, u3 - 2 * u2 + u)
-      .addScaledVector(p3, u3 - u2)
-  }
-
-  private evalSegTangent(
-    p0: THREE.Vector3,
-    p1: THREE.Vector3,
-    p2: THREE.Vector3,
-    p3: THREE.Vector3,
-    u: number,
-  ): THREE.Vector3 {
-    const u2 = u * u
-    return new THREE.Vector3()
-      .copy(p1)
-      .multiplyScalar(6 * u2 - 6 * u)
-      .addScaledVector(p2, -6 * u2 + 6 * u)
-      .addScaledVector(p0, 3 * u2 - 4 * u + 1)
-      .addScaledVector(p3, 3 * u2 - 2 * u)
-  }
-
   /** Position + tangent (unnormalized) at arc distance s along the spline. */
   sample(s: number): { pos: THREE.Vector3; tangent: THREE.Vector3 } {
-    const points = SPLINE_POINTS
     let i = 0
     while (i < this.cum.length - 2 && s >= this.cum[i + 1]) i++
     const segLen = this.cum[i + 1] - this.cum[i]
     const u = segLen > 0 ? (s - this.cum[i]) / segLen : 0
-    const p0 = this.getPoint(points, i - 1)
-    const p1 = this.getPoint(points, i)
-    const p2 = this.getPoint(points, i + 1)
-    const p3 = this.getPoint(points, i + 2)
+    const [t1, t2] = this.tau[i]
+    const t = t1 + (t2 - t1) * u
     return {
-      pos: this.evalSeg(p0, p1, p2, p3, u),
-      tangent: this.evalSegTangent(p0, p1, p2, p3, u),
+      pos: this.evalSeg(i, t),
+      tangent: this.evalSegTangent(i, t),
     }
   }
 
@@ -257,7 +280,7 @@ export default function IntroSequence(): JSX.Element {
       let bestD = Infinity
       for (let i = 0; i <= N; i++) {
         const t = i / N
-        const s = flightPath.toArc(t, TOTAL_TIME)
+        const s = flightPath.toArc(t * TOTAL_TIME, TOTAL_TIME)
         const { pos } = flightPath.sample(s)
         const d = Math.hypot(pos.x - lm.position[0], pos.z - lm.position[2])
         if (d < bestD) {
@@ -323,8 +346,11 @@ export default function IntroSequence(): JSX.Element {
       lookAt.set(0, 0, 0)
     } else {
       // ---- Shared airplane journey along the spline ----
+      // toArc takes elapsed *seconds* (its internal t1/t2 thresholds are in
+      // seconds); passing the 0..1 fraction would stall the plane near the
+      // runway for the entire intro.
       const s = flightPath.toArc(
-        Math.min(elapsed.current / TOTAL_TIME, 1),
+        Math.min(elapsed.current, TOTAL_TIME),
         TOTAL_TIME,
       )
       const { pos, tangent } = flightPath.sample(s)
@@ -363,7 +389,6 @@ export default function IntroSequence(): JSX.Element {
         planeRef.current.position.copy(planePos)
         orientAircraft(planeRef.current, flightForward.current, bankRef.current)
       }
-
       const chase = (backDist: number, up: number, aheadDist: number, down: number) => {
         const back = new THREE.Vector3(
           -Math.sin(planeHeading.current),
@@ -378,7 +403,6 @@ export default function IntroSequence(): JSX.Element {
         )
         lookAt.copy(planePos).addScaledVector(ahead, aheadDist).add(new THREE.Vector3(0, -down, 0))
       }
-
       if (key === 'taxi') {
         // Fixed shot beside the runway watching the ground roll and rotation.
         ndc = { x: 0, y: 0.5 }

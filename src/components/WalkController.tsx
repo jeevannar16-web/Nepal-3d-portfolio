@@ -9,13 +9,17 @@ import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 import { transportState, type TransportPose } from '../store/transportState'
+import { walkState } from '../store/walkState'
 import Soldier from './Soldier'
 
 const WALK_SPEED = 3.4
 const SPRINT_SPEED = 6
+const CROUCH_SPEED = 1.6
 const ACCEL = 10
 const JUMP_VEL = 4.6
 const ENTER_RADIUS = 3.6
+const ANTICIPATE_TIME = 0.15
+const LAND_TIME = 0.32
 
 const keyMap: Record<string, 'fwd' | 'back' | 'left' | 'right' | 'run'> = {
   KeyW: 'fwd',
@@ -62,8 +66,16 @@ export default function WalkController({
   const visual = useRef<THREE.Group>(null)
   const heading = useRef(transportState.walk.heading)
   const grounded = useRef(true)
+  const crouching = useRef(false)
+  const jumpState = useRef<'anticipate' | 'airborne' | 'land' | null>(null)
+  const jumpTimer = useRef(0)
   const scriptTime = useRef(-1)
-  const motionRef = useRef({ moving: false, running: false })
+  const motionRef = useRef({
+    moving: false,
+    running: false,
+    crouching: false,
+    jump: null as 'anticipate' | 'airborne' | 'land' | null,
+  })
   const activeRef = useRef(active)
   activeRef.current = active
   const activePrev = useRef(active)
@@ -93,11 +105,15 @@ export default function WalkController({
       if (e.code === 'Space') {
         e.preventDefault()
         const rb = body.current
-        if (rb && grounded.current) {
-          const lin = rb.linvel()
-          rb.setLinvel({ x: lin.x, y: JUMP_VEL, z: lin.z }, true)
-          grounded.current = false
+        if (rb && grounded.current && !jumpState.current) {
+          jumpState.current = 'anticipate'
+          jumpTimer.current = 0
         }
+        return
+      }
+      if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC') {
+        e.preventDefault()
+        crouching.current = !crouching.current
         return
       }
       if (e.code === 'KeyE') enterVehicle()
@@ -173,16 +189,42 @@ export default function WalkController({
         visual.current.position.set(0, 0.5, 0)
         visual.current.rotation.y = heading.current
       }
-      motionRef.current = { moving: true, running: false }
+      motionRef.current = {
+        moving: true,
+        running: false,
+        crouching: false,
+        jump: null,
+      }
       minimapState.x = pos.x
       minimapState.z = pos.z
       minimapState.heading = heading.current
       return
     }
 
-    // ---- Grounded check ----
+    // ---- Grounded check + jump state machine ----
     const vel = rb.linvel()
-    grounded.current = pos.y < 1.35 && Math.abs(vel.y) < 0.4
+    const groundedPhys = pos.y < 1.35 && Math.abs(vel.y) < 0.4
+    switch (jumpState.current) {
+      case 'anticipate':
+        jumpTimer.current += delta
+        if (jumpTimer.current >= ANTICIPATE_TIME) {
+          rb.setLinvel({ x: vel.x, y: JUMP_VEL, z: vel.z }, true)
+          jumpState.current = 'airborne'
+          jumpTimer.current = 0
+        }
+        break
+      case 'airborne':
+        if (groundedPhys) {
+          jumpState.current = 'land'
+          jumpTimer.current = 0
+        }
+        break
+      case 'land':
+        jumpTimer.current += delta
+        if (jumpTimer.current >= LAND_TIME) jumpState.current = null
+        break
+    }
+    grounded.current = groundedPhys
 
     // ---- Movement relative to camera ----
     const camDir = new THREE.Vector3()
@@ -190,7 +232,11 @@ export default function WalkController({
     const camYaw = Math.atan2(camDir.x, camDir.z)
     const fwdInput = (KEYS.fwd ? 1 : 0) - (KEYS.back ? 1 : 0)
     const sideInput = (KEYS.right ? 1 : 0) - (KEYS.left ? 1 : 0)
-    const speed = KEYS.run ? SPRINT_SPEED : WALK_SPEED
+    const speed = crouching.current
+      ? CROUCH_SPEED
+      : KEYS.run
+        ? SPRINT_SPEED
+        : WALK_SPEED
 
     const targetVel = new THREE.Vector3()
     if (fwdInput !== 0 || sideInput !== 0) {
@@ -203,7 +249,8 @@ export default function WalkController({
 
     const nvx = THREE.MathUtils.lerp(vel.x, targetVel.x, 1 - Math.exp(-delta * ACCEL))
     const nvz = THREE.MathUtils.lerp(vel.z, targetVel.z, 1 - Math.exp(-delta * ACCEL))
-    rb.setLinvel({ x: nvx, y: vel.y, z: nvz }, true)
+    const vyNow = rb.linvel().y
+    rb.setLinvel({ x: nvx, y: vyNow, z: nvz }, true)
 
     // ---- Persist pose + minimap ----
     transportState.walk = {
@@ -218,7 +265,13 @@ export default function WalkController({
 
     // ---- Visual: face the heading, hand the walk cycle to Soldier ----
     const moving = Math.hypot(nvx, nvz) > 0.5
-    motionRef.current = { moving, running: moving && KEYS.run }
+    motionRef.current = {
+      moving,
+      running: moving && KEYS.run && !crouching.current,
+      crouching: crouching.current,
+      jump: jumpState.current,
+    }
+    walkState.crouching = crouching.current
     if (visual.current) visual.current.rotation.y = heading.current
   })
 
