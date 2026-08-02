@@ -4,6 +4,7 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { assetUrl } from '../utils/assetUrl'
 import { useStore } from '../store/useStore'
+import { orientAircraft } from '../utils/attitude'
 import Helicopter from './Helicopter'
 
 interface PropPlacement {
@@ -179,8 +180,23 @@ function AmbientPlane(): JSX.Element | null {
     if (!g || !introDone) return
     const t = state.clock.elapsedTime * 0.06
     const r = 55
-    g.position.set(Math.sin(t) * r, 30 + Math.sin(t * 0.5) * 2, Math.cos(t) * r)
-    g.rotation.set(-0.08, Math.PI / 2 + t, 0.06)
+    const x = Math.sin(t) * r
+    const z = Math.cos(t) * r
+    g.position.set(x, 30 + Math.sin(t * 0.5) * 2, z)
+    // Follow the path and bank into the circle (toward its center), like a
+    // real airplane holding a constant-radius turn.
+    const forward = new THREE.Vector3(
+      Math.cos(t) * r * 0.06,
+      Math.cos(t * 0.5) * 0.06,
+      -Math.sin(t) * r * 0.06,
+    ).normalize()
+    const centerDir = new THREE.Vector3(-x, 0, -z).normalize()
+    const right = new THREE.Vector3().crossVectors(
+      new THREE.Vector3(0, 1, 0),
+      forward,
+    )
+    const bank = right.dot(centerDir) >= 0 ? 0.35 : -0.35
+    orientAircraft(g, forward, bank)
   })
 
   if (!introDone) return null

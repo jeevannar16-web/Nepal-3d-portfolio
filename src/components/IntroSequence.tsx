@@ -2,6 +2,7 @@ import { useEffect, useRef, type JSX } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore, type IntroStage } from '../store/useStore'
+import { angleDelta, clampPitch, orientAircraft } from '../utils/attitude'
 import ArrivalPlane from './ArrivalPlane'
 import Airport from './Airport'
 
@@ -82,7 +83,13 @@ function stageInfo(
 }
 
 const AIR_STAGE_1_HEADING = Math.atan2(-42.4, 42.4)
-const LOCAL_STAGE_1_HEADING = Math.atan2(-4, 4)
+
+/** Realistic flight controls: the nose follows the path and banks into turns. */
+const FORWARD_SMOOTH = 2.2
+const BANK_SMOOTH = 3.5
+const MAX_BANK = 0.5
+const MAX_PITCH = 0.7
+const BANK_GAIN = 0.6
 
 /**
  * Cinematic arrival intro. Waits for IP geolocation, then plays the matching
@@ -104,6 +111,9 @@ export default function IntroSequence(): JSX.Element {
   const started = useRef(false)
   const currentStage = useRef<IntroStage>('orbit')
   const planeHeading = useRef(0)
+  const flightForward = useRef(new THREE.Vector3(0, 0, 1))
+  const bankRef = useRef(0)
+  const prevHeading = useRef(0)
 
   const stages = STAGES[variant] ?? STAGES.standard
   const totalDuration = stages.reduce((a, s) => a + s.duration, 0)
@@ -122,6 +132,8 @@ export default function IntroSequence(): JSX.Element {
     if (!started.current) {
       started.current = true
       planeHeading.current = AIR_STAGE_1_HEADING
+      prevHeading.current = AIR_STAGE_1_HEADING
+      flightForward.current.set(-42.4, 0, 42.4).normalize()
     } else {
       elapsed.current += delta
     }
@@ -136,39 +148,40 @@ export default function IntroSequence(): JSX.Element {
     const posTarget = new THREE.Vector3()
     let lookAt = new THREE.Vector3(0, 0, 0)
     let aircraftPos: THREE.Vector3 | null = null
+    let targetForward: THREE.Vector3 | null = null
 
     if (variant === 'air') {
       // ---- Airplane journey ----
       let tx = 0
       let tz = 0
       let ty = 0
-      let targetHeading = AIR_STAGE_1_HEADING
       if (key === 'airport') {
-        // Taxi down the runway and lift off toward the valley.
+        // Taxi down the runway and lift off toward the valley; the nose starts
+        // level and rotates up as it leaves the ground.
         tx = 140.7 - 42.4 * eased
         tz = -140.7 + 42.4 * eased
         ty = 0.42 + 16 * eased
-        targetHeading = AIR_STAGE_1_HEADING
+        targetForward = clampPitch(
+          new THREE.Vector3(-42.4, 16 * Math.min(eased * 3, 1), 42.4),
+          MAX_PITCH,
+        )
       } else if (key === 'flight') {
         // Climb high over the Himalayan ring toward the valley.
         tx = 98.3 - 98.3 * eased
         tz = -98.3 + 98.3 * eased
         ty = 16.42 + 40 * eased
-        targetHeading = Math.atan2(-98.3, 98.3)
+        targetForward = clampPitch(new THREE.Vector3(-98.3, 40, 98.3), MAX_PITCH)
       } else {
         // Descent toward the car, then settle into the orbit. The plane lands
         // to the right of the valley center so it never sits on the intro text.
         tx = 20 * eased
         tz = 6 * eased
         ty = 56.42 - 50.42 * eased
-        targetHeading = Math.atan2(20, 6)
+        targetForward = clampPitch(new THREE.Vector3(20, -50.42, 6), MAX_PITCH)
       }
-      planeHeading.current +=
-        (targetHeading - planeHeading.current) * smooth(delta, 4)
       if (planeRef.current) {
         planeRef.current.visible = true
         planeRef.current.position.set(tx, ty, tz)
-        planeRef.current.rotation.set(-0.16, planeHeading.current, -0.12)
       }
       const planePos = new THREE.Vector3(tx, ty, tz)
       aircraftPos = planePos
@@ -203,33 +216,32 @@ export default function IntroSequence(): JSX.Element {
       let lx = 0
       let lz = 0
       let ly = 0
-      let targetHeading = LOCAL_STAGE_1_HEADING
       if (key === 'takeoff') {
-        // Lift off from near the city center.
+        // Lift off from near the city center; rotate up as it climbs away.
         lx = 14 - 4 * eased
         lz = 10 + 4 * eased
         ly = 0.4 + 17.6 * eased
-        targetHeading = LOCAL_STAGE_1_HEADING
+        targetForward = clampPitch(
+          new THREE.Vector3(-4, 17.6 * Math.min(eased * 3, 1), 4),
+          MAX_PITCH,
+        )
       } else if (key === 'flyover') {
         // Climb out over the valley and the mountain ring.
         lx = 10 - 130 * eased
         lz = 14 + 76 * eased
         ly = 18 + 27 * eased
-        targetHeading = Math.atan2(-130, 76)
+        targetForward = clampPitch(new THREE.Vector3(-130, 27, 76), MAX_PITCH)
       } else {
         // Swoop back over the ring and descend toward the valley center. The
         // chase camera keeps it framed throughout — no orbit tail.
         lx = -120 + 124 * eased
         lz = 90 - 94 * eased
         ly = 45 - 42 * eased
-        targetHeading = Math.atan2(124, -94)
+        targetForward = clampPitch(new THREE.Vector3(124, -42, -94), MAX_PITCH)
       }
-      planeHeading.current +=
-        (targetHeading - planeHeading.current) * smooth(delta, 4)
       if (planeRef.current) {
         planeRef.current.visible = true
         planeRef.current.position.set(lx, ly, lz)
-        planeRef.current.rotation.set(-0.16, planeHeading.current, -0.12)
       }
       const planePos = new THREE.Vector3(lx, ly, lz)
       aircraftPos = planePos
@@ -261,6 +273,32 @@ export default function IntroSequence(): JSX.Element {
       const angle = eased * Math.PI * 1.8
       posTarget.set(Math.sin(angle) * 46, 26 - eased * 14, Math.cos(angle) * 46)
       lookAt.set(0, 0, 0)
+    }
+
+    if (targetForward) {
+      // Realistic flight controls: the nose follows the flight path (pitching
+      // on climbs/descents) and banks into heading changes, smoothly.
+      flightForward.current
+        .lerp(targetForward, smooth(delta, FORWARD_SMOOTH))
+        .normalize()
+      planeHeading.current = Math.atan2(
+        flightForward.current.x,
+        flightForward.current.z,
+      )
+      const turnRate =
+        angleDelta(prevHeading.current, planeHeading.current) /
+        Math.max(delta, 1e-4)
+      prevHeading.current = planeHeading.current
+      const bankTarget = THREE.MathUtils.clamp(
+        turnRate * BANK_GAIN,
+        -MAX_BANK,
+        MAX_BANK,
+      )
+      bankRef.current +=
+        (bankTarget - bankRef.current) * smooth(delta, BANK_SMOOTH)
+      if (planeRef.current) {
+        orientAircraft(planeRef.current, flightForward.current, bankRef.current)
+      }
     }
 
     if (snap) camera.position.copy(posTarget)
