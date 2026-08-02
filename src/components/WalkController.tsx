@@ -272,6 +272,20 @@ export default function WalkController({
       jump: jumpState.current,
     }
     walkState.crouching = crouching.current
+    ;(window as any).__body = {
+      x: pos.x,
+      y: pos.y,
+      z: pos.z,
+      vy: vel.y,
+      groundedPhys,
+      type: active ? 'dynamic' : 'fixed',
+    }
+    ;(window as any).__motion = {
+      moving: motionRef.current.moving,
+      running: motionRef.current.running,
+      crouching: motionRef.current.crouching,
+      jump: motionRef.current.jump,
+    }
     if (visual.current) visual.current.rotation.y = heading.current
   })
 
