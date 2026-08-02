@@ -1,7 +1,7 @@
 import { useMemo, type JSX } from 'react'
 import { Instances, Instance } from '@react-three/drei'
 import * as THREE from 'three'
-import { roadPaths, mulberry32, pointSegDist, POND } from '../world'
+import { roadPaths, mulberry32, pointSegDist, POND, RIVER } from '../world'
 import { landmarks } from '../data'
 import { blobShadowTexture, glowTexture } from '../utils/textures'
 import { PALETTE } from '../utils/palette'
@@ -70,6 +70,16 @@ const MANI_COLORS = PALETTE.maniStone
 const clearOfPond = (x: number, z: number) =>
   Math.hypot(x - POND.x, z - POND.z) > POND.radius + 2.5
 
+// Keep scenery off both banks of the river (width/2 + a small margin).
+const clearOfWater = (x: number, z: number) =>
+  RIVER.path.every(
+    (_, i) =>
+      i === RIVER.path.length - 1 ||
+      pointSegDist(x, z, RIVER.path[i], RIVER.path[i + 1]) > RIVER.width / 2 + 2.5,
+  )
+
+const clearOfScenery = (x: number, z: number) => clearOfPond(x, z) && clearOfWater(x, z)
+
 export default function Decorations(): JSX.Element {
   const { trees, houses, flagPoles, flagStrings, flagFlags, stupas, manis } =
     useMemo(() => {
@@ -106,14 +116,14 @@ export default function Decorations(): JSX.Element {
             const off = 4.5 + rng() * 3.5
             const tx = rx + px * off * side
             const tz = rz + pz * off * side
-            if (clearOfPond(tx, tz)) {
+            if (clearOfScenery(tx, tz)) {
               trees.push({ x: tx, z: tz, s: 0.8 + rng() * 1.4 })
             }
           } else if (roll < 0.56) {
             const off = 10 + rng() * 5
             const hx = rx + px * off * side
             const hz = rz + pz * off * side
-            if (clearOfPond(hx, hz)) {
+            if (clearOfScenery(hx, hz)) {
               houses.push({
                 x: hx,
                 z: hz,
@@ -126,7 +136,7 @@ export default function Decorations(): JSX.Element {
             const off = 6 + rng() * 3
             const sx = rx + px * off * side
             const sz = rz + pz * off * side
-            if (clearOfPond(sx, sz)) {
+            if (clearOfScenery(sx, sz)) {
               stupas.push({
                 x: sx,
                 z: sz,
@@ -139,7 +149,7 @@ export default function Decorations(): JSX.Element {
             const off = 3.2 + rng() * 1.5
             const bx = rx + px * off * side
             const bz = rz + pz * off * side
-            if (clearOfPond(bx, bz)) {
+            if (clearOfScenery(bx, bz)) {
               const y = 1.5 + rng() * 1.0
               const angle = rng() * Math.PI * 2
               const len = 1.3 + rng() * 0.5
@@ -168,7 +178,7 @@ export default function Decorations(): JSX.Element {
             const off = 4 + rng() * 3
             const mx = rx + px * off * side
             const mz = rz + pz * off * side
-            if (clearOfPond(mx, mz)) {
+            if (clearOfScenery(mx, mz)) {
               manis.push({
                 x: mx,
                 z: mz,
@@ -203,7 +213,7 @@ export default function Decorations(): JSX.Element {
         }
         if (!clear) break
       }
-      if (clear && clearOfPond(x, z)) trees.push({ x, z, s: 0.8 + rng() * 1.2 })
+      if (clear && clearOfScenery(x, z)) trees.push({ x, z, s: 0.8 + rng() * 1.2 })
     }
 
     return { trees, houses, flagPoles, flagStrings, flagFlags, stupas, manis }

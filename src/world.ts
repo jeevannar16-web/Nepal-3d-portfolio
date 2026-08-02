@@ -39,6 +39,23 @@ export const roadPaths: Point[][] = [
  */
 export const POND = { x: -84, z: -92, radius: 4.5 }
 
+/**
+ * Wide river flowing across the valley. It crosses exactly one road — the
+ * gate<->tower highway — at (42, -42), where the driveable bridge spans it.
+ * Scenery generators keep a margin clear on both banks.
+ */
+export const RIVER = {
+  path: [
+    [-62, -72],
+    [-40, -65],
+    [0, -52],
+    [42, -42],
+    [80, -25],
+    [95, -22],
+  ] as Point[],
+  width: 12,
+}
+
 /** Deterministic PRNG so scenery stays in the same place every load. */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0

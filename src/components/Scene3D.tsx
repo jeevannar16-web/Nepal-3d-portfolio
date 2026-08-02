@@ -13,6 +13,7 @@ import Decorations from './Decorations'
 import Props from './Props'
 import MountainRange from './MountainRange'
 import WaterPond from './WaterPond'
+import WaterRiver from './WaterRiver'
 import Rain from './Rain'
 import TireTracks from './TireTracks'
 import GradientSky from './GradientSky'
@@ -113,6 +114,7 @@ function Scene3D() {
         </Physics>
         <MountainRange />
         <WaterPond />
+        <WaterRiver />
         <Decorations />
         <Props />
         <TireTracks target={playerBody} />
