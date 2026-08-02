@@ -1,6 +1,7 @@
 import { useEffect, useRef, type JSX } from 'react'
 import { Howl, Howler } from 'howler'
 import { useStore } from '../store/useStore'
+import { assetUrl } from '../utils/assetUrl'
 
 export default function SoundManager(): JSX.Element {
   const started = useRef(false)
@@ -9,7 +10,7 @@ export default function SoundManager(): JSX.Element {
 
   useEffect(() => {
     ambient.current = new Howl({
-      src: ['/sounds/ambient.wav'],
+      src: [assetUrl('/sounds/ambient.wav')],
       loop: true,
       volume: 0.25,
       html5: false,

@@ -1,6 +1,7 @@
 import type { JSX, RefObject } from 'react'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import { assetUrl } from '../utils/assetUrl'
 
 const PLANE_SCALE = 0.004
 // plane.glb base (landing gear) sits at model-local y=-216; offset so the
@@ -18,7 +19,7 @@ export default function ArrivalPlane({
 }: {
   ref: RefObject<THREE.Group | null>
 }): JSX.Element {
-  const gltf = useGLTF('/models/plane.glb')
+  const gltf = useGLTF(assetUrl('/models/plane.glb'))
   return (
     <group ref={ref} visible={false}>
       <primitive

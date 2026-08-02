@@ -1,3 +1,5 @@
+import { assetUrl } from './utils/assetUrl'
+
 export interface Project {
   id: string
   title: string
@@ -121,7 +123,7 @@ export const landmarks: LandmarkConfig[] = [
     triggerRadius: 3,
     label: 'Temple — About',
     color: '#e07a5f',
-    modelPath: '/models/temple.glb',
+    modelPath: assetUrl('/models/temple.glb'),
     modelScale: 0.13,
     modelRotationY: 0,
     modelOffsetY: 0,
@@ -133,7 +135,7 @@ export const landmarks: LandmarkConfig[] = [
     triggerRadius: 3,
     label: 'Tower — Skills',
     color: '#81b29a',
-    modelPath: '/models/dharahara.glb',
+    modelPath: assetUrl('/models/dharahara.glb'),
     modelScale: 0.75,
     modelRotationY: 0,
     modelOffsetY: 0,
@@ -145,7 +147,7 @@ export const landmarks: LandmarkConfig[] = [
     triggerRadius: 3,
     label: 'Gate — Projects',
     color: '#f2cc8f',
-    modelPath: '/models/gate.glb',
+    modelPath: assetUrl('/models/gate.glb'),
     modelScale: 14,
     modelRotationY: 0,
     modelOffsetY: 3.1,
@@ -157,7 +159,7 @@ export const landmarks: LandmarkConfig[] = [
     triggerRadius: 3,
     label: 'Mountain — Contact',
     color: '#3d405b',
-    modelPath: '/models/mountain.glb',
+    modelPath: assetUrl('/models/mountain.glb'),
     modelScale: 0.65,
     modelRotationY: 0,
     modelOffsetY: 0,

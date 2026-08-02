@@ -7,6 +7,7 @@ import { minimapState } from '../store/minimapState'
 import { driveState, type EngineState, type GearLabel } from '../store/driveState'
 import { useStore } from '../store/useStore'
 import { glowTexture } from '../utils/textures'
+import { assetUrl } from '../utils/assetUrl'
 import BlobShadow from './BlobShadow'
 
 // ---- Real-car powertrain (engine, gearbox, torque — not arcade force) ----
@@ -99,7 +100,7 @@ function torqueFactor(n: number): number {
 }
 
 export default function Player({ bodyRef }: PlayerProps): JSX.Element {
-  const { scene: carScene } = useGLTF('/models/car.glb')
+  const { scene: carScene } = useGLTF(assetUrl('/models/car.glb'))
   const body = useRef<RapierRigidBody>(null)
   const heading = useRef(0)
   const visual = useRef<THREE.Group>(null)
