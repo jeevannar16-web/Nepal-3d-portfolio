@@ -130,6 +130,10 @@ function Scene3D() {
         <fog attach="fog" args={[theme.fog, fogNear, fogFar]} />
         <GradientSky />
         <ambientLight intensity={theme.ambient} />
+        {/* Soft fill from every direction so the aircraft (and other geometry)
+            never falls into a shadowed side facing the camera, no matter its
+            heading during the intro. The single sun only lights the tops. */}
+        <hemisphereLight args={['#ffffff', '#c9a07c', 0.4]} />
         <directionalLight
           position={[10, 15, 10]}
           intensity={theme.sunIntensity}

@@ -3,7 +3,6 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore, type IntroStage } from '../store/useStore'
 import ArrivalPlane from './ArrivalPlane'
-import ArrivalHelicopter from './ArrivalHelicopter'
 import Airport from './Airport'
 
 interface Stage {
@@ -14,8 +13,8 @@ interface Stage {
 /**
  * Journey timeline per variant. International visitors get a full
  * airport -> flight over the Himalayas -> descent; Nepal visitors get a
- * parallel takeoff -> flyover -> landing by helicopter; geo failure falls
- * back to a short orbit. Every stage is skippable.
+ * parallel takeoff -> flyover -> landing. Both fly the same airplane model;
+ * geo failure falls back to a short orbit. Every stage is skippable.
  */
 const STAGES: Record<string, Stage[]> = {
   air: [
@@ -35,6 +34,37 @@ const STAGES: Record<string, Stage[]> = {
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
 
 const smooth = (delta: number, rate = 5) => 1 - Math.pow(2, -delta * rate)
+
+/** Keep the aircraft at this viewport height (above the centered title). */
+const TARGET_NDC_Y = 0.55
+
+const UP_VECTOR = new THREE.Vector3(0, 1, 0)
+
+/**
+ * Tilt the camera (pitch only, keeping its heading) so the aircraft's center
+ * sits at TARGET_NDC_Y. Guarantees the aircraft stays clear of the centered
+ * name/role text at every frame, regardless of stage, path or easing.
+ */
+function aimAircraft(
+  acPos: THREE.Vector3,
+  camPos: THREE.Vector3,
+  lookAt: THREE.Vector3,
+  fov: number,
+): THREE.Vector3 {
+  const arm = camPos.distanceTo(lookAt)
+  if (arm < 1e-4) return lookAt
+  const fwd = lookAt.clone().sub(camPos).normalize()
+  const right = new THREE.Vector3().crossVectors(fwd, UP_VECTOR)
+  if (right.lengthSq() < 1e-6) return lookAt
+  right.normalize()
+  const upV = new THREE.Vector3().crossVectors(right, fwd)
+  const d = acPos.clone().sub(camPos)
+  const theta = Math.atan2(d.dot(upV), d.dot(fwd))
+  const targetRad = Math.atan(TARGET_NDC_Y * Math.tan((fov * Math.PI) / 360))
+  const quat = new THREE.Quaternion().setFromAxisAngle(right, theta - targetRad)
+  fwd.applyQuaternion(quat)
+  return camPos.clone().addScaledVector(fwd, arm)
+}
 
 function stageInfo(
   elapsed: number,
@@ -58,8 +88,9 @@ const LOCAL_STAGE_1_HEADING = Math.atan2(-4, 4)
  * Cinematic arrival intro. Waits for IP geolocation, then plays the matching
  * journey: international visitors depart from a low-poly airport, fly over the
  * Himalayan ring and the valley, then descend into the orbit; Nepal visitors
- * take off from Kathmandu, soar over the range, then land. Default orbit as
- * fallback. Skip is always available.
+ * take off from Kathmandu, soar over the range, then land. Both use the same
+ * airplane model so the aircraft reads identically close-up and far away.
+ * Default orbit as fallback. Skip is always available.
  */
 export default function IntroSequence(): JSX.Element {
   const { camera } = useThree()
@@ -68,13 +99,11 @@ export default function IntroSequence(): JSX.Element {
   const skipIntro = useStore((s) => s.skipIntro)
   const setIntroStage = useStore((s) => s.setIntroStage)
   const planeRef = useRef<THREE.Group>(null)
-  const heliRef = useRef<THREE.Group>(null)
   const elapsed = useRef(0)
   const done = useRef(false)
   const started = useRef(false)
   const currentStage = useRef<IntroStage>('orbit')
   const planeHeading = useRef(0)
-  const heliHeading = useRef(0)
 
   const stages = STAGES[variant] ?? STAGES.standard
   const totalDuration = stages.reduce((a, s) => a + s.duration, 0)
@@ -93,7 +122,6 @@ export default function IntroSequence(): JSX.Element {
     if (!started.current) {
       started.current = true
       planeHeading.current = AIR_STAGE_1_HEADING
-      heliHeading.current = LOCAL_STAGE_1_HEADING
     } else {
       elapsed.current += delta
     }
@@ -107,6 +135,7 @@ export default function IntroSequence(): JSX.Element {
     const snap = elapsed.current === 0
     const posTarget = new THREE.Vector3()
     let lookAt = new THREE.Vector3(0, 0, 0)
+    let aircraftPos: THREE.Vector3 | null = null
 
     if (variant === 'air') {
       // ---- Airplane journey ----
@@ -142,6 +171,7 @@ export default function IntroSequence(): JSX.Element {
         planeRef.current.rotation.set(-0.16, planeHeading.current, -0.12)
       }
       const planePos = new THREE.Vector3(tx, ty, tz)
+      aircraftPos = planePos
 
       if (key === 'airport') {
         // Fixed shot beside the runway, gently rising as the plane takes off.
@@ -169,39 +199,40 @@ export default function IntroSequence(): JSX.Element {
         lookAt.copy(planePos).addScaledVector(ahead, 16).add(new THREE.Vector3(0, -16, 0))
       }
     } else if (variant === 'local') {
-      // ---- Helicopter journey (grounded, local framing) ----
-      let hx = 0
-      let hz = 0
-      let hy = 0
+      // ---- Airplane journey (grounded, local framing) ----
+      let lx = 0
+      let lz = 0
+      let ly = 0
       let targetHeading = LOCAL_STAGE_1_HEADING
       if (key === 'takeoff') {
         // Lift off from near the city center.
-        hx = 14 - 4 * eased
-        hz = 10 + 4 * eased
-        hy = 0.4 + 17.6 * eased
+        lx = 14 - 4 * eased
+        lz = 10 + 4 * eased
+        ly = 0.4 + 17.6 * eased
         targetHeading = LOCAL_STAGE_1_HEADING
       } else if (key === 'flyover') {
         // Climb out over the valley and the mountain ring.
-        hx = 10 - 130 * eased
-        hz = 14 + 76 * eased
-        hy = 18 + 27 * eased
+        lx = 10 - 130 * eased
+        lz = 14 + 76 * eased
+        ly = 18 + 27 * eased
         targetHeading = Math.atan2(-130, 76)
       } else {
         // Swoop back over the ring and descend toward the valley center. The
         // chase camera keeps it framed throughout — no orbit tail.
-        hx = -120 + 124 * eased
-        hz = 90 - 94 * eased
-        hy = 45 - 42 * eased
+        lx = -120 + 124 * eased
+        lz = 90 - 94 * eased
+        ly = 45 - 42 * eased
         targetHeading = Math.atan2(124, -94)
       }
-      heliHeading.current +=
-        (targetHeading - heliHeading.current) * smooth(delta, 4)
-      if (heliRef.current) {
-        heliRef.current.visible = true
-        heliRef.current.position.set(hx, hy, hz)
-        heliRef.current.rotation.set(0, heliHeading.current, -0.06)
+      planeHeading.current +=
+        (targetHeading - planeHeading.current) * smooth(delta, 4)
+      if (planeRef.current) {
+        planeRef.current.visible = true
+        planeRef.current.position.set(lx, ly, lz)
+        planeRef.current.rotation.set(-0.16, planeHeading.current, -0.12)
       }
-      const heliPos = new THREE.Vector3(hx, hy, hz)
+      const planePos = new THREE.Vector3(lx, ly, lz)
+      aircraftPos = planePos
 
       if (key === 'takeoff') {
         // Fixed shot watching the helicopter rise; look below it so it stays
@@ -211,19 +242,19 @@ export default function IntroSequence(): JSX.Element {
           new THREE.Vector3(20, 12, 18),
           eased,
         )
-        lookAt.copy(heliPos).add(new THREE.Vector3(0, -6, 0))
+        lookAt.copy(planePos).add(new THREE.Vector3(0, -6, 0))
       } else if (key === 'flyover') {
-        const back = new THREE.Vector3(-Math.sin(heliHeading.current), 0, -Math.cos(heliHeading.current))
-        posTarget.copy(heliPos).addScaledVector(back, 11).add(new THREE.Vector3(0, 2.5, 0))
-        const ahead = new THREE.Vector3(Math.sin(heliHeading.current), 0, Math.cos(heliHeading.current))
-        lookAt.copy(heliPos).addScaledVector(ahead, 14).add(new THREE.Vector3(0, -14, 0))
+        const back = new THREE.Vector3(-Math.sin(planeHeading.current), 0, -Math.cos(planeHeading.current))
+        posTarget.copy(planePos).addScaledVector(back, 11).add(new THREE.Vector3(0, 2.5, 0))
+        const ahead = new THREE.Vector3(Math.sin(planeHeading.current), 0, Math.cos(planeHeading.current))
+        lookAt.copy(planePos).addScaledVector(ahead, 14).add(new THREE.Vector3(0, -14, 0))
       } else {
-        // Chase the helicopter down to its landing spot so it stays centered
+        // Chase the plane down to its landing spot so it stays centered
         // and fully in frame — no more edge clipping or tiny distant dot.
-        const back = new THREE.Vector3(-Math.sin(heliHeading.current), 0, -Math.cos(heliHeading.current))
-        posTarget.copy(heliPos).addScaledVector(back, 9).add(new THREE.Vector3(0, 1.5, 0))
-        const ahead = new THREE.Vector3(Math.sin(heliHeading.current), 0, Math.cos(heliHeading.current))
-        lookAt.copy(heliPos).addScaledVector(ahead, 12).add(new THREE.Vector3(0, -10, 0))
+        const back = new THREE.Vector3(-Math.sin(planeHeading.current), 0, -Math.cos(planeHeading.current))
+        posTarget.copy(planePos).addScaledVector(back, 9).add(new THREE.Vector3(0, 1.5, 0))
+        const ahead = new THREE.Vector3(Math.sin(planeHeading.current), 0, Math.cos(planeHeading.current))
+        lookAt.copy(planePos).addScaledVector(ahead, 12).add(new THREE.Vector3(0, -10, 0))
       }
     } else {
       // ---- Default orbit (geo failed/timed out) ----
@@ -234,6 +265,10 @@ export default function IntroSequence(): JSX.Element {
 
     if (snap) camera.position.copy(posTarget)
     else camera.position.lerp(posTarget, smooth(delta))
+    if (aircraftPos) {
+      const cam = camera as THREE.PerspectiveCamera
+      lookAt = aimAircraft(aircraftPos, camera.position, lookAt, cam.fov)
+    }
     camera.lookAt(lookAt)
 
     if (elapsed.current >= totalDuration) {
@@ -246,7 +281,6 @@ export default function IntroSequence(): JSX.Element {
     <>
       {variant === 'air' && <Airport />}
       <ArrivalPlane ref={planeRef} />
-      <ArrivalHelicopter ref={heliRef} />
     </>
   )
 }
