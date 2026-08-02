@@ -56,6 +56,13 @@ export const RIVER = {
   width: 12,
 }
 
+/**
+ * Airport footprint (runway + helipad) on the north plain, just off the
+ * northern ring road. Scenery generators keep it clear so no trees grow on
+ * the runway.
+ */
+export const AIRPORT = { x: 0, z: 88, rx: 20, rz: 9 }
+
 /** Deterministic PRNG so scenery stays in the same place every load. */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0

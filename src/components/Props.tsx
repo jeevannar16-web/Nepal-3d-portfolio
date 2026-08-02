@@ -1,6 +1,9 @@
-import type { JSX } from 'react'
+import { useRef, type JSX } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
+import * as THREE from 'three'
 import { assetUrl } from '../utils/assetUrl'
+import { useStore } from '../store/useStore'
 import Helicopter from './Helicopter'
 
 interface PropPlacement {
@@ -43,6 +46,7 @@ export default function Props(): JSX.Element {
       ))}
       <Bridge />
       <Airport />
+      <AmbientPlane />
     </group>
   )
 }
@@ -125,38 +129,64 @@ function Bridge(): JSX.Element {
   )
 }
 
-/** Runway + helipad on the north plain: parked plane and parked helicopter. */
+/** Runway + helipad on the north plain, just off the northern ring road. */
 function Airport(): JSX.Element {
   return (
     <group>
       {/* Asphalt runway with edge lines */}
-      <mesh position={[0, 0.02, 78]}>
+      <mesh position={[0, 0.02, 88]}>
         <boxGeometry args={[36, 0.04, 8]} />
         <meshStandardMaterial color="#3b3b44" roughness={0.95} />
       </mesh>
-      {[74.6, 81.4].map((z) => (
+      {[84.6, 91.4].map((z) => (
         <mesh key={z} position={[0, 0.045, z]}>
           <boxGeometry args={[36, 0.02, 0.5]} />
           <meshStandardMaterial color="#e8e8ec" roughness={0.8} />
         </mesh>
       ))}
-      {/* Parked plane (nose +X) */}
+      {/* Parked plane (nose +X) — same model the user has in the repo root. */}
       <primitive
         object={useGLTF(assetUrl('/models/plane.glb')).scene}
-        position={[0, 0.865, 78]}
+        position={[0, 0.865, 88]}
         rotation={[0, Math.PI / 2, 0]}
         scale={0.004}
       />
       {/* Helipad beside the runway */}
-      <mesh position={[-10, 0.02, 70]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[-10, 0.02, 80]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[3.2, 24]} />
         <meshStandardMaterial color="#3b3b44" roughness={0.95} />
       </mesh>
-      <mesh position={[-10, 0.035, 70]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[-10, 0.035, 80]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[2.7, 2.95, 24]} />
         <meshStandardMaterial color="#e8e8ec" roughness={0.8} />
       </mesh>
       <Helicopter />
+    </group>
+  )
+}
+
+/**
+ * Ambient air traffic: the real airplane model circles the valley high above
+ * after the intro, so the airplane is always visible wherever you drive.
+ */
+function AmbientPlane(): JSX.Element | null {
+  const introDone = useStore((s) => s.introDone)
+  const gltf = useGLTF(assetUrl('/models/plane.glb'))
+  const ref = useRef<THREE.Group>(null)
+
+  useFrame((state) => {
+    const g = ref.current
+    if (!g || !introDone) return
+    const t = state.clock.elapsedTime * 0.06
+    const r = 55
+    g.position.set(Math.sin(t) * r, 30 + Math.sin(t * 0.5) * 2, Math.cos(t) * r)
+    g.rotation.set(-0.08, Math.PI / 2 + t, 0.06)
+  })
+
+  if (!introDone) return null
+  return (
+    <group ref={ref} position={[0, 30, 55]}>
+      <primitive object={gltf.scene} scale={0.0022} position={[0, 0.48, 0]} />
     </group>
   )
 }

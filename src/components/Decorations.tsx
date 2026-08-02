@@ -1,7 +1,7 @@
 import { useMemo, type JSX } from 'react'
 import { Instances, Instance } from '@react-three/drei'
 import * as THREE from 'three'
-import { roadPaths, mulberry32, pointSegDist, POND, RIVER } from '../world'
+import { roadPaths, mulberry32, pointSegDist, POND, RIVER, AIRPORT } from '../world'
 import { landmarks } from '../data'
 import { blobShadowTexture, glowTexture } from '../utils/textures'
 import { PALETTE } from '../utils/palette'
@@ -78,7 +78,10 @@ const clearOfWater = (x: number, z: number) =>
       pointSegDist(x, z, RIVER.path[i], RIVER.path[i + 1]) > RIVER.width / 2 + 2.5,
   )
 
-const clearOfScenery = (x: number, z: number) => clearOfPond(x, z) && clearOfWater(x, z)
+const clearOfScenery = (x: number, z: number) =>
+  clearOfPond(x, z) &&
+  clearOfWater(x, z) &&
+  (Math.abs(x - AIRPORT.x) > AIRPORT.rx || Math.abs(z - AIRPORT.z) > AIRPORT.rz)
 
 export default function Decorations(): JSX.Element {
   const { trees, houses, flagPoles, flagStrings, flagFlags, stupas, manis } =

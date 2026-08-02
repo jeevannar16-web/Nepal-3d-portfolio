@@ -20,7 +20,7 @@ export default function Helicopter(): JSX.Element {
   })
 
   return (
-    <group position={[-10, 0, 70]} rotation={[0, Math.PI / 2, 0]}>
+    <group position={[-10, 0, 80]} rotation={[0, Math.PI / 2, 0]}>
       {/* Skids */}
       <mesh position={[-0.6, 0.14, 0.7]} rotation={[0.12, 0, 0]}>
         <boxGeometry args={[0.12, 0.12, 2.6]} />
