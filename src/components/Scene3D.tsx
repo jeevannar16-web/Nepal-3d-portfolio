@@ -10,6 +10,7 @@ import { fetchKathmanduWeather } from '../utils/weather'
 import Ground from './Ground'
 import Roads from './Roads'
 import Decorations from './Decorations'
+import Props from './Props'
 import MountainRange from './MountainRange'
 import WaterPond from './WaterPond'
 import Rain from './Rain'
@@ -113,6 +114,7 @@ function Scene3D() {
         <MountainRange />
         <WaterPond />
         <Decorations />
+        <Props />
         <TireTracks target={playerBody} />
         {weather === 'rain' && <Rain target={playerBody} />}
         {!introDone ? (
