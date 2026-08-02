@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
+import {
+  EffectComposer,
+  Bloom,
+  SSAOPass,
+  SMAAPass,
+} from '@react-three/postprocessing'
+import { Environment } from '@react-three/drei'
 import type { RapierRigidBody } from '@react-three/rapier'
+import * as THREE from 'three'
 import { useStore } from '../store/useStore'
 import { detectCountry } from '../utils/geo'
 import { getTimeOfDay, DAY_THEMES, INTRO_THEME } from '../utils/timeOfDay'
 import { fetchKathmanduWeather } from '../utils/weather'
 import { shouldReduceGraphics } from '../utils/webgl'
+
 import Ground from './Ground'
 import Roads from './Roads'
 import Decorations from './Decorations'
@@ -48,6 +56,7 @@ import Wayfinder from './Wayfinder'
 function Scene3D() {
   const playerBody = useRef<RapierRigidBody>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
   const introDone = useStore((s) => s.introDone)
   const playerMode = useStore((s) => s.playerMode)
   const setGeo = useStore((s) => s.setGeo)
@@ -59,10 +68,6 @@ function Scene3D() {
   const setWebglFailed = useStore((s) => s.setWebglFailed)
   const weakDevice = useMemo(() => shouldReduceGraphics(), [])
 
-  // Best-effort visitor geolocation. Never blocks the scene: on failure or
-  // timeout the standard intro plays instead. A ?intro=air|local|standard
-  // query param overrides the lookup so a specific intro path can be tested
-  // without real geo data — normal visitors are unaffected.
   useEffect(() => {
     const forced = new URLSearchParams(window.location.search).get('intro')
     if (forced === 'air' || forced === 'local' || forced === 'standard') {
@@ -80,8 +85,6 @@ function Scene3D() {
     }
   }, [setGeo])
 
-  // Time-of-day from the visitor's local clock; real Kathmandu weather, which
-  // fails silently to 'clear'. Both set the initial sky/lighting state.
   useEffect(() => {
     setTimeOfDay(getTimeOfDay())
     let mounted = true
@@ -93,9 +96,6 @@ function Scene3D() {
     }
   }, [setTimeOfDay, setWeather])
 
-  // If the GPU drops the WebGL context (driver reset, VRAM exhaustion) give the
-  // browser a moment to restore it; if it doesn't come back, swap to the 2D
-  // view instead of leaving a dead canvas.
   useEffect(() => {
     let timer: number | undefined
     const onLost = (event: Event) => {
@@ -134,22 +134,35 @@ function Scene3D() {
       <Canvas
         camera={{ position: [0, 26, 42], fov: 70 }}
         dpr={lowGraphics || weakDevice ? [1, 1.5] : [1, 2]}
+        background={theme.skyTop}
       >
         <fog attach="fog" args={[theme.fog, fogNear, fogFar]} />
         <GradientSky />
-        {/* Cloud deck overhead during the flight — disappears on touchdown for
-            a clean reveal of the real sky. */}
         {!introDone && <Clouds />}
+
         <ambientLight intensity={theme.ambient} />
-        {/* Soft fill from every direction so the aircraft (and other geometry)
-            never falls into a shadowed side facing the camera, no matter its
-            heading during the intro. The single sun only lights the tops. */}
         <hemisphereLight args={['#ffffff', '#c9a07c', 0.4]} />
         <directionalLight
           position={[10, 15, 10]}
           intensity={theme.sunIntensity}
           color={theme.sunColor}
+          castShadow
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
+          shadow-camera-near={0.5}
+          shadow-camera-far={100}
+          shadow-camera-left={-15}
+          shadow-camera-right={15}
+          shadow-camera-top={15}
+          shadow-camera-bottom={-15}
         />
+
+        <Environment
+          files="/hdr/dawn_mountain_2k.hdr"
+          background={false}
+          intensity={0.6}
+        />
+
         <Physics gravity={[0, -9.81, 0]}>
           <Ground />
           <Roads />
@@ -164,23 +177,22 @@ function Scene3D() {
           <Landmarks playerRef={playerBody} />
           <Props />
         </Physics>
+
         <MountainRange />
         <WaterPond />
         <WaterRiver />
         <Decorations />
         <TireTracks target={playerBody} />
         {weather === 'rain' && <Rain target={playerBody} />}
+
         {!introDone ? (
           <IntroSequence />
         ) : (
           <FollowCamera target={playerBody} />
         )}
+
         <FlyCamera />
-        {/* Subtle bloom so bright/emissive elements (headlight beams, prayer
-            flag glows, the golden horizon) bleed light. Threshold is high
-            enough that the sky and plain lit geometry mostly stay untouched.
-            Tune intensity/threshold/radius here if it reads too hot. Disabled
-            by the reduced-graphics toggle. */}
+
         {!lowGraphics && (
           <EffectComposer>
             <Bloom
@@ -190,9 +202,16 @@ function Scene3D() {
               luminanceSmoothing={0.25}
               radius={0.7}
             />
+            <SSAOPass
+              kernelRadius={16}
+              minDistance={0.005}
+              maxDistance={0.1}
+            />
+            <SMAAPass />
           </EffectComposer>
         )}
       </Canvas>
+
       <NavBar />
       <Hud />
       <TransportPrompt />
