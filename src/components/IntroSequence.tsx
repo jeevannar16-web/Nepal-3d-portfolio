@@ -190,8 +190,8 @@ class FlightPath {
 
 const flightPath = new FlightPath(SPLINE_POINTS)
 
-const MAX_BANK = 0.7
-const BANK_GAIN = 0.9
+const MAX_BANK = 0.15
+const BANK_GAIN = 0.5
 const FORWARD_SMOOTH = 2.4
 const BANK_SMOOTH = 3.5
 
@@ -335,7 +335,7 @@ export default function IntroSequence(): JSX.Element {
       // grows with airspeed so the airplane visibly fights the air instead of
       // sliding along a fixed rail.
       const turb = TURB_STRENGTH[key] ?? 0
-      if (turb > 0) planePos.y += wobble(elapsed.current * 1.35) * turb * 1.2
+      if (turb > 0) planePos.y += wobble(elapsed.current * 1.35) * turb * 0.45
 
       const tgt = tangent.clone().normalize()
       flightForward.current
@@ -352,9 +352,9 @@ export default function IntroSequence(): JSX.Element {
         ) / Math.max(delta, 1e-4)
       prevHeading.current = planeHeading.current
       const bankTarget = THREE.MathUtils.clamp(
-        turnRate * BANK_GAIN + wobble(elapsed.current * 1.9) * turb * 0.55,
-        -MAX_BANK - 0.15,
-        MAX_BANK + 0.15,
+        turnRate * BANK_GAIN + wobble(elapsed.current * 1.9) * turb * 0.18,
+        -MAX_BANK - 0.06,
+        MAX_BANK + 0.06,
       )
       bankRef.current +=
         (bankTarget - bankRef.current) * smooth(delta, BANK_SMOOTH)
@@ -379,17 +379,6 @@ export default function IntroSequence(): JSX.Element {
         lookAt.copy(planePos).addScaledVector(ahead, aheadDist).add(new THREE.Vector3(0, -down, 0))
       }
 
-      const ahead = new THREE.Vector3(
-        Math.sin(planeHeading.current),
-        0,
-        Math.cos(planeHeading.current),
-      )
-      const right = new THREE.Vector3(
-        Math.cos(planeHeading.current),
-        0,
-        -Math.sin(planeHeading.current),
-      )
-
       if (key === 'taxi') {
         // Fixed shot beside the runway watching the ground roll and rotation.
         ndc = { x: 0, y: 0.5 }
@@ -400,47 +389,17 @@ export default function IntroSequence(): JSX.Element {
         )
         lookAt.copy(planePos).add(new THREE.Vector3(0, -2, 0))
       } else if (key === 'climb') {
-        ndc = { x: 0, y: 0.55 }
         chase(15, 3, 20, -18)
       } else if (key === 'circuit') {
-        // A quiet shot list so the long circuit never repeats: chase, wing
-        // close-up, chase, low hero silhouette, chase.
-        if (eased < 0.3) {
-          ndc = { x: 0, y: 0.55 }
-          chase(16, 4, 22, -22)
-        } else if (eased < 0.52) {
-          // Wing / quarter shot: out to the right, plane framed to the right
-          // edge with the valley sweeping below-left.
-          ndc = { x: 0.32, y: 0.5 }
-          posTarget
-            .copy(planePos)
-            .addScaledVector(ahead, -11)
-            .addScaledVector(right, 5.5)
-            .add(new THREE.Vector3(0, 1.2, 0))
-          lookAt.copy(planePos).addScaledVector(ahead, 22)
-        } else if (eased < 0.66) {
-          ndc = { x: 0, y: 0.55 }
-          chase(16, 4, 22, -22)
-        } else if (eased < 0.86) {
-          // Hero shot: low and ahead, the camera looks up at the plane against
-          // the golden sky with the whole valley below — the silhouette moment.
-          ndc = { x: 0, y: 0.34 }
-          posTarget
-            .copy(planePos)
-            .addScaledVector(ahead, 15)
-            .addScaledVector(right, -5)
-            .add(new THREE.Vector3(0, -8.5, 0))
-          lookAt.copy(planePos).addScaledVector(ahead, 5)
-        } else {
-          ndc = { x: 0, y: 0.55 }
-          chase(16, 4, 22, -22)
-        }
+        // One steady chase for the whole circuit — level, gentle bank, the
+        // plane framed center with the valley sweeping below. Pulls back a
+        // touch for the second half so the sky view never quite repeats.
+        if (eased < 0.45) chase(16, 4, 22, -22)
+        else chase(24, 6, 28, -24)
       } else if (key === 'approach') {
-        ndc = { x: 0, y: 0.55 }
         chase(13, 2, 16, -14)
       } else {
         // Landing: low chase behind the plane on the runway roll-out.
-        ndc = { x: 0, y: 0.55 }
         chase(10, 1.5, 12, -8)
       }
 
@@ -465,11 +424,6 @@ export default function IntroSequence(): JSX.Element {
     if (aircraftPos) {
       const cam = camera as THREE.PerspectiveCamera
       lookAt = aimAircraft(aircraftPos, camera.position, lookAt, cam, ndc)
-    }
-    // Faint camera buffeting so the turbulence reads in the shot too.
-    const turbNow = TURB_STRENGTH[currentStage.current] ?? 0
-    if (turbNow > 0 && aircraftPos) {
-      camera.position.y += wobble(elapsed.current * 2.3 + 3.3) * turbNow * 0.35
     }
     camera.lookAt(lookAt)
 

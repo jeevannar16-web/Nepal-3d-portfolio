@@ -15,7 +15,7 @@ const Y_AXIS = new THREE.Vector3(0, 1, 0)
 // drops the camera down near the soldier's eye line; the horse sits a touch
 // higher and closer so the gallop reads.
 const MODE_OFFSETS: Record<string, [number, number, number]> = {
-  walk: [0, 2.6, -6],
+  walk: [0, 1.9, -4.4],
   car: [0, 3.4, -8.5],
   bike: [0, 3.0, -7.5],
   horse: [0, 3.1, -7],
@@ -142,7 +142,7 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
 
     const smooth = 1 - Math.pow(2, -delta * 6)
     camera.position.lerp(desired, smooth)
-    camera.lookAt(pos.x, pos.y + 0.5, pos.z)
+    camera.lookAt(pos.x, pos.y + (playerMode === 'walk' ? 1.15 : 0.5), pos.z)
   })
 
   return <></>

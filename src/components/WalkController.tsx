@@ -61,9 +61,9 @@ export default function WalkController({
   const body = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
   const heading = useRef(transportState.walk.heading)
-  const bobTime = useRef(0)
   const grounded = useRef(true)
   const scriptTime = useRef(-1)
+  const motionRef = useRef({ moving: false, running: false })
   const activeRef = useRef(active)
   activeRef.current = active
   const activePrev = useRef(active)
@@ -173,6 +173,7 @@ export default function WalkController({
         visual.current.position.set(0, 0.5, 0)
         visual.current.rotation.y = heading.current
       }
+      motionRef.current = { moving: true, running: false }
       minimapState.x = pos.x
       minimapState.z = pos.z
       minimapState.heading = heading.current
@@ -215,27 +216,10 @@ export default function WalkController({
     minimapState.z = pos.z
     minimapState.heading = heading.current
 
-    // ---- Visual: facing, walk bob + slight forward lean ----
+    // ---- Visual: face the heading, hand the walk cycle to Soldier ----
     const moving = Math.hypot(nvx, nvz) > 0.5
-    if (visual.current) {
-      visual.current.rotation.y = heading.current
-      if (moving) {
-        bobTime.current += delta * (KEYS.run ? 13 : 9)
-        visual.current.position.y = Math.abs(Math.sin(bobTime.current)) * 0.09
-        visual.current.rotation.x = THREE.MathUtils.lerp(
-          visual.current.rotation.x,
-          -0.06,
-          0.3,
-        )
-      } else {
-        visual.current.position.y = 0
-        visual.current.rotation.x = THREE.MathUtils.lerp(
-          visual.current.rotation.x,
-          0,
-          0.3,
-        )
-      }
-    }
+    motionRef.current = { moving, running: moving && KEYS.run }
+    if (visual.current) visual.current.rotation.y = heading.current
   })
 
   return (
@@ -249,7 +233,7 @@ export default function WalkController({
     >
       <CapsuleCollider args={[0.55, 0.32]} friction={0.4} />
       <group ref={visual}>
-        <Soldier />
+        <Soldier motionRef={motionRef} />
       </group>
     </RigidBody>
   )
