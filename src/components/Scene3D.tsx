@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
@@ -7,6 +7,7 @@ import { useStore } from '../store/useStore'
 import { detectCountry } from '../utils/geo'
 import { getTimeOfDay, DAY_THEMES, INTRO_THEME } from '../utils/timeOfDay'
 import { fetchKathmanduWeather } from '../utils/weather'
+import { shouldReduceGraphics } from '../utils/webgl'
 import Ground from './Ground'
 import Roads from './Roads'
 import Decorations from './Decorations'
@@ -39,6 +40,7 @@ import Wayfinder from './Wayfinder'
 
 function Scene3D() {
   const playerBody = useRef<RapierRigidBody>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const introDone = useStore((s) => s.introDone)
   const setGeo = useStore((s) => s.setGeo)
   const timeOfDay = useStore((s) => s.timeOfDay)
@@ -46,6 +48,8 @@ function Scene3D() {
   const weather = useStore((s) => s.weather)
   const setWeather = useStore((s) => s.setWeather)
   const lowGraphics = useStore((s) => s.settings.lowGraphics)
+  const setWebglFailed = useStore((s) => s.setWebglFailed)
+  const weakDevice = useMemo(() => shouldReduceGraphics(), [])
 
   // Best-effort visitor geolocation. Never blocks the scene: on failure or
   // timeout the standard intro plays instead. A ?intro=air|local|standard
@@ -81,6 +85,31 @@ function Scene3D() {
     }
   }, [setTimeOfDay, setWeather])
 
+  // If the GPU drops the WebGL context (driver reset, VRAM exhaustion) give the
+  // browser a moment to restore it; if it doesn't come back, swap to the 2D
+  // view instead of leaving a dead canvas.
+  useEffect(() => {
+    let timer: number | undefined
+    const onLost = (event: Event) => {
+      event.preventDefault()
+      if (timer) window.clearTimeout(timer)
+      timer = window.setTimeout(() => setWebglFailed(true), 2500)
+    }
+    const onRestored = () => {
+      if (timer) {
+        window.clearTimeout(timer)
+        timer = undefined
+      }
+    }
+    window.addEventListener('webglcontextlost', onLost, true)
+    window.addEventListener('webglcontextrestored', onRestored, true)
+    return () => {
+      if (timer) window.clearTimeout(timer)
+      window.removeEventListener('webglcontextlost', onLost, true)
+      window.removeEventListener('webglcontextrestored', onRestored, true)
+    }
+  }, [setWebglFailed])
+
   const theme = introDone ? DAY_THEMES[timeOfDay] : INTRO_THEME
   let fogNear = theme.fogNear
   let fogFar = theme.fogFar
@@ -93,10 +122,10 @@ function Scene3D() {
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div ref={containerRef} className="relative h-full w-full">
       <Canvas
         camera={{ position: [0, 26, 42], fov: 70 }}
-        dpr={lowGraphics ? [1, 1.5] : [1, 2]}
+        dpr={lowGraphics || weakDevice ? [1, 1.5] : [1, 2]}
       >
         <fog attach="fog" args={[theme.fog, fogNear, fogFar]} />
         <GradientSky />

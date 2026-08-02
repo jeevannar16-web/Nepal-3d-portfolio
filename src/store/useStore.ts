@@ -28,6 +28,9 @@ interface PortfolioState {
   weather: WeatherKind
   visitedZones: string[]
   prefersSimple: boolean
+  /** Set when the WebGL context is lost and cannot be restored, so the app can
+      gracefully swap the 3D canvas for the 2D view instead of going blank. */
+  webglFailed: boolean
   flyTarget: { x: number; z: number } | null
   toast: string | null
   welcomeDismissed: boolean
@@ -43,6 +46,7 @@ interface PortfolioState {
   setWeather: (weather: WeatherKind) => void
   markZoneVisited: (zone: string) => boolean
   setPrefersSimple: (prefer: boolean) => void
+  setWebglFailed: (failed: boolean) => void
   flyTo: (x: number, z: number) => void
   clearFly: () => void
   showToast: (text: string) => void
@@ -66,6 +70,7 @@ export const useStore = create<PortfolioState>((set) => ({
   weather: 'clear',
   visitedZones: [],
   prefersSimple: false,
+  webglFailed: false,
   flyTarget: null,
   toast: null,
   welcomeDismissed: false,
@@ -87,6 +92,7 @@ export const useStore = create<PortfolioState>((set) => ({
     return true
   },
   setPrefersSimple: (prefer) => set({ prefersSimple: prefer }),
+  setWebglFailed: (failed) => set({ webglFailed: failed }),
   flyTo: (x, z) => set({ flyTarget: { x, z } }),
   clearFly: () => set({ flyTarget: null }),
   showToast: (text) => set({ toast: text }),
