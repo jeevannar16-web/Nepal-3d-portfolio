@@ -147,9 +147,9 @@ function Airport(): JSX.Element {
       {/* Parked plane (nose +X) — same model the user has in the repo root. */}
       <primitive
         object={useGLTF(assetUrl('/models/plane.glb')).scene}
-        position={[0, 0.865, 88]}
+        position={[0, 1.08, 88]}
         rotation={[0, Math.PI / 2, 0]}
-        scale={0.004}
+        scale={0.005}
       />
       {/* Helipad beside the runway */}
       <mesh position={[-10, 0.02, 80]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -186,7 +186,7 @@ function AmbientPlane(): JSX.Element | null {
   if (!introDone) return null
   return (
     <group ref={ref} position={[0, 30, 55]}>
-      <primitive object={gltf.scene} scale={0.0022} position={[0, 0.48, 0]} />
+      <primitive object={gltf.scene} scale={0.005} position={[0, 1.08, 0]} />
     </group>
   )
 }

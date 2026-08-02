@@ -3,7 +3,7 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { assetUrl } from '../utils/assetUrl'
 
-const PLANE_SCALE = 0.004
+const PLANE_SCALE = 0.005
 // plane.glb base (landing gear) sits at model-local y=-216; offset so the
 // wheels rest on the intro flight path's altitude.
 const PLANE_BASE_OFFSET = 216 * PLANE_SCALE
