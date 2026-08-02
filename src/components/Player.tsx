@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
 import { driveState, type EngineState, type GearLabel } from '../store/driveState'
 import { useStore } from '../store/useStore'
+import { transportState } from '../store/transportState'
 import { glowTexture } from '../utils/textures'
 import { assetUrl } from '../utils/assetUrl'
 import BlobShadow from './BlobShadow'
@@ -56,6 +57,8 @@ interface Keys {
 
 interface PlayerProps {
   bodyRef?: React.RefObject<RapierRigidBody | null>
+  /** When false the car body sits fixed and parked at its saved spot. */
+  active: boolean
 }
 
 const keyMap: Record<string, keyof Keys> = {
@@ -99,10 +102,13 @@ function torqueFactor(n: number): number {
   return 1.0 - (0.35 * (n - 0.8)) / 0.2
 }
 
-export default function Player({ bodyRef }: PlayerProps): JSX.Element {
+export default function Player({ bodyRef, active }: PlayerProps): JSX.Element {
   const { scene: carScene } = useGLTF(assetUrl('/models/car.glb'))
+  const setPlayerMode = useStore((s) => s.setPlayerMode)
   const body = useRef<RapierRigidBody>(null)
-  const heading = useRef(0)
+  const heading = useRef(transportState.car.heading)
+  const activeRef = useRef(active)
+  activeRef.current = active
   const visual = useRef<THREE.Group>(null)
   const wheels = useRef<Array<THREE.Group | null>>([])
   const roll = useRef(0)
@@ -144,6 +150,7 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      if (!activeRef.current) return
       const k = keyMap[e.code]
       if (k) {
         keys[k] = true
@@ -169,6 +176,20 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
           throttleTime.current = 0
           autoGear.current = 1
         }
+      } else if (e.code === 'KeyF') {
+        // Get out and walk. The soldier appears beside the door.
+        const rb = body.current
+        if (!rb) return
+        const p = rb.translation()
+        const rightX = Math.cos(heading.current)
+        const rightZ = -Math.sin(heading.current)
+        transportState.walk = {
+          x: p.x + rightX * 2.2,
+          z: p.z + rightZ * 2.2,
+          y: 0.5,
+          heading: heading.current,
+        }
+        setPlayerMode('walk')
       }
     }
     const up = (e: KeyboardEvent) => {
@@ -181,11 +202,21 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
     }
-  }, [])
+  }, [setPlayerMode])
 
   useFrame((_, delta) => {
     const rb = body.current
     if (!rb) return
+
+    // Parked: the body is fixed at its saved pose; keep the model facing the
+    // right way but don't run the powertrain or claim the shared player ref.
+    if (!active) {
+      if (visual.current) {
+        visual.current.rotation.y = heading.current
+        visual.current.rotation.z = 0
+      }
+      return
+    }
 
     if (bodyRef && bodyRef.current !== rb) {
       bodyRef.current = rb
@@ -195,6 +226,12 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
     minimapState.x = pos.x
     minimapState.z = pos.z
     minimapState.heading = heading.current
+    transportState.car = {
+      x: pos.x,
+      z: pos.z,
+      y: pos.y,
+      heading: heading.current,
+    }
 
     if (pos.y < -10) {
       rb.setTranslation({ x: 0, y: 0.5, z: 0 }, true)
@@ -370,7 +407,8 @@ export default function Player({ bodyRef }: PlayerProps): JSX.Element {
   return (
     <RigidBody
       ref={body}
-      position={[0, 0.5, 0]}
+      type={active ? 'dynamic' : 'fixed'}
+      position={[transportState.car.x, transportState.car.y, transportState.car.z]}
       colliders={false}
       lockRotations
       ccd

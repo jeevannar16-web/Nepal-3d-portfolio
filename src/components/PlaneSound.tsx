@@ -9,14 +9,14 @@ const MAX_GAIN = 0.16 // master ceiling for the drone + wind mix
 const WIND_GAIN = 0.05 // bandpassed-noise roar, scales with airspeed
 const DIVE_WIND_GAIN = 0.05 // extra roar when the nose is down
 
-/** Per-stage throttle target: spool up to cruise, back off on the descent. */
+/** Per-stage throttle target: spool up at the runway, cruise on the circuit,
+ *  ease back on the descent and wind down as the plane rolls to a stop. */
 const STAGE_THROTTLE: Record<IntroStage, number> = {
-  airport: 0.3,
-  takeoff: 0.3,
-  flight: 0.95,
-  flyover: 0.95,
-  descent: 0.8,
-  landing: 0.75,
+  taxi: 0.45,
+  climb: 0.95,
+  circuit: 0.9,
+  approach: 0.7,
+  landing: 0.3,
   orbit: 0,
 }
 
@@ -160,7 +160,7 @@ export default function PlaneSound(): JSX.Element {
         const freq = IDLE_FREQ + (TOP_FREQ - IDLE_FREQ) * throttle
         const prop = IDLE_PROP + (TOP_PROP - IDLE_PROP) * throttle
         const wind =
-          (WIND_GAIN + (introStage === 'descent' || introStage === 'landing'
+          (WIND_GAIN + (introStage === 'approach' || introStage === 'landing'
             ? DIVE_WIND_GAIN
             : 0)) *
           throttle

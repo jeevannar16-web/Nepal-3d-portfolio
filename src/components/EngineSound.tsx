@@ -3,11 +3,14 @@ import { useStore } from '../store/useStore'
 import { driveState } from '../store/driveState'
 import { REDLINE_RPM } from './Player'
 
-const IDLE_FREQ = 55 // Hz at idle rpm
-const TOP_FREQ = 155 // Hz at redline
-const IDLE_GAIN = 0.03 // gentle idle when parked
-const TOP_GAIN = 0.1 // full swell at redline
 const CRANK_FREQ = 24 // low thump while cranking the starter
+
+// Per-vehicle engine tuning: the car idles deep and low, the bike revs higher
+// and brighter. Gain ceilings are low so the ambient track stays dominant.
+const TUNE = {
+  car: { idle: 55, top: 155, gIdle: 0.03, gTop: 0.1 },
+  bike: { idle: 90, top: 290, gIdle: 0.025, gTop: 0.085 },
+} as const
 
 interface EngineNodes {
   ctx: AudioContext
@@ -20,14 +23,15 @@ interface EngineNodes {
 /**
  * Procedural engine loop (no asset needed): a dual-oscillator drone whose
  * pitch, low-pass brightness and gain all scale with the engine's rpm and
- * state, read from driveState each frame. Silent while the engine is off,
- * thumps through the cranking phase, then idles/revs once running. Respects
- * the settings mute toggle and only becomes audible once the intro hands
- * control to the player.
+ * state, read from driveState each frame. The tuning follows which vehicle
+ * you're riding (car vs motorcycle). Silent while walking or on the horse,
+ * while the engine is off, and respects the settings mute toggle. Only becomes
+ * audible once the intro hands control to the player.
  */
 export default function EngineSound(): JSX.Element {
   const muted = useStore((s) => s.settings.muted)
   const introDone = useStore((s) => s.introDone)
+  const playerMode = useStore((s) => s.playerMode)
   const started = useRef(false)
   const nodes = useRef<EngineNodes | null>(null)
 
@@ -51,11 +55,11 @@ export default function EngineSound(): JSX.Element {
 
       const osc1 = ctx.createOscillator()
       osc1.type = 'sawtooth'
-      osc1.frequency.value = IDLE_FREQ
+      osc1.frequency.value = TUNE.car.idle
 
       const osc2 = ctx.createOscillator()
       osc2.type = 'square'
-      osc2.frequency.value = IDLE_FREQ * 2
+      osc2.frequency.value = TUNE.car.idle * 2
 
       const filter = ctx.createBiquadFilter()
       filter.type = 'lowpass'
@@ -96,13 +100,17 @@ export default function EngineSound(): JSX.Element {
   }, [])
 
   useEffect(() => {
+    const tune = playerMode === 'bike' ? TUNE.bike : TUNE.car
     let raf = 0
     const loop = () => {
       const n = nodes.current
       if (n) {
         const now = n.ctx.currentTime
         const state = driveState.engineState
-        const audible = introDone && !muted
+        const audible =
+          introDone &&
+          (playerMode === 'car' || playerMode === 'bike') &&
+          !muted
 
         if (state === 'starting' && audible) {
           // Starter motor: a slow, thumping cranking chug until it catches.
@@ -114,24 +122,24 @@ export default function EngineSound(): JSX.Element {
           n.master.gain.setTargetAtTime(0.09 * pulse, now, 0.02)
         } else if (state === 'on' && audible) {
           const rpmNorm = Math.min(Math.max(driveState.rpm / REDLINE_RPM, 0), 1)
-          const freq = IDLE_FREQ + (TOP_FREQ - IDLE_FREQ) * rpmNorm
+          const freq = tune.idle + (tune.top - tune.idle) * rpmNorm
           n.osc1.frequency.setTargetAtTime(freq, now, 0.08)
           n.osc2.frequency.setTargetAtTime(freq * 2, now, 0.08)
           n.filter.frequency.setTargetAtTime(180 + 460 * rpmNorm, now, 0.08)
-          const gain = IDLE_GAIN + (TOP_GAIN - IDLE_GAIN) * rpmNorm
+          const gain = tune.gIdle + (tune.gTop - tune.gIdle) * rpmNorm
           n.master.gain.setTargetAtTime(gain, now, 0.06)
         } else {
-          // Engine off or muted: silence.
+          // Engine off, walking, riding the horse, or muted: silence.
           n.master.gain.setTargetAtTime(0, now, 0.06)
-          n.osc1.frequency.setTargetAtTime(IDLE_FREQ, now, 0.08)
-          n.osc2.frequency.setTargetAtTime(IDLE_FREQ * 2, now, 0.08)
+          n.osc1.frequency.setTargetAtTime(tune.idle, now, 0.08)
+          n.osc2.frequency.setTargetAtTime(tune.idle * 2, now, 0.08)
         }
       }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [introDone, muted])
+  }, [introDone, muted, playerMode])
 
   return <></>
 }

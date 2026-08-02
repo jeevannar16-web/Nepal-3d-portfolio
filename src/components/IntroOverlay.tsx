@@ -4,31 +4,23 @@ import { identity } from '../data'
 
 export default function IntroOverlay(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
-  const introVariant = useStore((s) => s.introVariant)
   const introStage = useStore((s) => s.introStage)
-  const visitorCountry = useStore((s) => s.visitorCountry)
   const skipIntro = useStore((s) => s.skipIntro)
 
   if (introDone) return null
 
   const stageText =
-    introVariant === 'air'
-      ? introStage === 'airport' && visitorCountry
-        ? `Departing ${visitorCountry}…`
-        : introStage === 'flight'
-          ? 'Approaching Kathmandu…'
-          : introStage === 'descent'
-            ? 'Landing in Kathmandu…'
-            : null
-      : introVariant === 'local'
-        ? introStage === 'takeoff'
-          ? 'Taking off from Kathmandu…'
-          : introStage === 'flyover'
-            ? 'Soaring over the Himalayas…'
+    introStage === 'taxi'
+      ? 'Warm-up on the runway…'
+      : introStage === 'climb'
+        ? 'Climbing over the Himalayas…'
+        : introStage === 'circuit'
+          ? 'Circling the valley…'
+          : introStage === 'approach'
+            ? 'Final approach…'
             : introStage === 'landing'
-              ? 'Returning to Kathmandu…'
+              ? 'Touchdown in Kathmandu…'
               : null
-        : null
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">

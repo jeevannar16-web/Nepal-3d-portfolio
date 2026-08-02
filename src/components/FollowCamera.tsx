@@ -11,8 +11,22 @@ const FOV_SPEED_GAIN = 6 // degrees added at top speed
 const LOOK_DRAG_SENSITIVITY = 0.006 // radians of orbit per pixel of right-drag
 const LOOK_KEY_RATE = 0.7 // orbit radians/second while Q/E is held
 const Y_AXIS = new THREE.Vector3(0, 1, 0)
-// Chase offset: directly behind the car, low and close for a real driving view.
-const OFFSET = new THREE.Vector3(0, 3.4, -8.5)
+// Chase offsets per mode: directly behind the actor, low and close. The walk
+// drops the camera down near the soldier's eye line; the horse sits a touch
+// higher and closer so the gallop reads.
+const MODE_OFFSETS: Record<string, [number, number, number]> = {
+  walk: [0, 2.6, -6],
+  car: [0, 3.4, -8.5],
+  bike: [0, 3.0, -7.5],
+  horse: [0, 3.1, -7],
+}
+// Top speed per mode, for the speed-based FOV kick to normalize evenly.
+const MODE_MAX_SPEED: Record<string, number> = {
+  walk: 6,
+  car: MAX_SPEED,
+  bike: 20,
+  horse: 10,
+}
 
 interface FollowCameraProps {
   target: React.RefObject<RapierRigidBody | null>
@@ -21,6 +35,7 @@ interface FollowCameraProps {
 export default function FollowCamera({ target }: FollowCameraProps): JSX.Element {
   const { camera, gl } = useThree()
   const flyTarget = useStore((s) => s.flyTarget)
+  const playerMode = useStore((s) => s.playerMode)
   const camYaw = useRef(0) // current camera orbit angle around the car
   const lookYaw = useRef(0) // free-look orbit offset on top of the car heading
   const bobTime = useRef(0)
@@ -81,10 +96,12 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     const pos = body.translation()
     const lin = body.linvel()
     const speed = Math.hypot(lin.x, lin.z)
+    const offset = new THREE.Vector3(...(MODE_OFFSETS[playerMode] ?? MODE_OFFSETS.car))
+    const maxSpeed = MODE_MAX_SPEED[playerMode] ?? MAX_SPEED
 
     // Speed-based FOV — widens with speed for a sense of velocity, eased back
     // to base when coasting or flying. The single trick that makes it feel fast.
-    const fovTarget = BASE_FOV + FOV_SPEED_GAIN * Math.min(speed / MAX_SPEED, 1)
+    const fovTarget = BASE_FOV + FOV_SPEED_GAIN * Math.min(speed / maxSpeed, 1)
     const cam = camera as THREE.PerspectiveCamera
     cam.fov += (fovTarget - cam.fov) * (1 - Math.pow(2, -delta * 3))
     cam.updateProjectionMatrix()
@@ -115,7 +132,7 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     const sway = Math.sin(bobTime.current * 2.2) * 0.045 * bob
     const bobY = Math.sin(bobTime.current * 4.4) * 0.035 * bob
 
-    const rotated = OFFSET.clone().applyAxisAngle(Y_AXIS, camYaw.current)
+    const rotated = offset.clone().applyAxisAngle(Y_AXIS, camYaw.current)
 
     const desired = new THREE.Vector3(
       pos.x + rotated.x + sway,

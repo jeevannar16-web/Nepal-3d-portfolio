@@ -20,14 +20,15 @@ export default function WelcomeCard(): JSX.Element | null {
       <div className="animate-welcome pointer-events-auto rounded-2xl border border-white/15 bg-slate-900/85 p-6 text-center shadow-2xl shadow-black/50 backdrop-blur">
         <h2 className="text-lg font-bold text-white">Welcome to my little world</h2>
         <p className="mt-2 max-w-xs text-sm text-white/80">
-          Drive around to explore, or use the menu above to jump straight to a section.
+          You just touched down — walk around, or press E near the car, motorcycle or horse to ride.
+          Stop at any landmark to open a story.
         </p>
         <button
           type="button"
           onClick={dismissWelcome}
           className="mt-4 rounded-full bg-amber-400 px-6 py-2 text-sm font-semibold text-slate-900 transition hover:bg-amber-300 active:scale-95"
         >
-          Start driving
+          Start exploring
         </button>
       </div>
     </div>

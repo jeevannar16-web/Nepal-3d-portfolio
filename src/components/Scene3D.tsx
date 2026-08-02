@@ -19,6 +19,9 @@ import Rain from './Rain'
 import TireTracks from './TireTracks'
 import GradientSky from './GradientSky'
 import Player from './Player'
+import WalkController from './WalkController'
+import BikeController from './BikeController'
+import HorseController from './HorseController'
 import IntroSequence from './IntroSequence'
 import FollowCamera from './FollowCamera'
 import FlyCamera from './FlyCamera'
@@ -26,11 +29,13 @@ import Landmarks from './Landmarks'
 import ContentPanel from './ContentPanel'
 import NavBar from './NavBar'
 import Hud from './Hud'
+import TransportPrompt from './TransportPrompt'
 import TravelingIndicator from './TravelingIndicator'
 import Minimap from './Minimap'
 import LoadingScreen from './LoadingScreen'
 import SoundManager from './SoundManager'
 import EngineSound from './EngineSound'
+import HorseSound from './HorseSound'
 import PlaneSound from './PlaneSound'
 import IntroOverlay from './IntroOverlay'
 import Toast from './Toast'
@@ -43,6 +48,7 @@ function Scene3D() {
   const playerBody = useRef<RapierRigidBody>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const introDone = useStore((s) => s.introDone)
+  const playerMode = useStore((s) => s.playerMode)
   const setGeo = useStore((s) => s.setGeo)
   const timeOfDay = useStore((s) => s.timeOfDay)
   const setTimeOfDay = useStore((s) => s.setTimeOfDay)
@@ -143,14 +149,21 @@ function Scene3D() {
         <Physics gravity={[0, -9.81, 0]}>
           <Ground />
           <Roads />
-          <Player bodyRef={playerBody} />
+          {introDone && (
+            <>
+              <WalkController active={playerMode === 'walk'} bodyRef={playerBody} />
+              <Player active={playerMode === 'car'} bodyRef={playerBody} />
+              <BikeController active={playerMode === 'bike'} bodyRef={playerBody} />
+              <HorseController active={playerMode === 'horse'} bodyRef={playerBody} />
+            </>
+          )}
           <Landmarks playerRef={playerBody} />
+          <Props />
         </Physics>
         <MountainRange />
         <WaterPond />
         <WaterRiver />
         <Decorations />
-        <Props />
         <TireTracks target={playerBody} />
         {weather === 'rain' && <Rain target={playerBody} />}
         {!introDone ? (
@@ -178,6 +191,7 @@ function Scene3D() {
       </Canvas>
       <NavBar />
       <Hud />
+      <TransportPrompt />
       <Menu />
       <Minimap />
       <HudCluster />
@@ -190,6 +204,7 @@ function Scene3D() {
       <LoadingScreen />
       <SoundManager />
       <EngineSound />
+      <HorseSound />
       <PlaneSound />
     </div>
   )

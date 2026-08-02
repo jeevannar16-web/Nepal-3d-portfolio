@@ -6,12 +6,13 @@ export type DeviceType = 'desktop' | 'mobile'
 
 export type IntroVariant = 'air' | 'local' | 'standard'
 
+export type PlayerMode = 'walk' | 'car' | 'bike' | 'horse'
+
 export type IntroStage =
-  | 'airport'
-  | 'flight'
-  | 'descent'
-  | 'takeoff'
-  | 'flyover'
+  | 'taxi'
+  | 'climb'
+  | 'circuit'
+  | 'approach'
   | 'landing'
   | 'orbit'
 
@@ -36,12 +37,14 @@ interface PortfolioState {
   welcomeDismissed: boolean
   settings: { muted: boolean; lowGraphics: boolean }
   targetLandmark: string | null
+  playerMode: PlayerMode
   setActiveZone: (zone: string | null) => void
   setIsPanelOpen: (open: boolean) => void
   setDeviceType: (device: DeviceType) => void
   skipIntro: () => void
   setGeo: (country: string | null, variant: IntroVariant) => void
   setIntroStage: (stage: IntroStage) => void
+  setPlayerMode: (mode: PlayerMode) => void
   setTimeOfDay: (time: TimeOfDay) => void
   setWeather: (weather: WeatherKind) => void
   markZoneVisited: (zone: string) => boolean
@@ -81,6 +84,7 @@ export const useStore = create<PortfolioState>((set) => ({
   setGeo: (country, variant) =>
     set({ visitorCountry: country, introVariant: variant, geoResolved: true }),
   setIntroStage: (stage) => set({ introStage: stage }),
+  setPlayerMode: (mode) => set({ playerMode: mode }),
   setTimeOfDay: (time) => set({ timeOfDay: time }),
   setWeather: (weather) => set({ weather }),
   // Returns true only the first time a zone is marked, so callers can fire a
@@ -100,6 +104,7 @@ export const useStore = create<PortfolioState>((set) => ({
   dismissWelcome: () => set({ welcomeDismissed: true }),
   settings: { muted: false, lowGraphics: false },
   targetLandmark: null,
+  playerMode: 'walk',
   toggleMuted: () =>
     set((s) => ({ settings: { ...s.settings, muted: !s.settings.muted } })),
   toggleLowGraphics: () =>
