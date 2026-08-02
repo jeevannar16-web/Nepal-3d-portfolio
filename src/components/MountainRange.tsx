@@ -31,14 +31,16 @@ export default function MountainRange(): JSX.Element {
     const peaks: Peak[] = []
     const farPeaks: Peak[] = []
 
-    // Near ring — dramatic height spread with a few giants.
+    // Near ring — dramatic height spread with a few giants. Peaks are drawn
+    // as broad, stocky cones (wide base vs. height, 12 radial segments) so
+    // they read as rounded low-poly summits instead of thin blades.
     const COUNT = 48
     for (let i = 0; i < COUNT; i++) {
       const angle = (i / COUNT) * Math.PI * 2 + (rng() - 0.5) * 0.35
-      const radius = 128 + rng() * 18
+      const radius = 120 + rng() * 16
       const giant = rng() < 0.12
-      const h = giant ? 55 + rng() * 15 : 12 + rng() * 30
-      const s = giant ? 1.8 + rng() * 1.2 : 1.2 + rng() * 0.9
+      const h = giant ? 42 + rng() * 10 : 10 + rng() * 22
+      const s = giant ? 2.4 + rng() * 1.0 : 1.4 + rng() * 0.9
       peaks.push({
         x: Math.cos(angle) * radius,
         z: Math.sin(angle) * radius,
@@ -55,12 +57,12 @@ export default function MountainRange(): JSX.Element {
     for (let i = 0; i < FAR_COUNT; i++) {
       const angle = (i / FAR_COUNT) * Math.PI * 2 + (rng() - 0.5) * 0.5
       const radius = 205 + rng() * 30
-      const h = 24 + rng() * 46
+      const h = 22 + rng() * 36
       farPeaks.push({
         x: Math.cos(angle) * radius,
         z: Math.sin(angle) * radius,
         h,
-        s: 1.6 + rng() * 1.4,
+        s: 1.5 + rng() * 1.3,
         r: rng() * Math.PI * 2,
         color: HAZE_COLORS[Math.floor(rng() * HAZE_COLORS.length)],
         snow: h > 58,
@@ -80,20 +82,20 @@ export default function MountainRange(): JSX.Element {
     <>
       {/* ---- Near ring ---- */}
       <Instances limit={peaks.length} frustumCulled={false}>
-        <coneGeometry args={[1, 1, 7]} />
+        <coneGeometry args={[1, 1, 12]} />
         <meshStandardMaterial color="#ffffff" flatShading />
         {peaks.map((p, i) => (
           <Instance
             key={`peak-${i}`}
             position={[p.x, p.h * 0.5, p.z]}
             rotation={[0, p.r, 0]}
-            scale={[p.s * 1.5, p.h, p.s * 1.5]}
+            scale={[p.s * 3.2, p.h, p.s * 3.2]}
             color={p.color}
           />
         ))}
       </Instances>
       <Instances limit={snowPeaks.length} frustumCulled={false}>
-        <coneGeometry args={[1, 1, 7]} />
+        <coneGeometry args={[1, 1, 12]} />
         <meshStandardMaterial color="#f4f8fc" flatShading />
         {snowPeaks.map((p, i) => (
           <Instance
@@ -108,20 +110,20 @@ export default function MountainRange(): JSX.Element {
 
       {/* ---- Distant layer: hazier, lower detail, sinks below the horizon ---- */}
       <Instances limit={farPeaks.length} frustumCulled={false}>
-        <coneGeometry args={[1, 1, 6]} />
+        <coneGeometry args={[1, 1, 9]} />
         <meshStandardMaterial color="#c5b8a8" flatShading />
         {farPeaks.map((p, i) => (
           <Instance
             key={`far-${i}`}
             position={[p.x, p.h * 0.5 - 8, p.z]}
             rotation={[0, p.r, 0]}
-            scale={[p.s * 1.4, p.h, p.s * 1.4]}
+            scale={[p.s * 3.0, p.h, p.s * 3.0]}
             color={p.color}
           />
         ))}
       </Instances>
       <Instances limit={farSnowPeaks.length} frustumCulled={false}>
-        <coneGeometry args={[1, 1, 6]} />
+        <coneGeometry args={[1, 1, 9]} />
         <meshStandardMaterial color="#e8edf4" flatShading />
         {farSnowPeaks.map((p, i) => (
           <Instance

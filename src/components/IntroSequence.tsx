@@ -127,11 +127,12 @@ export default function IntroSequence(): JSX.Element {
         ty = 16.42 + 40 * eased
         targetHeading = Math.atan2(-98.3, 98.3)
       } else {
-        // Descent toward the car, then settle into the orbit.
-        tx = 10 * eased
-        tz = 8 * eased
-        ty = 56.42 - 53.92 * eased
-        targetHeading = Math.atan2(10, 8)
+        // Descent toward the car, then settle into the orbit. The plane lands
+        // to the right of the valley center so it never sits on the intro text.
+        tx = 20 * eased
+        tz = 6 * eased
+        ty = 56.42 - 50.42 * eased
+        targetHeading = Math.atan2(20, 6)
       }
       planeHeading.current +=
         (targetHeading - planeHeading.current) * smooth(delta, 4)
@@ -144,30 +145,28 @@ export default function IntroSequence(): JSX.Element {
 
       if (key === 'airport') {
         // Fixed shot beside the runway, gently rising as the plane takes off.
+        // Frame the plane in the upper part of the screen, clear of the
+        // centered name/role text.
         posTarget.lerpVectors(
           new THREE.Vector3(137, 6, -116),
           new THREE.Vector3(118, 13, -106),
           eased,
         )
-        lookAt.copy(planePos)
+        lookAt.copy(planePos).add(new THREE.Vector3(0, -7, 0))
       } else if (key === 'flight') {
-        // Chase behind/above the plane for the aerial view of the valley.
+        // Chase behind/above the plane for the aerial view of the valley;
+        // look below the plane so it stays in the upper third of the frame.
         const back = new THREE.Vector3(-Math.sin(planeHeading.current), 0, -Math.cos(planeHeading.current))
         posTarget.copy(planePos).addScaledVector(back, 16).add(new THREE.Vector3(0, 4, 0))
         const ahead = new THREE.Vector3(Math.sin(planeHeading.current), 0, Math.cos(planeHeading.current))
-        lookAt.copy(planePos).addScaledVector(ahead, 22)
-      } else if (eased < 0.5) {
-        // Chase as the plane comes down.
+        lookAt.copy(planePos).addScaledVector(ahead, 22).add(new THREE.Vector3(0, -22, 0))
+      } else {
+        // Chase the plane all the way down (no orbit tail) so it stays framed
+        // in the upper third, clear of the centered name/role text.
         const back = new THREE.Vector3(-Math.sin(planeHeading.current), 0, -Math.cos(planeHeading.current))
         posTarget.copy(planePos).addScaledVector(back, 13).add(new THREE.Vector3(0, 2, 0))
         const ahead = new THREE.Vector3(Math.sin(planeHeading.current), 0, Math.cos(planeHeading.current))
-        lookAt.copy(planePos).addScaledVector(ahead, 16)
-      } else {
-        // Blend into the standard orbit as the plane settles.
-        const ch = (eased - 0.5) / 0.5
-        const angle = ch * Math.PI * 1.8
-        posTarget.set(Math.sin(angle) * 46, 26 - ch * 14, Math.cos(angle) * 46)
-        lookAt.set(0, 0, 0)
+        lookAt.copy(planePos).addScaledVector(ahead, 16).add(new THREE.Vector3(0, -16, 0))
       }
     } else if (variant === 'local') {
       // ---- Helicopter journey (grounded, local framing) ----
@@ -188,11 +187,12 @@ export default function IntroSequence(): JSX.Element {
         hy = 18 + 27 * eased
         targetHeading = Math.atan2(-130, 76)
       } else {
-        // Swoop back over the ring and descend to the center.
-        hx = -120 + 130 * eased
-        hz = 90 - 100 * eased
-        hy = 45 - 41 * eased
-        targetHeading = Math.atan2(130, -100)
+        // Swoop back over the ring and descend toward the valley center. The
+        // chase camera keeps it framed throughout — no orbit tail.
+        hx = -120 + 124 * eased
+        hz = 90 - 94 * eased
+        hy = 45 - 42 * eased
+        targetHeading = Math.atan2(124, -94)
       }
       heliHeading.current +=
         (targetHeading - heliHeading.current) * smooth(delta, 4)
@@ -204,28 +204,26 @@ export default function IntroSequence(): JSX.Element {
       const heliPos = new THREE.Vector3(hx, hy, hz)
 
       if (key === 'takeoff') {
-        // Fixed shot watching the helicopter rise.
+        // Fixed shot watching the helicopter rise; look below it so it stays
+        // clear of the centered name/role text.
         posTarget.lerpVectors(
           new THREE.Vector3(26, 4, 24),
           new THREE.Vector3(20, 12, 18),
           eased,
         )
-        lookAt.copy(heliPos)
+        lookAt.copy(heliPos).add(new THREE.Vector3(0, -6, 0))
       } else if (key === 'flyover') {
         const back = new THREE.Vector3(-Math.sin(heliHeading.current), 0, -Math.cos(heliHeading.current))
         posTarget.copy(heliPos).addScaledVector(back, 11).add(new THREE.Vector3(0, 2.5, 0))
         const ahead = new THREE.Vector3(Math.sin(heliHeading.current), 0, Math.cos(heliHeading.current))
-        lookAt.copy(heliPos).addScaledVector(ahead, 14)
-      } else if (eased < 0.6) {
+        lookAt.copy(heliPos).addScaledVector(ahead, 14).add(new THREE.Vector3(0, -14, 0))
+      } else {
+        // Chase the helicopter down to its landing spot so it stays centered
+        // and fully in frame — no more edge clipping or tiny distant dot.
         const back = new THREE.Vector3(-Math.sin(heliHeading.current), 0, -Math.cos(heliHeading.current))
         posTarget.copy(heliPos).addScaledVector(back, 9).add(new THREE.Vector3(0, 1.5, 0))
         const ahead = new THREE.Vector3(Math.sin(heliHeading.current), 0, Math.cos(heliHeading.current))
-        lookAt.copy(heliPos).addScaledVector(ahead, 12)
-      } else {
-        const ch = (eased - 0.6) / 0.4
-        const angle = ch * Math.PI * 1.8
-        posTarget.set(Math.sin(angle) * 46, 26 - ch * 14, Math.cos(angle) * 46)
-        lookAt.set(0, 0, 0)
+        lookAt.copy(heliPos).addScaledVector(ahead, 12).add(new THREE.Vector3(0, -10, 0))
       }
     } else {
       // ---- Default orbit (geo failed/timed out) ----
