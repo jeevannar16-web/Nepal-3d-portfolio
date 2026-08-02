@@ -57,20 +57,32 @@ export default function Minimap(): JSX.Element {
 
       for (const landmark of landmarks) {
         const [lx, lz] = toPx(landmark.position[0], landmark.position[2])
-        ctx.fillStyle = landmark.color
+        const visited = useStore
+          .getState()
+          .visitedZones.includes(landmark.contentKey)
+        ctx.fillStyle = visited ? landmark.color : landmark.color + '66'
         ctx.beginPath()
         ctx.arc(lx, lz, 4, 0, Math.PI * 2)
         ctx.fill()
 
+        if (visited) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.arc(lx, lz, 5.5, 0, Math.PI * 2)
+          ctx.stroke()
+        }
+
         // Centered above the dot so labels never clip at the map edges.
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+        ctx.fillStyle = visited ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)'
         ctx.font = '9px system-ui, sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'bottom'
         ctx.fillText(landmark.label.split(' — ')[0], lx, lz - 5)
       }
 
-      const [px, pz] = toPx(minimapState.x, minimapState.z)
+      const clampW = (v: number) => Math.max(-WORLD_SIZE / 2, Math.min(WORLD_SIZE / 2, v))
+      const [px, pz] = toPx(clampW(minimapState.x), clampW(minimapState.z))
       ctx.fillStyle = '#ffffff'
       ctx.beginPath()
       ctx.arc(px, pz, 5, 0, Math.PI * 2)

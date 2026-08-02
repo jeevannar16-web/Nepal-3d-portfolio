@@ -16,6 +16,7 @@ export default function Wayfinder(): JSX.Element | null {
   const flyTo = useStore((s) => s.flyTo)
   const arrowRef = useRef<HTMLDivElement>(null)
   const distRef = useRef<HTMLSpanElement>(null)
+  const turnRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     if (!targetLandmark) return
@@ -36,6 +37,18 @@ export default function Wayfinder(): JSX.Element | null {
       const rel = Math.atan2(dx, dz) - minimapState.heading
       if (arrowRef.current) {
         arrowRef.current.style.transform = `rotate(${(rel * 180) / Math.PI}deg)`
+      }
+      // A quick "which way to turn" cue next to the distance — clearer at a
+      // glance than rotation alone: straight ▲, right », left «.
+      if (turnRef.current) {
+        const dir = rel > 0.45 ? '»' : rel < -0.45 ? '«' : '▲'
+        turnRef.current.textContent = dir
+        turnRef.current.className =
+          dir === '▲'
+            ? 'text-amber-300'
+            : dir === '»'
+              ? 'text-emerald-300'
+              : 'text-rose-300'
       }
       if (distRef.current) distRef.current.textContent = `${Math.round(dist)}`
       raf = requestAnimationFrame(loop)
@@ -73,6 +86,13 @@ export default function Wayfinder(): JSX.Element | null {
         </button>
         <span className="text-xs text-white/50">
           <span ref={distRef}>0</span>m
+        </span>
+        <span
+          ref={turnRef}
+          className="flex h-6 w-6 items-center justify-center rounded-full bg-black/30 text-sm font-bold text-amber-300"
+          aria-hidden="true"
+        >
+          ▲
         </span>
         <button
           type="button"

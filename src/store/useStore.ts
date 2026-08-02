@@ -23,6 +23,8 @@ interface PortfolioState {
   introDone: boolean
   introVariant: IntroVariant
   introStage: IntroStage
+  /** Landmark the intro is currently spotlighting (caption shown over the sky). */
+  introCaption: string | null
   visitorCountry: string | null
   geoResolved: boolean
   timeOfDay: TimeOfDay
@@ -44,6 +46,7 @@ interface PortfolioState {
   skipIntro: () => void
   setGeo: (country: string | null, variant: IntroVariant) => void
   setIntroStage: (stage: IntroStage) => void
+  setIntroCaption: (caption: string | null) => void
   setPlayerMode: (mode: PlayerMode) => void
   setTimeOfDay: (time: TimeOfDay) => void
   setWeather: (weather: WeatherKind) => void
@@ -67,6 +70,7 @@ export const useStore = create<PortfolioState>((set) => ({
   introDone: false,
   introVariant: 'standard',
   introStage: 'orbit',
+  introCaption: null,
   visitorCountry: null,
   geoResolved: false,
   timeOfDay: 'day',
@@ -84,6 +88,7 @@ export const useStore = create<PortfolioState>((set) => ({
   setGeo: (country, variant) =>
     set({ visitorCountry: country, introVariant: variant, geoResolved: true }),
   setIntroStage: (stage) => set({ introStage: stage }),
+  setIntroCaption: (caption) => set({ introCaption: caption }),
   setPlayerMode: (mode) => set({ playerMode: mode }),
   setTimeOfDay: (time) => set({ timeOfDay: time }),
   setWeather: (weather) => set({ weather }),

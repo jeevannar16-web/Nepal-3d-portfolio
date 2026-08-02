@@ -5,6 +5,7 @@ import { identity } from '../data'
 export default function IntroOverlay(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
   const introStage = useStore((s) => s.introStage)
+  const introCaption = useStore((s) => s.introCaption)
   const skipIntro = useStore((s) => s.skipIntro)
 
   if (introDone) return null
@@ -40,6 +41,20 @@ export default function IntroOverlay(): JSX.Element | null {
           </p>
         ) : null}
       </div>
+      {introCaption ? (
+        <div
+          key={introCaption}
+          className="animate-intro-caption absolute bottom-14 left-1/2 -translate-x-1/2"
+        >
+          <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/50 px-4 py-2 text-sm text-white/90 backdrop-blur">
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-300" />
+            <span className="uppercase tracking-[0.2em] text-amber-300">
+              Below
+            </span>
+            {introCaption}
+          </div>
+        </div>
+      ) : null}
       <button
         type="button"
         onClick={skipIntro}

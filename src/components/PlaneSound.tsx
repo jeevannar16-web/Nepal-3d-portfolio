@@ -155,7 +155,17 @@ export default function PlaneSound(): JSX.Element {
       if (n) {
         const now = n.ctx.currentTime
         const audible = !introDone && !muted
-        const throttle = audible ? STAGE_THROTTLE[introStage] ?? 0 : 0
+        const base = audible ? STAGE_THROTTLE[introStage] ?? 0 : 0
+        // Faint throttle surge on the windy stages so the drone wavers with the
+        // plane's visible turbulence instead of sitting on a constant note.
+        const turbulent =
+          introStage === 'climb' ||
+          introStage === 'circuit' ||
+          introStage === 'approach'
+        const wob = turbulent
+          ? (Math.sin(now * 1.4) * 0.5 + Math.sin(now * 3.2 + 2) * 0.5) * 0.06
+          : 0
+        const throttle = Math.max(0, Math.min(1, base + wob))
 
         const freq = IDLE_FREQ + (TOP_FREQ - IDLE_FREQ) * throttle
         const prop = IDLE_PROP + (TOP_PROP - IDLE_PROP) * throttle

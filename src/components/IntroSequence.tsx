@@ -1,9 +1,10 @@
-import { useEffect, useRef, type JSX } from 'react'
+import { useEffect, useMemo, useRef, type JSX } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore, type IntroStage } from '../store/useStore'
-import { orientAircraft } from '../utils/attitude'
+import { orientAircraft, aimAircraft, wobble } from '../utils/attitude'
 import { transportState } from '../store/transportState'
+import { landmarks } from '../data'
 import ArrivalPlane from './ArrivalPlane'
 import Airport from './Airport'
 
@@ -42,37 +43,6 @@ const STAGES: Record<string, Stage[]> = {
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
 
 const smooth = (delta: number, rate = 5) => 1 - Math.pow(2, -delta * rate)
-
-/** Keep the aircraft at this viewport height (above the centered title). */
-const TARGET_NDC_Y = 0.55
-
-const UP_VECTOR = new THREE.Vector3(0, 1, 0)
-
-/**
- * Tilt the camera (pitch only, keeping its heading) so the aircraft's center
- * sits at TARGET_NDC_Y. Guarantees the aircraft stays clear of the centered
- * name/role text at every frame, regardless of stage, path or easing.
- */
-function aimAircraft(
-  acPos: THREE.Vector3,
-  camPos: THREE.Vector3,
-  lookAt: THREE.Vector3,
-  fov: number,
-): THREE.Vector3 {
-  const arm = camPos.distanceTo(lookAt)
-  if (arm < 1e-4) return lookAt
-  const fwd = lookAt.clone().sub(camPos).normalize()
-  const right = new THREE.Vector3().crossVectors(fwd, UP_VECTOR)
-  if (right.lengthSq() < 1e-6) return lookAt
-  right.normalize()
-  const upV = new THREE.Vector3().crossVectors(right, fwd)
-  const d = acPos.clone().sub(camPos)
-  const theta = Math.atan2(d.dot(upV), d.dot(fwd))
-  const targetRad = Math.atan(TARGET_NDC_Y * Math.tan((fov * Math.PI) / 360))
-  const quat = new THREE.Quaternion().setFromAxisAngle(right, theta - targetRad)
-  fwd.applyQuaternion(quat)
-  return camPos.clone().addScaledVector(fwd, arm)
-}
 
 function stageInfo(
   elapsed: number,
@@ -225,6 +195,19 @@ const BANK_GAIN = 0.9
 const FORWARD_SMOOTH = 2.4
 const BANK_SMOOTH = 3.5
 
+/**
+ * Per-stage wind turbulence strength: invisible on the runway, gentle in
+ * cruise, strongest on the descent where airspeed is highest.
+ */
+const TURB_STRENGTH: Record<IntroStage, number> = {
+  taxi: 0.06,
+  climb: 0.5,
+  circuit: 0.45,
+  approach: 0.7,
+  landing: 0.12,
+  orbit: 0,
+}
+
 /** Total length of the 70s airplane journey, used for arc-length timing. */
 const TOTAL_TIME = STAGES.air.reduce((a, s) => a + s.duration, 0)
 
@@ -244,6 +227,7 @@ export default function IntroSequence(): JSX.Element {
   const variant = useStore((s) => s.introVariant)
   const skipIntro = useStore((s) => s.skipIntro)
   const setIntroStage = useStore((s) => s.setIntroStage)
+  const setIntroCaption = useStore((s) => s.setIntroCaption)
   const planeRef = useRef<THREE.Group>(null)
   const elapsed = useRef(0)
   const done = useRef(false)
@@ -253,8 +237,47 @@ export default function IntroSequence(): JSX.Element {
   const flightForward = useRef(new THREE.Vector3(0, 0, 1))
   const bankRef = useRef(0)
   const prevHeading = useRef(0)
+  const passIdx = useRef(0)
+  const captionTimer = useRef<number | undefined>(undefined)
 
   const stages = STAGES[variant] ?? STAGES.standard
+
+  /**
+   * The instant (in flight seconds) at which the plane flies closest to each
+   * landmark, so the intro can caption "Below: …" as it passes. Computed once
+   * by sampling the whole spline in time; only passes within 85m count, and
+   * they're spaced ≥7s apart so captions never overlap.
+   */
+  const passes = useMemo(() => {
+    if (variant === 'standard') return []
+    const out: { t: number; label: string }[] = []
+    const N = 600
+    for (const lm of landmarks) {
+      let bestT = 0
+      let bestD = Infinity
+      for (let i = 0; i <= N; i++) {
+        const t = i / N
+        const s = flightPath.toArc(t, TOTAL_TIME)
+        const { pos } = flightPath.sample(s)
+        const d = Math.hypot(pos.x - lm.position[0], pos.z - lm.position[2])
+        if (d < bestD) {
+          bestD = d
+          bestT = t
+        }
+      }
+      if (bestD < 85) out.push({ t: bestT * TOTAL_TIME, label: lm.label })
+    }
+    out.sort((a, b) => a.t - b.t)
+    const spaced: typeof out = []
+    let last = -10
+    for (const p of out) {
+      if (p.t - last >= 7) {
+        spaced.push(p)
+        last = p.t
+      }
+    }
+    return spaced
+  }, [variant])
 
   useEffect(() => {
     camera.position.set(0, 26, 42)
@@ -262,8 +285,10 @@ export default function IntroSequence(): JSX.Element {
     return () => {
       done.current = true
       setIntroStage('orbit')
+      setIntroCaption(null)
+      if (captionTimer.current) window.clearTimeout(captionTimer.current)
     }
-  }, [camera, setIntroStage])
+  }, [camera, setIntroStage, setIntroCaption])
 
   useFrame((_, delta) => {
     if (done.current || !geoResolved) return
@@ -287,6 +312,9 @@ export default function IntroSequence(): JSX.Element {
     let posTarget = new THREE.Vector3(0, 26, 42)
     let lookAt = new THREE.Vector3(0, 0, 0)
     let aircraftPos: THREE.Vector3 | null = null
+    // Where the aircraft should sit in screen space for this shot (see
+    // attitude.aimAircraft). Kept on the plane so the name/role never overlap.
+    let ndc = { x: 0, y: 0.55 }
 
     if (variant === 'standard') {
       // ---- Default orbit (geo failed/timed out) ----
@@ -303,6 +331,12 @@ export default function IntroSequence(): JSX.Element {
       const planePos = pos.clone()
       aircraftPos = planePos
 
+      // Wind buffeting: a gentle deterministic shake in altitude and bank that
+      // grows with airspeed so the airplane visibly fights the air instead of
+      // sliding along a fixed rail.
+      const turb = TURB_STRENGTH[key] ?? 0
+      if (turb > 0) planePos.y += wobble(elapsed.current * 1.35) * turb * 1.2
+
       const tgt = tangent.clone().normalize()
       flightForward.current
         .lerp(tgt, smooth(delta, FORWARD_SMOOTH))
@@ -318,9 +352,9 @@ export default function IntroSequence(): JSX.Element {
         ) / Math.max(delta, 1e-4)
       prevHeading.current = planeHeading.current
       const bankTarget = THREE.MathUtils.clamp(
-        turnRate * BANK_GAIN,
-        -MAX_BANK,
-        MAX_BANK,
+        turnRate * BANK_GAIN + wobble(elapsed.current * 1.9) * turb * 0.55,
+        -MAX_BANK - 0.15,
+        MAX_BANK + 0.15,
       )
       bankRef.current +=
         (bankTarget - bankRef.current) * smooth(delta, BANK_SMOOTH)
@@ -345,8 +379,20 @@ export default function IntroSequence(): JSX.Element {
         lookAt.copy(planePos).addScaledVector(ahead, aheadDist).add(new THREE.Vector3(0, -down, 0))
       }
 
+      const ahead = new THREE.Vector3(
+        Math.sin(planeHeading.current),
+        0,
+        Math.cos(planeHeading.current),
+      )
+      const right = new THREE.Vector3(
+        Math.cos(planeHeading.current),
+        0,
+        -Math.sin(planeHeading.current),
+      )
+
       if (key === 'taxi') {
         // Fixed shot beside the runway watching the ground roll and rotation.
+        ndc = { x: 0, y: 0.5 }
         posTarget.lerpVectors(
           new THREE.Vector3(24, 3, 102),
           new THREE.Vector3(26, 5, 96),
@@ -354,14 +400,63 @@ export default function IntroSequence(): JSX.Element {
         )
         lookAt.copy(planePos).add(new THREE.Vector3(0, -2, 0))
       } else if (key === 'climb') {
+        ndc = { x: 0, y: 0.55 }
         chase(15, 3, 20, -18)
       } else if (key === 'circuit') {
-        chase(16, 4, 22, -22)
+        // A quiet shot list so the long circuit never repeats: chase, wing
+        // close-up, chase, low hero silhouette, chase.
+        if (eased < 0.3) {
+          ndc = { x: 0, y: 0.55 }
+          chase(16, 4, 22, -22)
+        } else if (eased < 0.52) {
+          // Wing / quarter shot: out to the right, plane framed to the right
+          // edge with the valley sweeping below-left.
+          ndc = { x: 0.32, y: 0.5 }
+          posTarget
+            .copy(planePos)
+            .addScaledVector(ahead, -11)
+            .addScaledVector(right, 5.5)
+            .add(new THREE.Vector3(0, 1.2, 0))
+          lookAt.copy(planePos).addScaledVector(ahead, 22)
+        } else if (eased < 0.66) {
+          ndc = { x: 0, y: 0.55 }
+          chase(16, 4, 22, -22)
+        } else if (eased < 0.86) {
+          // Hero shot: low and ahead, the camera looks up at the plane against
+          // the golden sky with the whole valley below — the silhouette moment.
+          ndc = { x: 0, y: 0.34 }
+          posTarget
+            .copy(planePos)
+            .addScaledVector(ahead, 15)
+            .addScaledVector(right, -5)
+            .add(new THREE.Vector3(0, -8.5, 0))
+          lookAt.copy(planePos).addScaledVector(ahead, 5)
+        } else {
+          ndc = { x: 0, y: 0.55 }
+          chase(16, 4, 22, -22)
+        }
       } else if (key === 'approach') {
+        ndc = { x: 0, y: 0.55 }
         chase(13, 2, 16, -14)
       } else {
         // Landing: low chase behind the plane on the runway roll-out.
+        ndc = { x: 0, y: 0.55 }
         chase(10, 1.5, 12, -8)
+      }
+
+      // Caption the landmarks the plane passes beneath on the circuit.
+      while (
+        passIdx.current < passes.length &&
+        elapsed.current >= passes[passIdx.current].t
+      ) {
+        const p = passes[passIdx.current]
+        passIdx.current++
+        setIntroCaption(p.label)
+        if (captionTimer.current) window.clearTimeout(captionTimer.current)
+        captionTimer.current = window.setTimeout(
+          () => setIntroCaption(null),
+          4200,
+        )
       }
     }
 
@@ -369,7 +464,12 @@ export default function IntroSequence(): JSX.Element {
     else camera.position.lerp(posTarget, smooth(delta))
     if (aircraftPos) {
       const cam = camera as THREE.PerspectiveCamera
-      lookAt = aimAircraft(aircraftPos, camera.position, lookAt, cam.fov)
+      lookAt = aimAircraft(aircraftPos, camera.position, lookAt, cam, ndc)
+    }
+    // Faint camera buffeting so the turbulence reads in the shot too.
+    const turbNow = TURB_STRENGTH[currentStage.current] ?? 0
+    if (turbNow > 0 && aircraftPos) {
+      camera.position.y += wobble(elapsed.current * 2.3 + 3.3) * turbNow * 0.35
     }
     camera.lookAt(lookAt)
 

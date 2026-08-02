@@ -18,6 +18,7 @@ import WaterRiver from './WaterRiver'
 import Rain from './Rain'
 import TireTracks from './TireTracks'
 import GradientSky from './GradientSky'
+import Clouds from './Clouds'
 import Player from './Player'
 import WalkController from './WalkController'
 import BikeController from './BikeController'
@@ -136,6 +137,9 @@ function Scene3D() {
       >
         <fog attach="fog" args={[theme.fog, fogNear, fogFar]} />
         <GradientSky />
+        {/* Cloud deck overhead during the flight — disappears on touchdown for
+            a clean reveal of the real sky. */}
+        {!introDone && <Clouds />}
         <ambientLight intensity={theme.ambient} />
         {/* Soft fill from every direction so the aircraft (and other geometry)
             never falls into a shadowed side facing the camera, no matter its

@@ -5,6 +5,7 @@ export default function WelcomeCard(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
   const welcomeDismissed = useStore((s) => s.welcomeDismissed)
   const dismissWelcome = useStore((s) => s.dismissWelcome)
+  const visitedZones = useStore((s) => s.visitedZones)
   const [show, setShow] = useState(false)
 
   useEffect(() => {
@@ -15,13 +16,40 @@ export default function WelcomeCard(): JSX.Element | null {
 
   if (!introDone || welcomeDismissed || !show) return null
 
+  const hints: [string, string][] = [
+    ['WASD', 'Move / drive'],
+    ['Shift', 'Sprint'],
+    ['Space', 'Jump'],
+    ['E', 'Enter vehicle'],
+    ['F', 'Get out'],
+    ['G · R · H', 'Engine · Reverse · Honk'],
+    ['Q / E', 'Look around'],
+  ]
+
   return (
     <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center px-4">
-      <div className="animate-welcome pointer-events-auto rounded-2xl border border-white/15 bg-slate-900/85 p-6 text-center shadow-2xl shadow-black/50 backdrop-blur">
+      <div className="animate-welcome pointer-events-auto w-full max-w-sm rounded-2xl border border-white/15 bg-slate-900/85 p-6 text-center shadow-2xl shadow-black/50 backdrop-blur">
         <h2 className="text-lg font-bold text-white">Welcome to my little world</h2>
-        <p className="mt-2 max-w-xs text-sm text-white/80">
-          You just touched down — walk around, or press E near the car, motorcycle or horse to ride.
-          Stop at any landmark to open a story.
+        <p className="mt-2 text-sm text-white/80">
+          You just touched down — walk around, or press{' '}
+          <span className="font-semibold text-amber-300">E</span> near the car,
+          motorcycle or horse to ride. Stop at any landmark to open a story.
+        </p>
+        <div className="mt-4 grid grid-cols-1 gap-1.5 text-left">
+          {hints.map(([keys, action]) => (
+            <div
+              key={action}
+              className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-1.5"
+            >
+              <span className="text-xs text-white/70">{action}</span>
+              <kbd className="rounded bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+                {keys}
+              </kbd>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-white/60">
+          Explored {visitedZones.length}/5 zones · click the minimap to fly
         </p>
         <button
           type="button"

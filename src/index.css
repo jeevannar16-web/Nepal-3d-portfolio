@@ -118,6 +118,21 @@ body,
   animation: intro-name 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
 }
 
+@keyframes intro-caption {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.animate-intro-caption {
+  animation: intro-caption 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .animate-panel-in {
   animation: panel-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
