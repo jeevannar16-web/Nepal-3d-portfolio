@@ -208,7 +208,7 @@ export default function WalkController({
       case 'anticipate':
         jumpTimer.current += delta
         if (jumpTimer.current >= ANTICIPATE_TIME) {
-          rb.setLinvel({ x: vel.x, y: JUMP_VEL, z: vel.z }, true)
+          rb.applyImpulse({ x: 0, y: JUMP_VEL, z: 0 }, true)
           jumpState.current = 'airborne'
           jumpTimer.current = 0
         }
