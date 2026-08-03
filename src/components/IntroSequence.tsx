@@ -28,17 +28,17 @@ interface Stage {
  */
 const STAGES: Record<string, Stage[]> = {
   air: [
-    { key: 'taxi', duration: 4 },
+    { key: 'taxi', duration: 9 },
     { key: 'climb', duration: 7 },
-    { key: 'circuit', duration: 42 },
-    { key: 'approach', duration: 9 },
+    { key: 'circuit', duration: 39 },
+    { key: 'approach', duration: 7 },
     { key: 'landing', duration: 8 },
   ],
   local: [
-    { key: 'taxi', duration: 4 },
+    { key: 'taxi', duration: 9 },
     { key: 'climb', duration: 7 },
-    { key: 'circuit', duration: 42 },
-    { key: 'approach', duration: 9 },
+    { key: 'circuit', duration: 39 },
+    { key: 'approach', duration: 7 },
     { key: 'landing', duration: 8 },
   ],
   standard: [{ key: 'orbit', duration: 3 }],
@@ -77,9 +77,15 @@ function stageInfo(
 // steady descent on final at ~8°, then the explicit landing trajectory (flare,
 // touchdown, rollout) plays out from the end of this spline.
 const SPLINE_POINTS = [
+  // Slow taxi on the runway (z=88, x ∈ [-18, 18]) then a gradually eased
+  // takeoff roll along the north runway before rotation and climb-out.
   new THREE.Vector3(-14, 0.06, 88),
-  new THREE.Vector3(14, 0.06, 88),
-  new THREE.Vector3(42, 2.5, 88),
+  new THREE.Vector3(-2, 0.06, 88),
+  new THREE.Vector3(10, 0.06, 88),
+  new THREE.Vector3(18, 0.06, 88),
+  new THREE.Vector3(30, 1.8, 88),
+  new THREE.Vector3(44, 6, 88),
+  new THREE.Vector3(58, 11, 89),
   new THREE.Vector3(72, 12, 90),
   new THREE.Vector3(104, 40, 56),
   new THREE.Vector3(120, 82, -18),
@@ -231,13 +237,45 @@ class FlightPath {
     }
   }
 
-  /** Time (seconds) -> arc distance along the spline, with a long
-   *  decelerating final approach so the airplane slows like a real landing. */
+  /** Time (seconds) -> arc distance along the spline, with a slow taxi, a
+   *  gradually eased takeoff roll, cruise, then a long decelerating final
+   *  approach so the airplane slows like a real landing. */
   toArc(t: number): number {
     const tc = Math.min(Math.max(t, 0), SPLINE_TIME)
-    if (tc <= DECEL_T1) return V0 * tc
+    if (tc <= TAXI_T) return TAXI_SPEED * tc
+    if (tc <= TAXI_T + ROLL_T) {
+      // Eased takeoff roll: speed ramps TAXI_SPEED -> ROLL_SPEED (easeInQuad),
+      // so the airplane visibly accelerates down the runway before rotation.
+      const u = (tc - TAXI_T) / ROLL_T
+      return (
+        TAXI_DIST +
+        TAXI_SPEED * (tc - TAXI_T) +
+        (ROLL_SPEED - TAXI_SPEED) * ROLL_T * (u * u * u) / 3
+      )
+    }
+    if (tc <= TAXI_T + ROLL_T + CLIMB_T) {
+      // Initial climb: ease ROLL_SPEED -> V0 (smoothstep) while pitching up.
+      const u = (tc - TAXI_T - ROLL_T) / CLIMB_T
+      const s = u * u * u - u * u * u * u / 2
+      return (
+        TAXI_DIST + ROLL_DIST +
+        ROLL_SPEED * (tc - TAXI_T - ROLL_T) +
+        (V0 - ROLL_SPEED) * CLIMB_T * s
+      )
+    }
+    if (tc <= DECEL_T1) {
+      const cruiseStart = TAXI_T + ROLL_T + CLIMB_T
+      return (
+        TAXI_DIST + ROLL_DIST + CLIMB_DIST(V0) +
+        V0 * (tc - cruiseStart)
+      )
+    }
     const tau = tc - DECEL_T1
-    return V0 * DECEL_T1 + V0 * tau - 0.5 * DECEL_A * tau * tau
+    return (
+      TAXI_DIST + ROLL_DIST + CLIMB_DIST(V0) +
+      V0 * (DECEL_T1 - (TAXI_T + ROLL_T + CLIMB_T)) +
+      V0 * tau - 0.5 * DECEL_A * tau * tau
+    )
   }
 
   get length(): number {
@@ -260,12 +298,47 @@ const SPLINE_TIME = 62
 const APPROACH_SPEED = 7 // speed at the flare point (~135 m/s full scale)
 const DECEL_DIST = 100 // units of decelerating final approach
 
-// total = V0·SPLINE_TIME − DECEL_DIST·(V0 − V1)/(V0 + V1)  =>  quadratic in V0
+// Takeoff profile: a slow taxi (TAXI_SPEED for TAXI_T seconds), then a
+// gradually eased takeoff roll (speed ramps TAXI_SPEED -> ROLL_SPEED over
+// ROLL_T seconds so the airplane visibly accelerates down the runway before
+// rotation), an initial climb easing on to cruise speed V0, steady cruise,
+// then the long decelerating final approach. V0 is solved so the whole spline
+// is traversed in exactly SPLINE_TIME seconds.
+const TAXI_T = 4
+const TAXI_SPEED = 1.5
+const ROLL_T = 5
+const ROLL_SPEED = 12
+const CLIMB_T = 4
+
+const TAXI_DIST = TAXI_SPEED * TAXI_T
+const ROLL_DIST =
+  TAXI_SPEED * ROLL_T + ((ROLL_SPEED - TAXI_SPEED) * ROLL_T) / 3
+const CLIMB_DIST = (v: number) =>
+  ROLL_SPEED * CLIMB_T + ((v - ROLL_SPEED) * CLIMB_T) / 2
+
+// total(V0) = taxi + roll + climb + V0·(cruise time) + DECEL_DIST = spline
+// length. Monotone in V0, so bisect for the exact cruise speed.
 const V0 = (() => {
-  const a = SPLINE_TIME
-  const b = SPLINE_TIME * APPROACH_SPEED - DECEL_DIST - flightPath.length
-  const c = (DECEL_DIST - flightPath.length) * APPROACH_SPEED
-  return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a)
+  const cruiseStart = TAXI_T + ROLL_T + CLIMB_T
+  const total = (v: number) => {
+    const decelDt = (2 * DECEL_DIST) / (v + APPROACH_SPEED)
+    const decelT1 = SPLINE_TIME - decelDt
+    return (
+      TAXI_DIST +
+      ROLL_DIST +
+      CLIMB_DIST(v) +
+      v * (decelT1 - cruiseStart) +
+      DECEL_DIST
+    )
+  }
+  let lo = APPROACH_SPEED + 0.01
+  let hi = 80
+  for (let i = 0; i < 100; i++) {
+    const mid = (lo + hi) / 2
+    if (total(mid) > flightPath.length) hi = mid
+    else lo = mid
+  }
+  return (lo + hi) / 2
 })()
 const DECEL_DT = (V0 - APPROACH_SPEED) / ((V0 * V0 - APPROACH_SPEED * APPROACH_SPEED) / (2 * DECEL_DIST))
 const DECEL_T1 = SPLINE_TIME - DECEL_DT
@@ -613,14 +686,12 @@ export default function IntroSequence(): JSX.Element {
         lookAt.copy(planePos).addScaledVector(ahead, aheadDist).add(new THREE.Vector3(0, -down, 0))
       }
       if (key === 'taxi') {
-        // Fixed shot beside the runway watching the ground roll and rotation.
+        // Tracking side-front shot: hangs beside the runway as the airplane
+        // taxis slowly, then visibly accelerates down the runway and rotates
+        // into the climb (the passing runway + nose pitch-up read the speed).
         ndc = { x: 0, y: 0.5 }
-        posTarget.lerpVectors(
-          new THREE.Vector3(24, 3, 102),
-          new THREE.Vector3(26, 5, 96),
-          eased,
-        )
-        lookAt.copy(planePos).add(new THREE.Vector3(0, -2, 0))
+        posTarget.copy(planePos).add(new THREE.Vector3(24, 3.4, 18))
+        lookAt.copy(planePos).add(new THREE.Vector3(0, -3, 0))
       } else if (key === 'climb') {
         chase(15, 3, 20, -18)
       } else if (key === 'circuit') {
