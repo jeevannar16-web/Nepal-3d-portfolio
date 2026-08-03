@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import {
   EffectComposer,
   Bloom,
-  SSAOPass,
-  SMAAPass,
+  SSAO,
+  SMAA,
 } from '@react-three/postprocessing'
 import { Environment } from '@react-three/drei'
 import type { RapierRigidBody } from '@react-three/rapier'
-import * as THREE from 'three'
 import { useStore } from '../store/useStore'
+import { assetUrl } from '../utils/assetUrl'
 import { detectCountry } from '../utils/geo'
 import { getTimeOfDay, DAY_THEMES, INTRO_THEME } from '../utils/timeOfDay'
 import { fetchKathmanduWeather } from '../utils/weather'
@@ -52,6 +52,16 @@ import WelcomeCard from './WelcomeCard'
 import Menu from './Menu'
 import HudCluster from './HudCluster'
 import Wayfinder from './Wayfinder'
+
+/** three r163+ exposes scene.environmentIntensity; drei's Environment has no
+ *  intensity prop, so set it here to keep the HDRI at the intended brightness. */
+function EnvIntensity({ value }: { value: number }) {
+  const scene = useThree((s) => s.scene)
+  useEffect(() => {
+    scene.environmentIntensity = value
+  }, [scene, value])
+  return null
+}
 
 function Scene3D() {
   const playerBody = useRef<RapierRigidBody>(null)
@@ -134,8 +144,8 @@ function Scene3D() {
       <Canvas
         camera={{ position: [0, 26, 42], fov: 70 }}
         dpr={lowGraphics || weakDevice ? [1, 1.5] : [1, 2]}
-        background={theme.skyTop}
       >
+        <color attach="background" args={[theme.skyTop]} />
         <fog attach="fog" args={[theme.fog, fogNear, fogFar]} />
         <GradientSky />
         {!introDone && <Clouds />}
@@ -157,11 +167,8 @@ function Scene3D() {
           shadow-camera-bottom={-15}
         />
 
-        <Environment
-          files="/hdr/dawn_mountain_2k.hdr"
-          background={false}
-          intensity={0.6}
-        />
+        <Environment files={assetUrl('/hdr/forest_slope_1k.hdr')} background={false} />
+        <EnvIntensity value={0.6} />
 
         <Physics gravity={[0, -9.81, 0]}>
           <Ground />
@@ -202,12 +209,13 @@ function Scene3D() {
               luminanceSmoothing={0.25}
               radius={0.7}
             />
-            <SSAOPass
-              kernelRadius={16}
-              minDistance={0.005}
-              maxDistance={0.1}
+            <SSAO
+              samples={16}
+              radius={0.3}
+              intensity={3}
+              bias={0.1}
             />
-            <SMAAPass />
+            <SMAA />
           </EffectComposer>
         )}
       </Canvas>
