@@ -1,11 +1,13 @@
 import { useEffect, useState, type JSX } from 'react'
 import { useStore } from '../store/useStore'
+import { useDeviceType } from '../hooks/useDeviceType'
 
 export default function WelcomeCard(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
   const welcomeDismissed = useStore((s) => s.welcomeDismissed)
   const dismissWelcome = useStore((s) => s.dismissWelcome)
   const visitedZones = useStore((s) => s.visitedZones)
+  const deviceType = useDeviceType()
   const [show, setShow] = useState(false)
 
   useEffect(() => {
@@ -16,15 +18,24 @@ export default function WelcomeCard(): JSX.Element | null {
 
   if (!introDone || welcomeDismissed || !show) return null
 
-  const hints: [string, string][] = [
-    ['WASD', 'Move / drive'],
-    ['Shift', 'Sprint'],
-    ['Space', 'Jump'],
-    ['E', 'Enter vehicle'],
-    ['F', 'Get out'],
-    ['G · R · H', 'Engine · Reverse · Honk'],
-    ['Q / E', 'Look around'],
-  ]
+  const hints: [string, string][] = deviceType === 'mobile'
+    ? [
+        ['Left thumb', 'Move / drive'],
+        ['Sprint', 'Hold the sprint button'],
+        ['Jump', 'Tap the jump button'],
+        ['Get in', 'Tap when near a vehicle'],
+        ['Get out', 'Tap the exit button'],
+        ['Minimap', 'Tap a landmark to fly'],
+      ]
+    : [
+        ['WASD', 'Move / drive'],
+        ['Shift', 'Sprint'],
+        ['Space', 'Jump'],
+        ['E', 'Enter vehicle'],
+        ['F', 'Get out'],
+        ['G · R · H', 'Engine · Reverse · Honk'],
+        ['Q / E', 'Look around'],
+      ]
 
   return (
     <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center px-4">

@@ -241,6 +241,9 @@ function Bridge(): JSX.Element {
 
 /** Runway + helipad on the north plain, just off the northern ring road. */
 function Airport(): JSX.Element {
+  const introDone = useStore((s) => s.introDone)
+  const parkedPlane = useStore((s) => s.parkedPlane)
+  const parkedPlaneScene = useGLTF(assetUrl('/models/plane.glb')).scene
   return (
     <group>
       {/* Asphalt runway with edge lines */}
@@ -255,15 +258,19 @@ function Airport(): JSX.Element {
         </mesh>
       ))}
       {/* Parked plane (nose +X) — same model the user has in the repo root. A
-          fixed hitbox keeps walkers/vehicles from driving through it. */}
-      <RigidBody type="fixed" position={[0, 1.08, 88]} colliders={false}>
-        <CuboidCollider args={[1.45, 1.45, 4.2]} position={[0, 1.45, 0]} />
-        <primitive
-          object={useGLTF(assetUrl('/models/plane.glb')).scene}
-          rotation={[0, Math.PI / 2, 0]}
-          scale={0.005}
-        />
-      </RigidBody>
+          fixed hitbox keeps walkers/vehicles from driving through it. Shown
+          only once the intro has finished AND the intro aircraft did not land
+          here itself, so the runway never holds two parked planes. */}
+      {introDone && !parkedPlane && (
+        <RigidBody type="fixed" position={[0, 1.08, 88]} colliders={false}>
+          <CuboidCollider args={[1.45, 1.45, 4.2]} position={[0, 1.45, 0]} />
+          <primitive
+            object={parkedPlaneScene}
+            rotation={[0, Math.PI / 2, 0]}
+            scale={0.005}
+          />
+        </RigidBody>
+      )}
       {/* Helipad beside the runway */}
       <mesh position={[-10, 0.02, 80]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[3.2, 24]} />

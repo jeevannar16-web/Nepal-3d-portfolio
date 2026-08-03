@@ -7,10 +7,10 @@ import BlobShadow from './BlobShadow'
 
 /**
  * soldier.glb is a Mixamo-rigged "vanguard" soldier (three.js example asset)
- * ~183 world units tall with real Idle/Walk/Run/Jump clips; 0.0098 makes the
- * man ~1.8 tall.
+ * ~1.83 world units tall with real Idle/Walk/Run/Jump clips — already
+ * human-scale, so it renders 1:1 (no rescale needed).
  */
-const SOLDIER_SCALE = 0.0098
+const SOLDIER_SCALE = 1
 
 interface Motion {
   moving: boolean
@@ -92,6 +92,7 @@ export default function Soldier({
       active: current.current?.getClip().name ?? null,
       want,
     }
+    ;(window as any).__soldierScene = gltf.scene
   })
 
   return (

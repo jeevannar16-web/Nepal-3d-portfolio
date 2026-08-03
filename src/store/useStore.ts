@@ -23,6 +23,10 @@ interface PortfolioState {
   introDone: boolean
   introVariant: IntroVariant
   introStage: IntroStage
+  /** Landing spot of the intro aircraft after it rolls out; set at handoff.
+   *  The landed plane then stays parked as a solid, explorable object, and the
+   *  world's own parked plane is hidden so there is never a duplicate. */
+  parkedPlane: { x: number; y: number; z: number; heading: number } | null
   /** Landmark the intro is currently spotlighting (caption shown over the sky). */
   introCaption: string | null
   visitorCountry: string | null
@@ -47,6 +51,9 @@ interface PortfolioState {
   setGeo: (country: string | null, variant: IntroVariant) => void
   setIntroStage: (stage: IntroStage) => void
   setIntroCaption: (caption: string | null) => void
+  setParkedPlane: (
+    pose: { x: number; y: number; z: number; heading: number } | null,
+  ) => void
   setPlayerMode: (mode: PlayerMode) => void
   setTimeOfDay: (time: TimeOfDay) => void
   setWeather: (weather: WeatherKind) => void
@@ -70,6 +77,7 @@ export const useStore = create<PortfolioState>((set) => ({
   introDone: false,
   introVariant: 'standard',
   introStage: 'orbit',
+  parkedPlane: null,
   introCaption: null,
   visitorCountry: null,
   geoResolved: false,
@@ -89,6 +97,7 @@ export const useStore = create<PortfolioState>((set) => ({
     set({ visitorCountry: country, introVariant: variant, geoResolved: true }),
   setIntroStage: (stage) => set({ introStage: stage }),
   setIntroCaption: (caption) => set({ introCaption: caption }),
+  setParkedPlane: (pose) => set({ parkedPlane: pose }),
   setPlayerMode: (mode) => set({ playerMode: mode }),
   setTimeOfDay: (time) => set({ timeOfDay: time }),
   setWeather: (weather) => set({ weather }),

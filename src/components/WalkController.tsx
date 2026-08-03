@@ -9,7 +9,7 @@ import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 import { transportState, type TransportPose } from '../store/transportState'
-import { walkState } from '../store/walkState'
+import { walkState, inputState, walkHud } from '../store/walkState'
 import { angleDelta } from '../utils/attitude'
 import Soldier from './Soldier'
 
@@ -34,14 +34,6 @@ const keyMap: Record<string, 'fwd' | 'back' | 'left' | 'right' | 'run'> = {
   ArrowRight: 'right',
   ShiftLeft: 'run',
   ShiftRight: 'run',
-}
-
-const KEYS: Record<'fwd' | 'back' | 'left' | 'right' | 'run', boolean> = {
-  fwd: false,
-  back: false,
-  left: false,
-  right: false,
-  run: false,
 }
 
 interface WalkControllerProps {
@@ -83,6 +75,14 @@ export default function WalkController({
   activeRef.current = active
   const activePrev = useRef(active)
 
+  const nearVehicle = (pos: { x: number; z: number }) => {
+    for (const kind of ['car', 'bike', 'horse'] as const) {
+      const p = transportState[kind]
+      if (Math.hypot(pos.x - p.x, pos.z - p.z) < ENTER_RADIUS) return true
+    }
+    return false
+  }
+
   const enterVehicle = () => {
     const rb = body.current
     if (!rb) return
@@ -101,17 +101,13 @@ export default function WalkController({
       if (!activeRef.current) return
       const k = keyMap[e.code]
       if (k) {
-        KEYS[k] = true
+        inputState[k] = true
         e.preventDefault()
         return
       }
       if (e.code === 'Space') {
         e.preventDefault()
-        const rb = body.current
-        if (rb && grounded.current && !jumpState.current) {
-          jumpState.current = 'anticipate'
-          jumpTimer.current = 0
-        }
+        inputState.jump = true
         return
       }
       if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC') {
@@ -119,11 +115,14 @@ export default function WalkController({
         crouching.current = !crouching.current
         return
       }
-      if (e.code === 'KeyE') enterVehicle()
+      if (e.code === 'KeyE') {
+        e.preventDefault()
+        inputState.interact = true
+      }
     }
     const up = (e: KeyboardEvent) => {
       const k = keyMap[e.code]
-      if (k) KEYS[k] = false
+      if (k) inputState[k] = false
     }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
@@ -205,7 +204,22 @@ export default function WalkController({
       return
     }
 
+    // ---- Consume edge-triggered input (keyboard E or the touch interact
+    // button both land here) ----
+    if (inputState.interact) {
+      inputState.interact = false
+      enterVehicle()
+    }
+    walkHud.nearVehicle = nearVehicle(pos)
+
     // ---- Grounded check + jump state machine ----
+    if (inputState.jump) {
+      inputState.jump = false
+      if (grounded.current && !jumpState.current) {
+        jumpState.current = 'anticipate'
+        jumpTimer.current = 0
+      }
+    }
     const vel = rb.linvel()
     const groundedPhys = pos.y < 1.35 && Math.abs(vel.y) < 0.4
     switch (jumpState.current) {
@@ -234,11 +248,11 @@ export default function WalkController({
     const camDir = new THREE.Vector3()
     camera.getWorldDirection(camDir)
     const camYaw = Math.atan2(camDir.x, camDir.z)
-    const fwdInput = (KEYS.fwd ? 1 : 0) - (KEYS.back ? 1 : 0)
-    const sideInput = (KEYS.right ? 1 : 0) - (KEYS.left ? 1 : 0)
+    const fwdInput = (inputState.fwd ? 1 : 0) - (inputState.back ? 1 : 0)
+    const sideInput = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0)
     const speed = crouching.current
       ? CROUCH_SPEED
-      : KEYS.run
+      : inputState.run
         ? SPRINT_SPEED
         : WALK_SPEED
 
@@ -277,7 +291,7 @@ export default function WalkController({
     }
     motionRef.current = {
       moving,
-      running: moving && KEYS.run && !crouching.current,
+      running: moving && inputState.run && !crouching.current,
       crouching: crouching.current,
       jump: jumpState.current,
     }

@@ -10,6 +10,8 @@ import {
 import { Environment } from '@react-three/drei'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useStore } from '../store/useStore'
+import { transportState } from '../store/transportState'
+import { walkHud } from '../store/walkState'
 import { assetUrl } from '../utils/assetUrl'
 import { detectCountry } from '../utils/geo'
 import { getTimeOfDay, DAY_THEMES, INTRO_THEME } from '../utils/timeOfDay'
@@ -51,6 +53,9 @@ import Toast from './Toast'
 import WelcomeCard from './WelcomeCard'
 import Menu from './Menu'
 import HudCluster from './HudCluster'
+import ExitVehicleButton from './ExitVehicleButton'
+import TouchControls from './TouchControls'
+import ParkedArrivalPlane from './ParkedArrivalPlane'
 import Wayfinder from './Wayfinder'
 
 /** three r163+ exposes scene.environmentIntensity; drei's Environment has no
@@ -63,9 +68,33 @@ function EnvIntensity({ value }: { value: number }) {
   return null
 }
 
+/** Debug helper: exposes the three scene on window for headless probes. */
+function SceneRef(): null {
+  const scene = useThree((s) => s.scene)
+  useEffect(() => {
+    ;(window as any).__scene = scene
+  }, [scene])
+  return null
+}
+
+/** Debug helper: exposes the active camera on window for headless probes. */
+function CameraRef(): null {
+  const camera = useThree((s) => s.camera)
+  useEffect(() => {
+    ;(window as any).__camera = camera
+  }, [camera])
+  return null
+}
+
 function Scene3D() {
   const playerBody = useRef<RapierRigidBody>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    ;(window as any).__store = useStore
+    ;(window as any).__scene3dMounted = true
+    ;(window as any).__transport = transportState
+    ;(window as any).__walkHud = walkHud
+  }, [])
 
   const introDone = useStore((s) => s.introDone)
   const playerMode = useStore((s) => s.playerMode)
@@ -169,6 +198,8 @@ function Scene3D() {
 
         <Environment files={assetUrl('/hdr/forest_slope_1k.hdr')} background={false} />
         <EnvIntensity value={0.6} />
+        <SceneRef />
+        <CameraRef />
 
         <Physics gravity={[0, -9.81, 0]}>
           <Ground />
@@ -183,6 +214,7 @@ function Scene3D() {
           )}
           <Landmarks playerRef={playerBody} />
           <Props />
+          <ParkedArrivalPlane />
         </Physics>
 
         <MountainRange />
@@ -226,6 +258,8 @@ function Scene3D() {
       <Menu />
       <Minimap />
       <HudCluster />
+      <ExitVehicleButton />
+      <TouchControls />
       <Wayfinder />
       <TravelingIndicator />
       <IntroOverlay />

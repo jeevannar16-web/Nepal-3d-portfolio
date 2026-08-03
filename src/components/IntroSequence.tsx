@@ -90,11 +90,37 @@ const SPLINE_POINTS = [
   new THREE.Vector3(-76, 94, 112),
   new THREE.Vector3(24, 66, 112),
   new THREE.Vector3(70, 50, 110),
-  new THREE.Vector3(112, 36, 96),
-  new THREE.Vector3(130, 26, 70),
-  new THREE.Vector3(118, 16, 84),
-  new THREE.Vector3(88, 11, 88),
-  new THREE.Vector3(50, 6.5, 88),
+  new THREE.Vector3(100, 42, 108),
+  new THREE.Vector3(128, 36, 110),
+  new THREE.Vector3(148, 32, 112),
+  // Eastbound downwind at z=112, then a smooth 180° left turn (radius 12)
+  // onto final, so the aircraft is dead-straight on the runway centreline
+  // (z=88, heading -X) before the "Final approach…" caption ever shows.
+  new THREE.Vector3(154, 31, 112),
+  new THREE.Vector3(156.084, 30.667, 111.818),
+  new THREE.Vector3(158.104, 30.333, 111.276),
+  new THREE.Vector3(160, 30, 110.392),
+  new THREE.Vector3(161.713, 29.667, 109.192),
+  new THREE.Vector3(163.192, 29.333, 107.713),
+  new THREE.Vector3(164.392, 29, 106),
+  new THREE.Vector3(165.276, 28.667, 104.104),
+  new THREE.Vector3(165.818, 28.333, 102.084),
+  new THREE.Vector3(166, 28, 100),
+  new THREE.Vector3(165.818, 27.667, 97.916),
+  new THREE.Vector3(165.276, 27.333, 95.896),
+  new THREE.Vector3(164.392, 27, 94),
+  new THREE.Vector3(163.192, 26.667, 92.287),
+  new THREE.Vector3(161.713, 26.333, 90.808),
+  new THREE.Vector3(160, 26, 89.608),
+  new THREE.Vector3(158.104, 25.667, 88.724),
+  new THREE.Vector3(156.084, 25.333, 88.182),
+  new THREE.Vector3(154, 25, 88),
+  new THREE.Vector3(150, 24.5, 88),
+  new THREE.Vector3(140, 24, 88),
+  new THREE.Vector3(118, 21, 88),
+  new THREE.Vector3(90, 16, 88),
+  new THREE.Vector3(60, 11, 88),
+  new THREE.Vector3(30, 5, 88),
   new THREE.Vector3(20, 1.5, 88),
 ]
 
@@ -325,6 +351,7 @@ export default function IntroSequence(): JSX.Element {
   const skipIntro = useStore((s) => s.skipIntro)
   const setIntroStage = useStore((s) => s.setIntroStage)
   const setIntroCaption = useStore((s) => s.setIntroCaption)
+  const setParkedPlane = useStore((s) => s.setParkedPlane)
   const planeRef = useRef<THREE.Group>(null)
   const elapsed = useRef(0)
   const done = useRef(false)
@@ -338,6 +365,7 @@ export default function IntroSequence(): JSX.Element {
   const captionTimer = useRef<number | undefined>(undefined)
   const landingLog = useRef<Set<number>>(new Set())
   const lastPlaneY = useRef<number | null>(null)
+  const smoothLook = useRef<THREE.Vector3 | null>(null)
 
   const stages = STAGES[variant] ?? STAGES.standard
 
@@ -379,6 +407,11 @@ export default function IntroSequence(): JSX.Element {
   }, [variant])
 
   useEffect(() => {
+    // StrictMode in dev unmounts/remounts the intro; the cleanup sets
+    // done.current, so reset it on (re)mount or the flight never starts.
+    done.current = false
+    started.current = false
+    elapsed.current = 0
     camera.position.set(0, 26, 42)
     camera.lookAt(0, 0, 0)
     return () => {
@@ -467,8 +500,18 @@ export default function IntroSequence(): JSX.Element {
       aircraftPos = planePos
 
       const tgt = desired.clone()
+      // Roll out crisply: as the flight path swings around onto final (heading
+      // converging on -X) ease the heading-settle rate up, so the aircraft is
+      // dead-straight on the runway line before the "Final approach…" caption.
+      const proxFinal =
+        1 -
+        Math.min(
+          Math.abs(angleDelta(Math.atan2(desired.x, desired.z), -Math.PI / 2)) / 1.2,
+          1,
+        )
+      const fwdRate = FORWARD_SMOOTH + (5 - FORWARD_SMOOTH) * proxFinal
       flightForward.current
-        .lerp(tgt, smooth(delta, FORWARD_SMOOTH))
+        .lerp(tgt, smooth(delta, fwdRate))
         .normalize()
       planeHeading.current = Math.atan2(
         flightForward.current.x,
@@ -549,6 +592,7 @@ export default function IntroSequence(): JSX.Element {
           planeY: planePos.y,
           planeX: planePos.x,
           planeZ: planePos.z,
+          planeHeading: (planeHeading.current * 180) / Math.PI,
           camY: camera.position.y,
           camX: camera.position.x,
           camZ: camera.position.z,
@@ -588,8 +632,11 @@ export default function IntroSequence(): JSX.Element {
       } else if (key === 'approach') {
         chase(13, 2, 16, -14)
       } else {
-        // Landing: low chase behind the plane on the runway roll-out.
-        chase(10, 1.5, 12, -8)
+        // Landing: chase behind the plane but keep it framed in the distance —
+        // far enough back and looking level-ish along the runway that the
+        // white fuselage can never fill the screen when the nose settles.
+        ndc = { x: 0, y: 0.4 }
+        chase(18, 3, 16, 6)
       }
 
       // Caption the landmarks the plane passes beneath on the circuit.
@@ -614,7 +661,11 @@ export default function IntroSequence(): JSX.Element {
       const cam = camera as THREE.PerspectiveCamera
       lookAt = aimAircraft(aircraftPos, camera.position, lookAt, cam, ndc)
     }
-    camera.lookAt(lookAt)
+    // Ease the gaze so a stage/camera change (flare -> touchdown) never whips
+    // the view across the aircraft mid-settle.
+    if (smoothLook.current) smoothLook.current.lerp(lookAt, smooth(delta, 5))
+    else smoothLook.current = lookAt.clone()
+    camera.lookAt(smoothLook.current)
 
     const stageTotal = totalFor(stages)
     if (elapsed.current >= stageTotal) {
@@ -622,6 +673,17 @@ export default function IntroSequence(): JSX.Element {
       // The plane rolls to a stop at the end of the runway facing -Z; the
       // soldier climbs out there and steps a few paces before the player
       // takes over.
+      const parked = planeRef.current
+      setParkedPlane(
+        parked
+          ? {
+              x: parked.position.x,
+              y: parked.position.y,
+              z: parked.position.z,
+              heading: planeHeading.current,
+            }
+          : { x: -12, y: 0.06, z: 88, heading: -Math.PI / 2 },
+      )
       transportState.spawnWalk = {
         from: { x: -12, z: 88 },
         to: { x: -8, z: 90 },

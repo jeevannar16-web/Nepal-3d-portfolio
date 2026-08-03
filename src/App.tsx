@@ -3,17 +3,18 @@ import Scene3D from './components/Scene3D'
 import Scene2D from './components/Scene2D'
 import SceneErrorBoundary from './components/SceneErrorBoundary'
 import FallbackView from './components/FallbackView'
-import { useDeviceType } from './hooks/useDeviceType'
 import { useStore } from './store/useStore'
 import { supportsWebGL } from './utils/webgl'
 
 function App() {
-  const deviceType = useDeviceType()
   const prefersSimple = useStore((s) => s.prefersSimple)
   const webglFailed = useStore((s) => s.webglFailed)
   const [webglOk] = useState(() => supportsWebGL())
 
-  const showSimple = prefersSimple || deviceType === 'mobile'
+  // Touch devices are welcome in the 3D world: the on-screen glass controls
+  // (TouchControls) make walking playable without a keyboard. The simplified
+  // 2D view is kept only for people who opt in via "Prefer a simple page?".
+  const showSimple = prefersSimple
 
   if (showSimple) return <Scene2D />
 
