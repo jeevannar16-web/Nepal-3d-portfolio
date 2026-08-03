@@ -111,13 +111,15 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     cam.fov += (fovTarget - cam.fov) * (1 - Math.pow(2, -delta * 3))
     cam.updateProjectionMatrix()
 
-    // Free-look: Q/E add a steady rate, right-drag adds per-pixel. With no
-    // look input the offset eases back to 0 so the chase cam sits behind again.
+    // Free-look: Q/E add a steady rate, right-drag adds per-pixel. In vehicles
+    // the orbit eases back to 0 (behind the actor) when released; on foot the
+    // orbit is kept exactly where the player left it — a classic TPS 360° orbit
+    // you steer the soldier against.
     const keys = orbitKeys.current
     if (keys.left) lookYaw.current -= LOOK_KEY_RATE * delta
     if (keys.right) lookYaw.current += LOOK_KEY_RATE * delta
     const active = looking.current || keys.left || keys.right
-    if (!active) {
+    if (!active && playerMode !== 'walk') {
       const settle = 1 - Math.pow(2, -delta * 3)
       lookYaw.current += (0 - lookYaw.current) * settle
     }

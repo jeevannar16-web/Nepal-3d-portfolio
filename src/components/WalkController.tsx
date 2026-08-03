@@ -10,6 +10,7 @@ import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 import { transportState, type TransportPose } from '../store/transportState'
 import { walkState } from '../store/walkState'
+import { angleDelta } from '../utils/attitude'
 import Soldier from './Soldier'
 
 const WALK_SPEED = 3.4
@@ -20,6 +21,7 @@ const JUMP_VEL = 4.6
 const ENTER_RADIUS = 3.6
 const ANTICIPATE_TIME = 0.15
 const LAND_TIME = 0.32
+const TURN_RATE = 11 // radians/s the soldier rotates toward the movement heading
 
 const keyMap: Record<string, 'fwd' | 'back' | 'left' | 'right' | 'run'> = {
   KeyW: 'fwd',
@@ -65,6 +67,7 @@ export default function WalkController({
   const body = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
   const heading = useRef(transportState.walk.heading)
+  const facing = useRef(transportState.walk.heading)
   const grounded = useRef(true)
   const crouching = useRef(false)
   const jumpState = useRef<'anticipate' | 'airborne' | 'land' | null>(null)
@@ -187,6 +190,7 @@ export default function WalkController({
       }
       if (visual.current) {
         visual.current.position.set(0, 0.5, 0)
+        facing.current = heading.current
         visual.current.rotation.y = heading.current
       }
       motionRef.current = {
@@ -263,8 +267,14 @@ export default function WalkController({
     minimapState.z = pos.z
     minimapState.heading = heading.current
 
-    // ---- Visual: face the heading, hand the walk cycle to Soldier ----
+    // ---- Visual: rotate smoothly toward the movement heading, then hand the
+    // walk cycle to Soldier. Standing still keeps the last facing angle. ----
     const moving = Math.hypot(nvx, nvz) > 0.5
+    if (moving) {
+      const d = angleDelta(heading.current, facing.current)
+      const step = Math.min(1, TURN_RATE * Math.max(delta, 1e-4))
+      facing.current += d * step
+    }
     motionRef.current = {
       moving,
       running: moving && KEYS.run && !crouching.current,
@@ -286,7 +296,7 @@ export default function WalkController({
       crouching: motionRef.current.crouching,
       jump: motionRef.current.jump,
     }
-    if (visual.current) visual.current.rotation.y = heading.current
+    if (visual.current) visual.current.rotation.y = facing.current
   })
 
   return (

@@ -5,8 +5,12 @@ import * as THREE from 'three'
 import { assetUrl } from '../utils/assetUrl'
 import BlobShadow from './BlobShadow'
 
-/** soldier.glb is ~32 world units tall; 0.056 makes the man ~1.8 tall. */
-const SOLDIER_SCALE = 0.056
+/**
+ * soldier.glb is a Mixamo-rigged "vanguard" soldier (three.js example asset)
+ * ~183 world units tall with real Idle/Walk/Run/Jump clips; 0.0098 makes the
+ * man ~1.8 tall.
+ */
+const SOLDIER_SCALE = 0.0098
 
 interface Motion {
   moving: boolean
@@ -34,9 +38,9 @@ const categoryOf = (name: string) =>
 
 /**
  * The player character: loads a rigged soldier GLB and drives it from the
- * motionRef published by WalkController. If the model ships clips (walk/run/
- * jump/idle) they are crossfaded by activity; models with only a standing clip
- * (like soldier.glb) simply hold that pose while the physics body moves.
+ * motionRef published by WalkController. The model ships real Idle/Walk/Run/
+ * Jump clips which are crossfaded by activity (walk -> run as the player
+ * sprints, the full Jump clip during a jump, idle when stationary).
  */
 export default function Soldier({
   motionRef,
@@ -73,7 +77,7 @@ export default function Soldier({
       ? 'jump'
       : motion.running
         ? 'run'
-        : motion.moving || motion.crouching
+        : motion.moving
           ? 'walk'
           : 'idle'
     const action = actions.get(want) ?? actions.get('idle')
@@ -83,6 +87,11 @@ export default function Soldier({
       current.current = action
     }
     mixer.update(delta)
+    ;(window as any).__soldier = {
+      clips: [...actions.keys()],
+      active: current.current?.getClip().name ?? null,
+      want,
+    }
   })
 
   return (
