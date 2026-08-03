@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef, type JSX } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore, type IntroStage } from '../store/useStore'
-import { orientAircraft, aimAircraft, wobble } from '../utils/attitude'
+import {
+  orientAircraft,
+  aimAircraft,
+  wobble,
+  angleDelta,
+} from '../utils/attitude'
 import { transportState } from '../store/transportState'
 import { landmarks } from '../data'
 import ArrivalPlane from './ArrivalPlane'
@@ -67,6 +72,10 @@ function stageInfo(
 // into every curve exactly like a real airplane.
 // ---------------------------------------------------------------------------
 
+// The flight path ends at the FLARE START (20, 1.5, 88), on the north runway
+// centreline (z=88, x ∈ [-18, 18]). The plane arrives low and slow: a long
+// steady descent on final at ~8°, then the explicit landing trajectory (flare,
+// touchdown, rollout) plays out from the end of this spline.
 const SPLINE_POINTS = [
   new THREE.Vector3(-14, 0.06, 88),
   new THREE.Vector3(14, 0.06, 88),
@@ -79,11 +88,14 @@ const SPLINE_POINTS = [
   new THREE.Vector3(-70, 99, -112),
   new THREE.Vector3(-120, 97, 20),
   new THREE.Vector3(-76, 94, 112),
-  new THREE.Vector3(24, 92, 112),
-  new THREE.Vector3(96, 55, 88),
-  new THREE.Vector3(55, 8, 88),
-  new THREE.Vector3(18, 0.06, 88),
-  new THREE.Vector3(-16, 0.06, 88),
+  new THREE.Vector3(24, 66, 112),
+  new THREE.Vector3(70, 50, 110),
+  new THREE.Vector3(112, 36, 96),
+  new THREE.Vector3(130, 26, 70),
+  new THREE.Vector3(118, 16, 84),
+  new THREE.Vector3(88, 11, 88),
+  new THREE.Vector3(50, 6.5, 88),
+  new THREE.Vector3(20, 1.5, 88),
 ]
 
 const SEG_LENGTH_SAMPLES = 12
@@ -92,7 +104,7 @@ const SEG_LENGTH_SAMPLES = 12
  * Centripetal Catmull-Rom (alpha 0.5) flight path. Unlike uniform Catmull-Rom
  * this parameterization is affine-invariant, so runway segments drawn through
  * collinear control points stay exactly straight and level (uniform CR weaves
- * off-line by up to ~8 units and dips below the runway). Cruise sits at ~100,
+ * off-line by up to ~8 units and dips below the runway). Cruise sits at ~97,
  * well above the mountain ring (~52 near / ~58 far), so the plane visibly
  * rounds the sky. The spline's tangent gives the plane's heading/pitch every
  * frame, so it banks into every curve like a real airplane.
@@ -101,7 +113,6 @@ class FlightPath {
   private cum: number[] = []
   private tau: Array<[number, number, number]> = []
   private total = 0
-  readonly rollout: number
 
   constructor(points: THREE.Vector3[]) {
     const n = points.length
@@ -121,7 +132,6 @@ class FlightPath {
       this.cum.push(this.cum[i] + this.segmentLength(points, i))
     }
     this.total = this.cum[n - 1]
-    this.rollout = this.cum[n - 1] - this.cum[n - 2]
   }
 
   private getPoint(points: THREE.Vector3[], i: number): THREE.Vector3 {
@@ -195,15 +205,13 @@ class FlightPath {
     }
   }
 
-  /** Time (0..1) -> arc distance, with a decelerating rollout on the last run. */
-  toArc(t: number, totalTime: number): number {
-    const lr = this.rollout
-    const v = (this.total + lr) / totalTime
-    const t2 = (2 * lr) / v
-    const t1 = totalTime - t2
-    if (t <= t1) return v * t
-    const u = Math.min((t - t1) / t2, 1)
-    return this.total - lr + lr * (u * (2 - u))
+  /** Time (seconds) -> arc distance along the spline, with a long
+   *  decelerating final approach so the airplane slows like a real landing. */
+  toArc(t: number): number {
+    const tc = Math.min(Math.max(t, 0), SPLINE_TIME)
+    if (tc <= DECEL_T1) return V0 * tc
+    const tau = tc - DECEL_T1
+    return V0 * DECEL_T1 + V0 * tau - 0.5 * DECEL_A * tau * tau
   }
 
   get length(): number {
@@ -213,6 +221,71 @@ class FlightPath {
 
 const flightPath = new FlightPath(SPLINE_POINTS)
 
+// ---------------------------------------------------------------------------
+// Approach / landing speed profile.
+//
+// The spline is flown in 62s (taxi + climb + circuit + approach). Cruise at a
+// constant V0, then over the last DECEL_DIST units of final approach decelerate
+// to APPROACH_SPEED, arriving at the flare point exactly at t=62. V0 is solved
+// so that V0·62 − DECEL_DIST(Δv terms) = total spline length.
+// ---------------------------------------------------------------------------
+
+const SPLINE_TIME = 62
+const APPROACH_SPEED = 7 // speed at the flare point (~135 m/s full scale)
+const DECEL_DIST = 100 // units of decelerating final approach
+
+// total = V0·SPLINE_TIME − DECEL_DIST·(V0 − V1)/(V0 + V1)  =>  quadratic in V0
+const V0 = (() => {
+  const a = SPLINE_TIME
+  const b = SPLINE_TIME * APPROACH_SPEED - DECEL_DIST - flightPath.length
+  const c = (DECEL_DIST - flightPath.length) * APPROACH_SPEED
+  return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a)
+})()
+const DECEL_DT = (V0 - APPROACH_SPEED) / ((V0 * V0 - APPROACH_SPEED * APPROACH_SPEED) / (2 * DECEL_DIST))
+const DECEL_T1 = SPLINE_TIME - DECEL_DT
+const DECEL_A = (V0 - APPROACH_SPEED) / DECEL_DT
+
+// ---------------------------------------------------------------------------
+// Landing trajectory (flare, touchdown, rollout) — explicit, not spline, so
+// the plane's pitch and sink are fully controlled for a realistic landing:
+//   1. FLARE      — 2s, nose pitches 1.5° -> 6° and the descent rate eases
+//                   from ~1.4 to ~0 u/s (rounding out, main gear low)
+//   2. TOUCHDOWN  — at pitch 6° the tail/main gear contact first, then a short
+//                   settle drops the nose gear (pitch -> 0) with a tiny bounce
+//   3. ROLLOUT    — smooth deceleration to a stop (x = 7 -> -12)
+// ---------------------------------------------------------------------------
+
+const easeOutQuad = (t: number) => 1 - Math.pow(1 - t, 2)
+const DEG = Math.PI / 180
+
+function landingTrajectory(
+  tau: number,
+): { x: number; y: number; z: number; pitchRad: number } {
+  if (tau < 2) {
+    // FLARE
+    const u = tau / 2
+    return {
+      x: 20 - 6.5 * tau,
+      // y'' = -2·0.345 (constant reduction of sink); sink 1.38 -> 0 u/s
+      y: 1.5 - 1.38 * tau + 0.345 * tau * tau,
+      z: 88,
+      pitchRad: (1.5 + 4.5 * easeOutQuad(u)) * DEG,
+    }
+  }
+  // ROLLOUT (+ nose-gear settle + subtle bounce)
+  const u = Math.min((tau - 2) / 6, 1)
+  const e = easeOutQuad(u)
+  const n = Math.min(u / 0.13, 1)
+  let y = 0.12 - 0.06 * easeOutQuad(n) + 0.045 * Math.sin(Math.PI * n)
+  if (y < 0.03) y = 0.03
+  return {
+    x: 7 - 19 * e,
+    y,
+    z: 88,
+    pitchRad: 6 * (1 - n) * DEG,
+  }
+}
+
 const MAX_BANK = 0.15
 const BANK_GAIN = 0.5
 const FORWARD_SMOOTH = 2.4
@@ -220,14 +293,15 @@ const BANK_SMOOTH = 3.5
 
 /**
  * Per-stage wind turbulence strength: invisible on the runway, gentle in
- * cruise, strongest on the descent where airspeed is highest.
+ * cruise, moderate on the descent. Kept low on final approach so the landing
+ * stays wings-level and steady (the flare is fully controlled).
  */
 const TURB_STRENGTH: Record<IntroStage, number> = {
   taxi: 0.06,
   climb: 0.5,
   circuit: 0.45,
-  approach: 0.7,
-  landing: 0.12,
+  approach: 0.3,
+  landing: 0.08,
   orbit: 0,
 }
 
@@ -262,6 +336,8 @@ export default function IntroSequence(): JSX.Element {
   const prevHeading = useRef(0)
   const passIdx = useRef(0)
   const captionTimer = useRef<number | undefined>(undefined)
+  const landingLog = useRef<Set<number>>(new Set())
+  const lastPlaneY = useRef<number | null>(null)
 
   const stages = STAGES[variant] ?? STAGES.standard
 
@@ -280,7 +356,7 @@ export default function IntroSequence(): JSX.Element {
       let bestD = Infinity
       for (let i = 0; i <= N; i++) {
         const t = i / N
-        const s = flightPath.toArc(t * TOTAL_TIME, TOTAL_TIME)
+        const s = flightPath.toArc(t * SPLINE_TIME)
         const { pos } = flightPath.sample(s)
         const d = Math.hypot(pos.x - lm.position[0], pos.z - lm.position[2])
         if (d < bestD) {
@@ -288,7 +364,7 @@ export default function IntroSequence(): JSX.Element {
           bestT = t
         }
       }
-      if (bestD < 85) out.push({ t: bestT * TOTAL_TIME, label: lm.label })
+      if (bestD < 85) out.push({ t: bestT * SPLINE_TIME, label: lm.label })
     }
     out.sort((a, b) => a.t - b.t)
     const spaced: typeof out = []
@@ -345,25 +421,52 @@ export default function IntroSequence(): JSX.Element {
       posTarget.set(Math.sin(angle) * 46, 26 - eased * 14, Math.cos(angle) * 46)
       lookAt.set(0, 0, 0)
     } else {
-      // ---- Shared airplane journey along the spline ----
-      // toArc takes elapsed *seconds* (its internal t1/t2 thresholds are in
-      // seconds); passing the 0..1 fraction would stall the plane near the
-      // runway for the entire intro.
-      const s = flightPath.toArc(
-        Math.min(elapsed.current, TOTAL_TIME),
-        TOTAL_TIME,
-      )
-      const { pos, tangent } = flightPath.sample(s)
-      const planePos = pos.clone()
+      // ---- Shared airplane journey along the spline, then the explicit
+      // landing trajectory (flare -> touchdown -> rollout) once the spline is
+      // exhausted at t = SPLINE_TIME. ----
+      const tFlight = Math.min(elapsed.current, TOTAL_TIME)
+      let planePos: THREE.Vector3
+      let desired: THREE.Vector3
+
+      if (tFlight <= SPLINE_TIME) {
+        const s = flightPath.toArc(tFlight)
+        const { pos, tangent } = flightPath.sample(s)
+        planePos = pos.clone()
+
+        // Wind buffeting: a gentle deterministic shake in altitude and bank that
+        // grows with airspeed so the airplane visibly fights the air instead of
+        // sliding along a fixed rail. Silent on the runway, calm on final.
+        const turb = TURB_STRENGTH[key] ?? 0
+        if (turb > 0) planePos.y += wobble(elapsed.current * 1.35) * turb * 0.45
+
+        desired = tangent.clone().normalize()
+        // Rolling out onto final: level the wings and raise the nose slightly
+        // (a real approach flies nose-up into a shallow descent, it does not
+        // dive along the flight path). Blends in as the heading settles on -X.
+        if (key === 'approach') {
+          const h = Math.atan2(desired.x, desired.z)
+          const prox = 1 - Math.min(Math.abs(angleDelta(h, -Math.PI / 2)) / 0.5, 1)
+          if (prox > 0.001) {
+            const p = 1.5 * prox * DEG
+            desired.set(
+              Math.sin(h) * Math.cos(p),
+              Math.sin(p),
+              Math.cos(h) * Math.cos(p),
+            )
+          }
+        }
+      } else {
+        const st = landingTrajectory(tFlight - SPLINE_TIME)
+        planePos = new THREE.Vector3(st.x, st.y, st.z)
+        desired = new THREE.Vector3(
+          -Math.cos(st.pitchRad),
+          Math.sin(st.pitchRad),
+          0,
+        )
+      }
       aircraftPos = planePos
 
-      // Wind buffeting: a gentle deterministic shake in altitude and bank that
-      // grows with airspeed so the airplane visibly fights the air instead of
-      // sliding along a fixed rail.
-      const turb = TURB_STRENGTH[key] ?? 0
-      if (turb > 0) planePos.y += wobble(elapsed.current * 1.35) * turb * 0.45
-
-      const tgt = tangent.clone().normalize()
+      const tgt = desired.clone()
       flightForward.current
         .lerp(tgt, smooth(delta, FORWARD_SMOOTH))
         .normalize()
@@ -377,6 +480,7 @@ export default function IntroSequence(): JSX.Element {
           Math.cos(planeHeading.current - prevHeading.current),
         ) / Math.max(delta, 1e-4)
       prevHeading.current = planeHeading.current
+      const turb = TURB_STRENGTH[key] ?? 0
       const bankTarget = THREE.MathUtils.clamp(
         turnRate * BANK_GAIN + wobble(elapsed.current * 1.9) * turb * 0.18,
         -MAX_BANK - 0.06,
@@ -388,6 +492,56 @@ export default function IntroSequence(): JSX.Element {
         planeRef.current.visible = true
         planeRef.current.position.copy(planePos)
         orientAircraft(planeRef.current, flightForward.current, bankRef.current)
+      }
+
+      // ---- Landing flight-data log: pitch attitude + sink rate at key
+      // moments, so the flare reads in the numbers (pitch rises, sink drops). ----
+      const pitchNow =
+        (Math.asin(
+          Math.max(-1, Math.min(1, flightForward.current.y)),
+        ) * 180) / Math.PI
+      const sinkNow =
+        lastPlaneY.current === null
+          ? 0
+          : (lastPlaneY.current - planePos.y) / Math.max(delta, 1e-4)
+      lastPlaneY.current = planePos.y
+      const logT = elapsed.current
+      if (logT >= 53.5 && !landingLog.current.has(1)) {
+        landingLog.current.add(1)
+        console.log(
+          `[landing] FINAL APPROACH START t=${logT.toFixed(1)}s  pitch=${pitchNow.toFixed(2)}°  sink=${sinkNow.toFixed(2)} u/s`,
+        )
+      }
+      if (logT >= 58 && !landingLog.current.has(2)) {
+        landingLog.current.add(2)
+        console.log(
+          `[landing] MID-APPROACH          t=${logT.toFixed(1)}s  pitch=${pitchNow.toFixed(2)}°  sink=${sinkNow.toFixed(2)} u/s`,
+        )
+      }
+      if (logT >= 62 && !landingLog.current.has(3)) {
+        landingLog.current.add(3)
+        console.log(
+          `[landing] FLARE START           t=${logT.toFixed(1)}s  pitch=${pitchNow.toFixed(2)}°  sink=${sinkNow.toFixed(2)} u/s`,
+        )
+      }
+      if (logT >= 64.1 && !landingLog.current.has(4)) {
+        landingLog.current.add(4)
+        console.log(
+          `[landing] TOUCHDOWN             t=${logT.toFixed(1)}s  pitch=${pitchNow.toFixed(2)}°  sink=${sinkNow.toFixed(2)} u/s`,
+        )
+      }
+      if (logT >= 66 && !landingLog.current.has(5)) {
+        landingLog.current.add(5)
+        console.log(
+          `[landing] ROLLOUT               t=${logT.toFixed(1)}s  pitch=${pitchNow.toFixed(2)}°  sink=${sinkNow.toFixed(2)} u/s`,
+        )
+      }
+      ;(window as any).__landingProbe = {
+        t: elapsed.current,
+        pitch: pitchNow,
+        sink: sinkNow,
+        y: planePos.y,
+        x: planePos.x,
       }
       if ((window as any).__probeRequested) {
         ;(window as any).__probe = {
