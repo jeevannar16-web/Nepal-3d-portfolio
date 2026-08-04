@@ -107,15 +107,15 @@ const SPLINE_POINTS = [
   new THREE.Vector3(168, 48, 148),
   // The NE cliff (solid prop collider around (134, 26, 122), roughly
   // x∈[110,158], z∈[108,136], top ≈104) sits right on the old downwind leg,
-  // so the plane flew straight through the rock. Route the circuit around the
-  // cliff's north edge (z>140) and down its east side (x>170), then ease the
+  // so the plane flew straight through the rock. Route the circuit well clear
+  // of the cliff — north of z=140 and east of x=180 — then ease the
   // turn onto final — the aircraft never clips the mountain geometry.
-  new THREE.Vector3(182, 40, 142),
-  new THREE.Vector3(186, 34, 132),
-  new THREE.Vector3(182, 30, 114),
-  new THREE.Vector3(174, 28, 100),
-  new THREE.Vector3(164, 27, 94),
-  new THREE.Vector3(152, 26, 92),
+  new THREE.Vector3(188, 42, 148),
+  new THREE.Vector3(192, 36, 138),
+  new THREE.Vector3(188, 32, 122),
+  new THREE.Vector3(180, 28, 108),
+  new THREE.Vector3(170, 27, 98),
+  new THREE.Vector3(155, 26, 92),
   new THREE.Vector3(150, 24.5, 88),
   new THREE.Vector3(140, 24, 88),
   new THREE.Vector3(118, 21, 88),
