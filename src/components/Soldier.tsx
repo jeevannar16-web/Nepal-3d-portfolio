@@ -45,18 +45,51 @@ const categoryOf = (name: string) =>
  * standing pose taken from the Idle clip's first frame, keeping the jump's
  * relative root motion and its pose animation intact.
  */
-function normalizeJumpClip(animations: THREE.AnimationClip[]): THREE.AnimationClip | null {
-  const idle = animations.find((c) => /idle/i.test(c.name))
+
+/** First keyframe value of a named track on a clip (null if absent). */
+const firstTrackValue = (
+  clip: THREE.AnimationClip,
+  name: string,
+): number[] | null => {
+  const track = clip.tracks.find((t) => t.name === name)
+  if (!track) return null
+  return Array.from(track.values.slice(0, track.getValueSize()))
+}
+
+/**
+ * The Walk/Run clips are authored with root motion on the Hips bone: their
+ * position track slides several units along x/z per stride, so the whole
+ * soldier mesh drifts around relative to the physics capsule every gait cycle
+ * — the on-foot movement reads jittery and the model sits offset from its
+ * collider/shadow. Pin the root's x/z to the Idle standing pose (the capsule
+ * drives forward motion), keeping the natural vertical bounce (y) intact.
+ */
+function neutralizeRootSlip(
+   clip: THREE.AnimationClip,
+   standPos: number[],
+ ): THREE.AnimationClip {
+   const out = clip.clone()
+   for (const track of out.tracks) {
+     if (track.name !== 'mixamorigHips.position') continue
+     const size = track.getValueSize()
+     const v = track.values
+     for (let i = 0; i < v.length; i += size) {
+       v[i] = standPos[0]
+       v[i + 1] = standPos[1]
+       v[i + 2] = standPos[2]
+     }
+   }
+   return out
+ }
+
+function normalizeJumpClip(
+  animations: THREE.AnimationClip[],
+  standPos: number[],
+  standRot: number[],
+): THREE.AnimationClip | null {
   const jump = animations.find((c) => /jump/i.test(c.name))
-  if (!idle || !jump) return jump ?? null
-  const first = (clip: THREE.AnimationClip, name: string) => {
-    const track = clip.tracks.find((t) => t.name === name)
-    if (!track) return null
-    return Array.from(track.values.slice(0, track.getValueSize()))
-  }
-  const standPos = first(idle, 'mixamorigHips.position')
-  const standRot = first(idle, 'mixamorigHips.quaternion')
-  const jumpPos = first(jump, 'mixamorigHips.position')
+  if (!jump) return null
+  const jumpPos = firstTrackValue(jump, 'mixamorigHips.position')
   if (!standPos || !standRot || !jumpPos) return jump
   const clip = jump.clone()
   const standQ = new THREE.Quaternion(standRot[0], standRot[1], standRot[2], standRot[3])
@@ -81,6 +114,8 @@ function normalizeJumpClip(animations: THREE.AnimationClip[]): THREE.AnimationCl
   return clip
 }
 
+import { standingHipsY } from '../store/walkState'
+
 /**
  * The player character: loads a rigged soldier GLB and drives it from the
  * motionRef published by WalkController. The model ships real Idle/Walk/Run/
@@ -98,11 +133,21 @@ export default function Soldier({
 
   const actions = useMemo(() => {
     const map = new Map<string, THREE.AnimationAction>()
-    const jumpClip = normalizeJumpClip(gltf.animations)
+    const idle = gltf.animations.find((c) => /idle/i.test(c.name))
+    const standPos = idle ? firstTrackValue(idle, 'mixamorigHips.position') : null
+    const standRot = idle ? firstTrackValue(idle, 'mixamorigHips.quaternion') : null
+    if (standPos && standPos.length >= 1) {
+      standingHipsY.current = standPos[1]
+    }
+    const jumpClip = normalizeJumpClip(gltf.animations, standPos, standRot)
     for (const clip of gltf.animations) {
       const key = categoryOf(clip.name)
       if (map.has(key)) continue
-      const act = mixer.clipAction(key === 'jump' && jumpClip ? jumpClip : clip)
+      let chosen = clip
+      if (key === 'jump' && jumpClip) chosen = jumpClip
+      else if ((key === 'walk' || key === 'run') && standPos)
+        chosen = neutralizeRootSlip(clip, standPos)
+      const act = mixer.clipAction(chosen)
       if (key === 'jump') {
         act.loop = THREE.LoopOnce
         act.clampWhenFinished = true

@@ -7,6 +7,13 @@ export const walkState = {
 }
 
 /**
+ * Standing Hips Y position from the soldier's Idle animation first frame,
+ * used by WalkController to offset the visual group so the model's feet
+ * sit on the capsule bottom instead of the Hips.
+ */
+export const standingHipsY = { current: 0 }
+
+/**
  * Shared movement input buffer for the walking soldier. Both the keyboard
  * (WalkController) and the on-screen touch controls write here, and
  * WalkController's per-frame loop reads it, so mobile and desktop drive the

@@ -96,32 +96,26 @@ const SPLINE_POINTS = [
   new THREE.Vector3(-120, 97, 20),
   new THREE.Vector3(-76, 94, 112),
   new THREE.Vector3(24, 66, 112),
-  new THREE.Vector3(70, 50, 110),
-  new THREE.Vector3(100, 42, 108),
-  new THREE.Vector3(128, 36, 110),
-  new THREE.Vector3(148, 32, 112),
-  // Eastbound downwind at z=112, then a smooth 180° left turn (radius 12)
-  // onto final, so the aircraft is dead-straight on the runway centreline
-  // (z=88, heading -X) before the "Final approach…" caption ever shows.
-  new THREE.Vector3(154, 31, 112),
-  new THREE.Vector3(156.084, 30.667, 111.818),
-  new THREE.Vector3(158.104, 30.333, 111.276),
-  new THREE.Vector3(160, 30, 110.392),
-  new THREE.Vector3(161.713, 29.667, 109.192),
-  new THREE.Vector3(163.192, 29.333, 107.713),
-  new THREE.Vector3(164.392, 29, 106),
-  new THREE.Vector3(165.276, 28.667, 104.104),
-  new THREE.Vector3(165.818, 28.333, 102.084),
-  new THREE.Vector3(166, 28, 100),
-  new THREE.Vector3(165.818, 27.667, 97.916),
-  new THREE.Vector3(165.276, 27.333, 95.896),
-  new THREE.Vector3(164.392, 27, 94),
-  new THREE.Vector3(163.192, 26.667, 92.287),
-  new THREE.Vector3(161.713, 26.333, 90.808),
-  new THREE.Vector3(160, 26, 89.608),
-  new THREE.Vector3(158.104, 25.667, 88.724),
-  new THREE.Vector3(156.084, 25.333, 88.182),
-  new THREE.Vector3(154, 25, 88),
+  // The NE cliff (solid prop collider around (134, 26, 122), roughly
+  // x∈[110,158], z∈[108,136], top ≈104) sits right on the old downwind leg,
+  // so the plane flew straight through the rock. Route the circuit around the
+  // cliff's north edge (z>140) and down its east side (x>170), then ease the
+  // turn onto final — the aircraft never clips the mountain geometry.
+  new THREE.Vector3(60, 62, 152),
+  new THREE.Vector3(110, 60, 158),
+  new THREE.Vector3(145, 54, 158),
+  new THREE.Vector3(168, 48, 148),
+  // The NE cliff (solid prop collider around (134, 26, 122), roughly
+  // x∈[110,158], z∈[108,136], top ≈104) sits right on the old downwind leg,
+  // so the plane flew straight through the rock. Route the circuit around the
+  // cliff's north edge (z>140) and down its east side (x>170), then ease the
+  // turn onto final — the aircraft never clips the mountain geometry.
+  new THREE.Vector3(182, 40, 142),
+  new THREE.Vector3(186, 34, 132),
+  new THREE.Vector3(182, 30, 114),
+  new THREE.Vector3(174, 28, 100),
+  new THREE.Vector3(164, 27, 94),
+  new THREE.Vector3(152, 26, 92),
   new THREE.Vector3(150, 24.5, 88),
   new THREE.Vector3(140, 24, 88),
   new THREE.Vector3(118, 21, 88),

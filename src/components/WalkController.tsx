@@ -9,7 +9,7 @@ import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 import { transportState, type TransportPose } from '../store/transportState'
-import { walkState, inputState, walkHud } from '../store/walkState'
+import { walkState, inputState, walkHud, standingHipsY } from '../store/walkState'
 import { angleDelta } from '../utils/attitude'
 import Soldier from './Soldier'
 
@@ -165,56 +165,58 @@ export default function WalkController({
     const pos = rb.translation()
     if (bodyRef && bodyRef.current !== rb) bodyRef.current = rb
 
-    // ---- Scripted exit from the landed plane ----
-    if (transportState.spawnWalk && scriptTime.current < 0) {
-      scriptTime.current = 0
-    }
-    if (scriptTime.current >= 0) {
-      const sw = transportState.spawnWalk
-      if (sw) {
-        scriptTime.current += delta
-        const t = Math.min(scriptTime.current / 1.6, 1)
-        const ease = 1 - Math.pow(1 - t, 3)
-        const nx = sw.from.x + (sw.to.x - sw.from.x) * ease
-        const nz = sw.from.z + (sw.to.z - sw.from.z) * ease
-        rb.setTranslation({ x: nx, y: RUNWAY_TOP + CAPSULE_HALF_LEN, z: nz }, true)
-        rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
-        heading.current = Math.atan2(sw.to.x - sw.from.x, sw.to.z - sw.from.z)
-        transportState.walk = {
-          x: nx,
-          z: nz,
-          y: RUNWAY_TOP + CAPSULE_HALF_LEN,
-          heading: heading.current,
-        } as TransportPose
-        if (t >= 1) {
-          transportState.spawnWalk = null
-          scriptTime.current = -1
-        }
-      } else {
+  const visualOffset = -CAPSULE_HALF_LEN + standingHipsY.current
+
+  // ---- Scripted exit from the landed plane ----
+  if (transportState.spawnWalk && scriptTime.current < 0) {
+    scriptTime.current = 0
+  }
+  if (scriptTime.current >= 0) {
+    const sw = transportState.spawnWalk
+    if (sw) {
+      scriptTime.current += delta
+      const t = Math.min(scriptTime.current / 1.6, 1)
+      const ease = 1 - Math.pow(1 - t, 3)
+      const nx = sw.from.x + (sw.to.x - sw.from.x) * ease
+      const nz = sw.from.z + (sw.to.z - sw.from.z) * ease
+      rb.setTranslation({ x: nx, y: RUNWAY_TOP + CAPSULE_HALF_LEN, z: nz }, true)
+      rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      heading.current = Math.atan2(sw.to.x - sw.from.x, sw.to.z - sw.from.z)
+      transportState.walk = {
+        x: nx,
+        z: nz,
+        y: RUNWAY_TOP + CAPSULE_HALF_LEN,
+        heading: heading.current,
+      } as TransportPose
+      if (t >= 1) {
+        transportState.spawnWalk = null
         scriptTime.current = -1
       }
-      if (visual.current) {
-        visual.current.position.set(0, -CAPSULE_HALF_LEN, 0)
-        facing.current = heading.current
-        visual.current.rotation.y = heading.current
-      }
-      motionRef.current = {
-        moving: true,
-        running: false,
-        crouching: false,
-        jump: null,
-      }
-      minimapState.x = pos.x
-      minimapState.z = pos.z
-      minimapState.heading = heading.current
-      return
+    } else {
+      scriptTime.current = -1
     }
+    if (visual.current) {
+      visual.current.position.set(0, visualOffset, 0)
+      facing.current = heading.current
+      visual.current.rotation.y = heading.current
+    }
+    motionRef.current = {
+      moving: true,
+      running: false,
+      crouching: false,
+      jump: null,
+    }
+    minimapState.x = pos.x
+    minimapState.z = pos.z
+    minimapState.heading = heading.current
+    return
+  }
 
-    // ---- Consume edge-triggered input (keyboard E or the touch interact
-    // button both land here) ----
-    // Keep the soldier's feet on the physics capsule's bottom now that the
-    // scripted exit walk is over (the scripted walk set its own offset).
-    if (visual.current) visual.current.position.set(0, -CAPSULE_HALF_LEN, 0)
+  // ---- Consume edge-triggered input (keyboard E or the touch interact
+  // button both land here) ----
+  // Keep the soldier's feet on the physics capsule's bottom now that the
+  // scripted exit walk is over (the scripted walk set its own offset).
+  if (visual.current) visual.current.position.set(0, visualOffset, 0)
     if (inputState.interact) {
       inputState.interact = false
       enterVehicle()
@@ -274,10 +276,10 @@ export default function WalkController({
       heading.current = Math.atan2(targetVel.x, targetVel.z)
     }
 
-    const nvx = THREE.MathUtils.lerp(vel.x, targetVel.x, 1 - Math.exp(-delta * ACCEL))
-    const nvz = THREE.MathUtils.lerp(vel.z, targetVel.z, 1 - Math.exp(-delta * ACCEL))
-    const vyNow = rb.linvel().y
-    rb.setLinvel({ x: nvx, y: vyNow, z: nvz }, true)
+    const curVel = rb.linvel()
+    const nvx = THREE.MathUtils.lerp(curVel.x, targetVel.x, 1 - Math.exp(-delta * ACCEL))
+    const nvz = THREE.MathUtils.lerp(curVel.z, targetVel.z, 1 - Math.exp(-delta * ACCEL))
+    rb.setLinvel({ x: nvx, y: curVel.y, z: nvz }, true)
 
     // ---- Persist pose + minimap ----
     transportState.walk = {
@@ -313,7 +315,7 @@ export default function WalkController({
       z: pos.z,
       vy: vel.y,
       groundedPhys,
-      feetY: pos.y + (visual.current ? visual.current.position.y : 0),
+       feetY: pos.y - CAPSULE_HALF_LEN,
       type: active ? 'dynamic' : 'fixed',
     }
     ;(window as any).__motion = {
