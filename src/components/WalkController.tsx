@@ -13,8 +13,8 @@ import { walkState, inputState, walkHud } from '../store/walkState'
 import { angleDelta } from '../utils/attitude'
 import Soldier from './Soldier'
 
-const WALK_SPEED = 3.4
-const SPRINT_SPEED = 6
+const WALK_SPEED = 2.4
+const SPRINT_SPEED = 5.0
 const CROUCH_SPEED = 1.6
 const ACCEL = 10
 const JUMP_VEL = 4.6

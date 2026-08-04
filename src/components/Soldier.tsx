@@ -37,6 +37,51 @@ const categoryOf = (name: string) =>
   CATEGORIES.find((c) => c.re.test(name))?.key ?? 'idle'
 
 /**
+ * The Jump clip in soldier.glb is authored with its root (mixamorigHips) in a
+ * different space than Idle/Walk/Run: the Hips track sits at the origin with
+ * an identity rotation (z ≈ 0 cm), while the standing clips put it at z ≈ 98 cm
+ * with the pelvis's standing quaternion. Playing Jump as-is snaps the whole
+ * body flat to the ground — the diving/sliding pose. Re-anchor the clip to the
+ * standing pose taken from the Idle clip's first frame, keeping the jump's
+ * relative root motion and its pose animation intact.
+ */
+function normalizeJumpClip(animations: THREE.AnimationClip[]): THREE.AnimationClip | null {
+  const idle = animations.find((c) => /idle/i.test(c.name))
+  const jump = animations.find((c) => /jump/i.test(c.name))
+  if (!idle || !jump) return jump ?? null
+  const first = (clip: THREE.AnimationClip, name: string) => {
+    const track = clip.tracks.find((t) => t.name === name)
+    if (!track) return null
+    return Array.from(track.values.slice(0, track.getValueSize()))
+  }
+  const standPos = first(idle, 'mixamorigHips.position')
+  const standRot = first(idle, 'mixamorigHips.quaternion')
+  const jumpPos = first(jump, 'mixamorigHips.position')
+  if (!standPos || !standRot || !jumpPos) return jump
+  const clip = jump.clone()
+  const standQ = new THREE.Quaternion(standRot[0], standRot[1], standRot[2], standRot[3])
+  for (const track of clip.tracks) {
+    if (track.name === 'mixamorigHips.position') {
+      const size = track.getValueSize()
+      const v = track.values
+      for (let i = 0; i < v.length; i += size) {
+        v[i] = standPos[0] + v[i] - jumpPos[0]
+        v[i + 1] = standPos[1] + v[i + 1] - jumpPos[1]
+        v[i + 2] = standPos[2] + v[i + 2] - jumpPos[2]
+      }
+    } else if (track.name === 'mixamorigHips.quaternion') {
+      const size = track.getValueSize()
+      const v = track.values
+      for (let i = 0; i < v.length; i += size) {
+        const q = new THREE.Quaternion(v[i], v[i + 1], v[i + 2], v[i + 3])
+        standQ.clone().multiply(q).normalize().toArray(v, i)
+      }
+    }
+  }
+  return clip
+}
+
+/**
  * The player character: loads a rigged soldier GLB and drives it from the
  * motionRef published by WalkController. The model ships real Idle/Walk/Run/
  * Jump clips which are crossfaded by activity (walk -> run as the player
@@ -53,14 +98,18 @@ export default function Soldier({
 
   const actions = useMemo(() => {
     const map = new Map<string, THREE.AnimationAction>()
+    const jumpClip = normalizeJumpClip(gltf.animations)
     for (const clip of gltf.animations) {
       const key = categoryOf(clip.name)
-      if (!map.has(key)) {
-        const act = mixer.clipAction(clip)
-        act.paused = true
-        act.play()
-        map.set(key, act)
+      if (map.has(key)) continue
+      const act = mixer.clipAction(key === 'jump' && jumpClip ? jumpClip : clip)
+      if (key === 'jump') {
+        act.loop = THREE.LoopOnce
+        act.clampWhenFinished = true
       }
+      act.paused = true
+      act.play()
+      map.set(key, act)
     }
     return map
   }, [gltf, mixer])
