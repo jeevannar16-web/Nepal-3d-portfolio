@@ -3,12 +3,17 @@ import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { assetUrl } from '../utils/assetUrl'
+import { retargetClips } from '../utils/retargetAnimations'
+import { standingHipsY } from '../store/walkState'
 import BlobShadow from './BlobShadow'
 
 /**
- * soldier.glb is a Mixamo-rigged "vanguard" soldier (three.js example asset)
- * ~1.83 world units tall with real Idle/Walk/Run/Jump clips — already
- * human-scale, so it renders 1:1 (no rescale needed).
+ * The player character is avaturn.glb (a meter-scale, Y-up humanoid avatar),
+ * driven by the soldier.glb Mixamo clips. The two rigs share the same Mixamo
+ * hierarchy but their local bone frames differ, so the soldier's clips are
+ * baked through world space and re-projected onto the avatar's bones by
+ * retargetClips — the avatar then plays the soldier's Idle/Walk/Run/Jump with
+ * the same poses, facing and scale (no model rescale needed).
  */
 const SOLDIER_SCALE = 1
 
@@ -36,16 +41,6 @@ const CATEGORIES: Array<{ key: string; re: RegExp }> = [
 const categoryOf = (name: string) =>
   CATEGORIES.find((c) => c.re.test(name))?.key ?? 'idle'
 
-/**
- * The Jump clip in soldier.glb is authored with its root (mixamorigHips) in a
- * different space than Idle/Walk/Run: the Hips track sits at the origin with
- * an identity rotation (z ≈ 0 cm), while the standing clips put it at z ≈ 98 cm
- * with the pelvis's standing quaternion. Playing Jump as-is snaps the whole
- * body flat to the ground — the diving/sliding pose. Re-anchor the clip to the
- * standing pose taken from the Idle clip's first frame, keeping the jump's
- * relative root motion and its pose animation intact.
- */
-
 /** First keyframe value of a named track on a clip (null if absent). */
 const firstTrackValue = (
   clip: THREE.AnimationClip,
@@ -57,90 +52,127 @@ const firstTrackValue = (
 }
 
 /**
- * The Walk/Run clips are authored with root motion on the Hips bone: their
- * position track slides several units along x/z per stride, so the whole
- * soldier mesh drifts around relative to the physics capsule every gait cycle
- * — the on-foot movement reads jittery and the model sits offset from its
- * collider/shadow. Pin the root's x/z to the Idle standing pose (the capsule
- * drives forward motion), keeping the natural vertical bounce (y) intact.
+ * The retargeted Walk/Run clips keep the soldier's authored root motion on the
+ * Hips bone: the position track still slides along x/z per stride, so the
+ * whole avatar would drift around relative to the physics capsule every gait
+ * cycle. Pin the root's x/z to the Idle standing pose (the capsule drives
+ * forward motion), keeping the natural vertical bounce (y) intact.
  */
 function neutralizeRootSlip(
-   clip: THREE.AnimationClip,
-   standPos: number[],
- ): THREE.AnimationClip {
-   const out = clip.clone()
-   for (const track of out.tracks) {
-     if (track.name !== 'mixamorigHips.position') continue
-     const size = track.getValueSize()
-     const v = track.values
-     for (let i = 0; i < v.length; i += size) {
-       v[i] = standPos[0]
-       v[i + 1] = standPos[1]
-       v[i + 2] = standPos[2]
-     }
-   }
-   return out
- }
-
-function normalizeJumpClip(
-   animations: THREE.AnimationClip[],
-   standPos: number[] | null,
-   standRot: number[] | null,
- ): THREE.AnimationClip | null {
-   const jump = animations.find((c) => /jump/i.test(c.name))
-   if (!jump) return null
-   const jumpPos = firstTrackValue(jump, 'mixamorigHips.position')
-   if (!standPos || !standRot || !jumpPos) return jump
-   const clip = jump.clone()
-   const standQ = new THREE.Quaternion(standRot[0], standRot[1], standRot[2], standRot[3])
-   for (const track of clip.tracks) {
-     if (track.name === 'mixamorigHips.position') {
-       const size = track.getValueSize()
-       const v = track.values
-       for (let i = 0; i < v.length; i += size) {
-         v[i] = standPos[0] + v[i] - jumpPos[0]
-         v[i + 1] = standPos[1] + v[i + 1] - jumpPos[1]
-         v[i + 2] = standPos[2] + v[i + 2] - jumpPos[2]
-       }
-     } else if (track.name === 'mixamorigHips.quaternion') {
-       const size = track.getValueSize()
-       const v = track.values
-       for (let i = 0; i < v.length; i += size) {
-         const q = new THREE.Quaternion(v[i], v[i + 1], v[i + 2], v[i + 3])
-         standQ.clone().multiply(q).normalize().toArray(v, i)
-       }
-     }
-   }
-   return clip
- }
-
-import { standingHipsY } from '../store/walkState'
+  clip: THREE.AnimationClip,
+  standPos: number[],
+): THREE.AnimationClip {
+  const out = clip.clone()
+  for (const track of out.tracks) {
+    if (track.name !== 'Hips.position') continue
+    const size = track.getValueSize()
+    const v = track.values
+    for (let i = 0; i < v.length; i += size) {
+      v[i] = standPos[0]
+      v[i + 1] = standPos[1]
+      v[i + 2] = standPos[2]
+    }
+  }
+  return out
+}
 
 /**
- * The player character: loads a rigged soldier GLB and drives it from the
- * motionRef published by WalkController. The model ships real Idle/Walk/Run/
- * Jump clips which are crossfaded by activity (walk -> run as the player
- * sprints, the full Jump clip during a jump, idle when stationary).
+ * The Jump clip in soldier.glb is authored with its root (mixamorigHips) at
+ * the origin with an identity-ish rotation, while the standing clips put the
+ * pelvis at z ≈ 98 cm with its standing quaternion. After retargeting the Jump
+ * root still sits at the origin, so playing it as-is snaps the whole body flat
+ * to the ground. Re-anchor the clip to the standing pose taken from the Idle
+ * clip's first frame, keeping the jump's relative root motion and pose intact.
+ */
+function normalizeJumpClip(
+  animations: THREE.AnimationClip[],
+  standPos: number[] | null,
+  standRot: number[] | null,
+): THREE.AnimationClip | null {
+  const jump = animations.find((c) => /jump/i.test(c.name))
+  if (!jump) return null
+  const jumpPos = firstTrackValue(jump, 'Hips.position')
+  const jumpRot = firstTrackValue(jump, 'Hips.quaternion')
+  if (!standPos || !standRot || !jumpPos || !jumpRot) return jump
+  const clip = jump.clone()
+  const standQ = new THREE.Quaternion(
+    standRot[0],
+    standRot[1],
+    standRot[2],
+    standRot[3],
+  )
+  const jumpQ0 = new THREE.Quaternion(
+    jumpRot[0],
+    jumpRot[1],
+    jumpRot[2],
+    jumpRot[3],
+  )
+  const anchorQ = standQ.clone().multiply(jumpQ0.clone().invert())
+  for (const track of clip.tracks) {
+    if (track.name === 'Hips.position') {
+      const size = track.getValueSize()
+      const v = track.values
+      for (let i = 0; i < v.length; i += size) {
+        v[i] = standPos[0] + v[i] - jumpPos[0]
+        v[i + 1] = standPos[1] + v[i + 1] - jumpPos[1]
+        v[i + 2] = standPos[2] + v[i + 2] - jumpPos[2]
+      }
+    } else if (track.name === 'Hips.quaternion') {
+      const size = track.getValueSize()
+      const v = track.values
+      for (let i = 0; i < v.length; i += size) {
+        const q = new THREE.Quaternion(v[i], v[i + 1], v[i + 2], v[i + 3])
+        anchorQ.clone().multiply(q).normalize().toArray(v, i)
+      }
+    }
+  }
+  return clip
+}
+
+/**
+ * The player character: loads the avaturn avatar with the soldier's Mixamo
+ * clips retargeted onto its rig, and drives it from the motionRef published by
+ * WalkController. The actions are crossfaded by activity (walk -> run as the
+ * player sprints, the full Jump clip during a jump, idle when stationary).
  */
 export default function Soldier({
   motionRef,
 }: {
   motionRef?: React.RefObject<Motion>
 }): JSX.Element {
-  const gltf = useGLTF(assetUrl('/models/soldier.glb'))
-  const mixer = useMemo(() => new THREE.AnimationMixer(gltf.scene), [gltf])
+  const avatar = useGLTF(assetUrl('/models/avaturn.glb'))
+  const soldier = useGLTF(assetUrl('/models/soldier.glb'))
+  const mixer = useMemo(
+    () => new THREE.AnimationMixer(avatar.scene),
+    [avatar],
+  )
   const current = useRef<THREE.AnimationAction | null>(null)
+
+  const clips = useMemo(
+    () => retargetClips(soldier.animations, soldier.scene, avatar.scene),
+    [soldier, avatar],
+  )
+
+  useEffect(() => {
+    avatar.scene.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      const mat = mesh.material as THREE.MeshStandardMaterial | undefined
+      if (mat && 'envMapIntensity' in mat) mat.envMapIntensity = 1.5
+    })
+  }, [avatar])
 
   const actions = useMemo(() => {
     const map = new Map<string, THREE.AnimationAction>()
-    const idle = gltf.animations.find((c) => /idle/i.test(c.name))
-    const standPos = idle ? firstTrackValue(idle, 'mixamorigHips.position') : null
-    const standRot = idle ? firstTrackValue(idle, 'mixamorigHips.quaternion') : null
+    const idle = clips.find((c) => /idle/i.test(c.name))
+    const standPos = idle ? firstTrackValue(idle, 'Hips.position') : null
+    const standRot = idle
+      ? firstTrackValue(idle, 'Hips.quaternion')
+      : null
     if (standPos && standPos.length >= 1) {
       standingHipsY.current = standPos[1]
     }
-    const jumpClip = normalizeJumpClip(gltf.animations, standPos, standRot)
-    for (const clip of gltf.animations) {
+    const jumpClip = normalizeJumpClip(clips, standPos, standRot)
+    for (const clip of clips) {
       const key = categoryOf(clip.name)
       if (map.has(key)) continue
       let chosen = clip
@@ -157,7 +189,7 @@ export default function Soldier({
       map.set(key, act)
     }
     return map
-  }, [gltf, mixer])
+  }, [clips, mixer])
 
   useEffect(() => {
     return () => {
@@ -186,12 +218,12 @@ export default function Soldier({
       active: current.current?.getClip().name ?? null,
       want,
     }
-    ;(window as any).__soldierScene = gltf.scene
+    ;(window as any).__soldierScene = avatar.scene
   })
 
   return (
     <group>
-      <primitive object={gltf.scene} scale={SOLDIER_SCALE} />
+      <primitive object={avatar.scene} scale={SOLDIER_SCALE} />
       <BlobShadow radius={0.8} y={0.01} />
     </group>
   )
