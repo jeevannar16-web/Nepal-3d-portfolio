@@ -60,7 +60,7 @@ export default function HorseController({
     transportState.walk = {
       x: pos.x + rightX * 2.2,
       z: pos.z + rightZ * 2.2,
-      y: 0.5,
+      y: 0.87,
       heading: heading.current,
     }
     setPlayerMode('walk')

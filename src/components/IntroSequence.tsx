@@ -72,17 +72,18 @@ function stageInfo(
 // into every curve exactly like a real airplane.
 // ---------------------------------------------------------------------------
 
-// The flight path ends at the FLARE START (20, 1.5, 88), on the north runway
-// centreline (z=88, x ∈ [-18, 18]). The plane arrives low and slow: a long
-// steady descent on final at ~8°, then the explicit landing trajectory (flare,
-// touchdown, rollout) plays out from the end of this spline.
+// The flight path ends at the FLARE START (18, 1.5, 88), right on the north
+// runway's east threshold (z=88, x ∈ [-18, 18]). The plane arrives low and
+// slow: a long steady descent on final, then the explicit landing trajectory
+// (flare, touchdown, rollout) plays out from the end of this spline.
 const SPLINE_POINTS = [
   // Slow taxi on the runway (z=88, x ∈ [-18, 18]) then a gradually eased
-  // takeoff roll along the north runway before rotation and climb-out.
-  new THREE.Vector3(-14, 0.06, 88),
-  new THREE.Vector3(-2, 0.06, 88),
-  new THREE.Vector3(10, 0.06, 88),
-  new THREE.Vector3(18, 0.06, 88),
+  // takeoff roll along the north runway before rotation and climb-out. Ground
+  // y=0: the wheels rest on the runway top (y=0.04) via PLANE_BASE_OFFSET.
+  new THREE.Vector3(-14, 0, 88),
+  new THREE.Vector3(-2, 0, 88),
+  new THREE.Vector3(10, 0, 88),
+  new THREE.Vector3(18, 0, 88),
   new THREE.Vector3(30, 1.8, 88),
   new THREE.Vector3(44, 6, 88),
   new THREE.Vector3(58, 11, 89),
@@ -127,7 +128,7 @@ const SPLINE_POINTS = [
   new THREE.Vector3(90, 16, 88),
   new THREE.Vector3(60, 11, 88),
   new THREE.Vector3(30, 5, 88),
-  new THREE.Vector3(20, 1.5, 88),
+  new THREE.Vector3(18, 1.5, 88),
 ]
 
 const SEG_LENGTH_SAMPLES = 12
@@ -347,10 +348,12 @@ const DECEL_A = (V0 - APPROACH_SPEED) / DECEL_DT
 // ---------------------------------------------------------------------------
 // Landing trajectory (flare, touchdown, rollout) — explicit, not spline, so
 // the plane's pitch and sink are fully controlled for a realistic landing:
-//   1. FLARE      — 2s, nose pitches 1.5° -> 6° and the descent rate eases
-//                   from ~1.4 to ~0 u/s (rounding out, main gear low)
-//   2. TOUCHDOWN  — at pitch 6° the tail/main gear contact first, then a short
-//                   settle drops the nose gear (pitch -> 0) with a tiny bounce
+//   1. FLARE      — 2s over the runway threshold (x 18 -> 7), nose pitches
+//                   1.5° -> 6° and the descent rate eases from ~1.4 to ~0 u/s
+//                   (rounding out, main gear low)
+//   2. TOUCHDOWN  — at pitch 6° the main gear (a touch ahead of the group
+//                   centre) contacts the tarmac first, then a short settle
+//                   drops the nose (pitch -> 0) with a tiny bounce
 //   3. ROLLOUT    — smooth deceleration to a stop (x = 7 -> -12)
 // ---------------------------------------------------------------------------
 
@@ -364,9 +367,10 @@ function landingTrajectory(
     // FLARE
     const u = tau / 2
     return {
-      x: 20 - 6.5 * tau,
-      // y'' = -2·0.345 (constant reduction of sink); sink 1.38 -> 0 u/s
-      y: 1.5 - 1.38 * tau + 0.345 * tau * tau,
+      x: 18 - 5.5 * tau,
+      // y'' = -2·0.3475 (constant reduction of sink); sink 1.38 -> ~0 u/s,
+      // ending at y=0.13 so the main gear meets the runway at 6° nose-up.
+      y: 1.5 - 1.38 * tau + 0.3475 * tau * tau,
       z: 88,
       pitchRad: (1.5 + 4.5 * easeOutQuad(u)) * DEG,
     }
@@ -375,8 +379,8 @@ function landingTrajectory(
   const u = Math.min((tau - 2) / 6, 1)
   const e = easeOutQuad(u)
   const n = Math.min(u / 0.13, 1)
-  let y = 0.12 - 0.06 * easeOutQuad(n) + 0.045 * Math.sin(Math.PI * n)
-  if (y < 0.03) y = 0.03
+  let y = 0.13 - 0.13 * easeOutQuad(n) + 0.04 * Math.sin(Math.PI * n)
+  if (y < 0) y = 0
   return {
     x: 7 - 19 * e,
     y,
@@ -753,7 +757,7 @@ export default function IntroSequence(): JSX.Element {
               z: parked.position.z,
               heading: planeHeading.current,
             }
-          : { x: -12, y: 0.06, z: 88, heading: -Math.PI / 2 },
+          : { x: -12, y: 0, z: 88, heading: -Math.PI / 2 },
       )
       transportState.spawnWalk = {
         from: { x: -12, z: 88 },
@@ -762,7 +766,7 @@ export default function IntroSequence(): JSX.Element {
       transportState.walk = {
         x: -8,
         z: 90,
-        y: 0.5,
+        y: 0.91,
         heading: Math.PI,
       }
       skipIntro()

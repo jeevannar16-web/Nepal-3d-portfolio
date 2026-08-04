@@ -16,12 +16,18 @@ import Soldier from './Soldier'
 const WALK_SPEED = 3.4
 const SPRINT_SPEED = 6
 const CROUCH_SPEED = 1.6
-const ACCEL = 8
+const ACCEL = 10
 const JUMP_VEL = 4.6
 const ENTER_RADIUS = 3.6
 const ANTICIPATE_TIME = 0.15
 const LAND_TIME = 0.32
-const TURN_RATE = 11 // radians/s the soldier rotates toward the movement heading
+const TURN_RATE = 14 // radians/s the soldier rotates toward the movement heading
+// Physics capsule is CapsuleCollider[0.55, 0.32]; its bottom (and the soldier
+// model's feet, which sit at the visual group origin) hangs this far below the
+// body centre, so the visual rides the capsule's bottom.
+const CAPSULE_HALF_LEN = 0.55 + 0.32
+// Runway top; the intro's scripted exit walk stays on the tarmac (z 84..92).
+const RUNWAY_TOP = 0.04
 
 const keyMap: Record<string, 'fwd' | 'back' | 'left' | 'right' | 'run'> = {
   KeyW: 'fwd',
@@ -171,13 +177,13 @@ export default function WalkController({
         const ease = 1 - Math.pow(1 - t, 3)
         const nx = sw.from.x + (sw.to.x - sw.from.x) * ease
         const nz = sw.from.z + (sw.to.z - sw.from.z) * ease
-        rb.setTranslation({ x: nx, y: 0.5, z: nz }, true)
+        rb.setTranslation({ x: nx, y: RUNWAY_TOP + CAPSULE_HALF_LEN, z: nz }, true)
         rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
         heading.current = Math.atan2(sw.to.x - sw.from.x, sw.to.z - sw.from.z)
         transportState.walk = {
           x: nx,
           z: nz,
-          y: 0.5,
+          y: RUNWAY_TOP + CAPSULE_HALF_LEN,
           heading: heading.current,
         } as TransportPose
         if (t >= 1) {
@@ -188,7 +194,7 @@ export default function WalkController({
         scriptTime.current = -1
       }
       if (visual.current) {
-        visual.current.position.set(0, 0.5, 0)
+        visual.current.position.set(0, -CAPSULE_HALF_LEN, 0)
         facing.current = heading.current
         visual.current.rotation.y = heading.current
       }
@@ -206,6 +212,9 @@ export default function WalkController({
 
     // ---- Consume edge-triggered input (keyboard E or the touch interact
     // button both land here) ----
+    // Keep the soldier's feet on the physics capsule's bottom now that the
+    // scripted exit walk is over (the scripted walk set its own offset).
+    if (visual.current) visual.current.position.set(0, -CAPSULE_HALF_LEN, 0)
     if (inputState.interact) {
       inputState.interact = false
       enterVehicle()
@@ -282,9 +291,11 @@ export default function WalkController({
     minimapState.heading = heading.current
 
     // ---- Visual: rotate smoothly toward the movement heading, then hand the
-    // walk cycle to Soldier. Standing still keeps the last facing angle. ----
+    // walk cycle to Soldier. Turning in place (input held while standing)
+    // pivots the soldier, so side/back inputs read instantly. ----
     const moving = Math.hypot(nvx, nvz) > 0.5
-    if (moving) {
+    const turning = fwdInput !== 0 || sideInput !== 0
+    if (moving || turning) {
       const d = angleDelta(heading.current, facing.current)
       const step = Math.min(1, TURN_RATE * Math.max(delta, 1e-4))
       facing.current += d * step
@@ -302,6 +313,7 @@ export default function WalkController({
       z: pos.z,
       vy: vel.y,
       groundedPhys,
+      feetY: pos.y + (visual.current ? visual.current.position.y : 0),
       type: active ? 'dynamic' : 'fixed',
     }
     ;(window as any).__motion = {

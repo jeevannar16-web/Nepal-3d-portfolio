@@ -1,13 +1,13 @@
-import type { JSX } from 'react'
+import { useMemo, type JSX } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { assetUrl } from '../utils/assetUrl'
 import { useStore } from '../store/useStore'
-
-const PLANE_SCALE = 0.25
-// airplane.glb (B737) base (landing gear) sits at model-local y=-5.07; offset
-// so the wheels rest on the ground — same numbers as the intro ArrivalPlane.
-const PLANE_BASE_OFFSET = 5.07 * PLANE_SCALE
+import {
+  PLANE_SCALE,
+  PLANE_BASE_OFFSET,
+  hideAirplaneGlitch,
+} from '../utils/airplane'
 
 /**
  * The airplane the intro just landed, kept parked on the runway once the intro
@@ -19,6 +19,7 @@ export default function ParkedArrivalPlane(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
   const parkedPlane = useStore((s) => s.parkedPlane)
   const gltf = useGLTF(assetUrl('/models/airplane.glb'))
+  useMemo(() => hideAirplaneGlitch(gltf.scene), [gltf])
 
   if (!introDone || !parkedPlane) return null
 

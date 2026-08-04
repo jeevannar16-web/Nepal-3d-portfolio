@@ -14,7 +14,7 @@ export function exitVehicleToWalk(mode: TransportMode): void {
   transportState.walk = {
     x: v.x + rightX * transportState.exitOffset,
     z: v.z + rightZ * transportState.exitOffset,
-    y: 0.5,
+    y: 0.87,
     heading: v.heading,
   }
   useStore.getState().setPlayerMode('walk')

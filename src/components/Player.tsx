@@ -186,7 +186,7 @@ export default function Player({ bodyRef, active }: PlayerProps): JSX.Element {
         transportState.walk = {
           x: p.x + rightX * 2.2,
           z: p.z + rightZ * 2.2,
-          y: 0.5,
+          y: 0.87,
           heading: heading.current,
         }
         setPlayerMode('walk')
