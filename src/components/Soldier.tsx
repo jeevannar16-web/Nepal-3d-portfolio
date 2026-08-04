@@ -83,36 +83,36 @@ function neutralizeRootSlip(
  }
 
 function normalizeJumpClip(
-  animations: THREE.AnimationClip[],
-  standPos: number[],
-  standRot: number[],
-): THREE.AnimationClip | null {
-  const jump = animations.find((c) => /jump/i.test(c.name))
-  if (!jump) return null
-  const jumpPos = firstTrackValue(jump, 'mixamorigHips.position')
-  if (!standPos || !standRot || !jumpPos) return jump
-  const clip = jump.clone()
-  const standQ = new THREE.Quaternion(standRot[0], standRot[1], standRot[2], standRot[3])
-  for (const track of clip.tracks) {
-    if (track.name === 'mixamorigHips.position') {
-      const size = track.getValueSize()
-      const v = track.values
-      for (let i = 0; i < v.length; i += size) {
-        v[i] = standPos[0] + v[i] - jumpPos[0]
-        v[i + 1] = standPos[1] + v[i + 1] - jumpPos[1]
-        v[i + 2] = standPos[2] + v[i + 2] - jumpPos[2]
-      }
-    } else if (track.name === 'mixamorigHips.quaternion') {
-      const size = track.getValueSize()
-      const v = track.values
-      for (let i = 0; i < v.length; i += size) {
-        const q = new THREE.Quaternion(v[i], v[i + 1], v[i + 2], v[i + 3])
-        standQ.clone().multiply(q).normalize().toArray(v, i)
-      }
-    }
-  }
-  return clip
-}
+   animations: THREE.AnimationClip[],
+   standPos: number[] | null,
+   standRot: number[] | null,
+ ): THREE.AnimationClip | null {
+   const jump = animations.find((c) => /jump/i.test(c.name))
+   if (!jump) return null
+   const jumpPos = firstTrackValue(jump, 'mixamorigHips.position')
+   if (!standPos || !standRot || !jumpPos) return jump
+   const clip = jump.clone()
+   const standQ = new THREE.Quaternion(standRot[0], standRot[1], standRot[2], standRot[3])
+   for (const track of clip.tracks) {
+     if (track.name === 'mixamorigHips.position') {
+       const size = track.getValueSize()
+       const v = track.values
+       for (let i = 0; i < v.length; i += size) {
+         v[i] = standPos[0] + v[i] - jumpPos[0]
+         v[i + 1] = standPos[1] + v[i + 1] - jumpPos[1]
+         v[i + 2] = standPos[2] + v[i + 2] - jumpPos[2]
+       }
+     } else if (track.name === 'mixamorigHips.quaternion') {
+       const size = track.getValueSize()
+       const v = track.values
+       for (let i = 0; i < v.length; i += size) {
+         const q = new THREE.Quaternion(v[i], v[i + 1], v[i + 2], v[i + 3])
+         standQ.clone().multiply(q).normalize().toArray(v, i)
+       }
+     }
+   }
+   return clip
+ }
 
 import { standingHipsY } from '../store/walkState'
 
