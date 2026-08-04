@@ -22,8 +22,6 @@ const UP_ROT = new THREE.Quaternion().setFromAxisAngle(
   new THREE.Vector3(1, 0, 0),
   -Math.PI / 2,
 )
-const UNIT = new THREE.Quaternion()
-
 const stripPrefix = (name: string) => name.replace(/^mixamorig[:]?/i, '')
 
 interface Rig {
