@@ -22,6 +22,8 @@ interface Motion {
   running: boolean
   crouching: boolean
   jump: 'anticipate' | 'airborne' | 'land' | null
+  /** Current forward speed in m/s, used to pace the gait animation. */
+  speed: number
 }
 
 const IDLE_MOTION: Motion = {
@@ -29,7 +31,15 @@ const IDLE_MOTION: Motion = {
   running: false,
   crouching: false,
   jump: null,
+  speed: 0,
 }
+
+// Design (full-stride) forward speeds of the retargeted Walk/Run clips at
+// timeScale 1, measured from their authored stride cadence. The active action
+// is played at timeScale = currentSpeed / designSpeed so the legs never cycle
+// faster (or slower) than the physics capsule is actually moving.
+const WALK_DESIGN_SPEED = 1.6
+const RUN_DESIGN_SPEED = 2.7
 
 const CATEGORIES: Array<{ key: string; re: RegExp }> = [
   { key: 'jump', re: /jump|airborne|anticipate|land/i },
@@ -240,6 +250,19 @@ export default function Soldier({
         action.reset().fadeIn(0.2).play()
       }
       current.current = action
+    }
+    // Pace the gait to the actual movement speed so the legs always match the
+    // capsule: idle/jump play at natural speed, walk/run scale to the current
+    // forward speed (0 -> a standstill posture, not a frantic cycle).
+    if (action) {
+      const speed = motion.speed ?? 0
+      const ts =
+        want === 'walk'
+          ? Math.max(0.15, speed / WALK_DESIGN_SPEED)
+          : want === 'run'
+            ? Math.max(0.25, speed / RUN_DESIGN_SPEED)
+            : 1
+      if (action.timeScale !== ts) action.timeScale = ts
     }
     mixer.update(delta)
     ;(window as any).__soldier = {

@@ -401,6 +401,11 @@ export default function Player({ bodyRef, active }: PlayerProps): JSX.Element {
       const targetRoll = -yawVel.current * 0.08
       roll.current += (targetRoll - roll.current) * 0.15
       visual.current.rotation.z = roll.current
+
+      // Squat under acceleration, dive under braking: pitch the body off the
+      // longitudinal force (positive = driving forward, negative = braking).
+      const targetPitch = -THREE.MathUtils.clamp(applied * 0.02, -0.06, 0.06)
+      visual.current.rotation.x += (targetPitch - visual.current.rotation.x) * 0.12
     }
   })
 

@@ -76,6 +76,7 @@ export default function WalkController({
     running: false,
     crouching: false,
     jump: null as 'anticipate' | 'airborne' | 'land' | null,
+    speed: 0,
   })
   const activeRef = useRef(active)
   activeRef.current = active
@@ -205,6 +206,7 @@ export default function WalkController({
       running: false,
       crouching: false,
       jump: null,
+      speed: WALK_SPEED,
     }
     minimapState.x = pos.x
     minimapState.z = pos.z
@@ -307,6 +309,7 @@ export default function WalkController({
       running: moving && inputState.run && !crouching.current,
       crouching: crouching.current,
       jump: jumpState.current,
+      speed: Math.hypot(nvx, nvz),
     }
     walkState.crouching = crouching.current
     ;(window as any).__body = {

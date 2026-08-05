@@ -182,6 +182,16 @@ export default function BikeController({
       const targetLean = -yawVel.current * 0.5
       lean.current += (targetLean - lean.current) * (1 - Math.exp(-dt * 8))
       visual.current.rotation.z = lean.current
+      // Nose-up under hard acceleration, nose-down under braking: base the
+      // pitch on longitudinal acceleration so the body reacts to throttle.
+      const fwdAccel =
+        keys.current.fwd
+          ? THROTTLE_ACCEL
+          : keys.current.back
+            ? (fwdVel > 0.3 ? -BRAKE_DECEL : -REVERSE_ACCEL)
+            : 0
+      const targetPitch = THREE.MathUtils.clamp(-fwdAccel * 0.008, -0.12, 0.12)
+      visual.current.rotation.x += (targetPitch - visual.current.rotation.x) * (1 - Math.exp(-dt * 6))
     }
   })
 

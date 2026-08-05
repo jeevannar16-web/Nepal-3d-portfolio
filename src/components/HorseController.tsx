@@ -172,17 +172,43 @@ export default function HorseController({
 
     if (visual.current) {
       visual.current.rotation.y = heading.current
+      // Enhanced horse gait: speed-based phases, body sway, head bob
       if (newFwd > 0.5) {
-        bobTime.current += dt * (3 + newFwd * 1.4)
-        visual.current.position.y = Math.abs(Math.sin(bobTime.current)) * 0.12
-        visual.current.rotation.x = THREE.MathUtils.lerp(
-          visual.current.rotation.x,
-          -0.08,
-          0.25,
-        )
+        const speedRatio = Math.min(newFwd / MAX_SPEED, 1)
+        // Vertical bob with speed-dependent frequency/amplitude
+        const baseFreq = 2.5 + newFwd * 0.8 // faster at higher speeds
+        const amplitude = 0.12 + speedRatio * 0.1 // more bounce at speed
+        bobTime.current += dt * baseFreq
+        visual.current.position.y = Math.abs(Math.sin(bobTime.current)) * amplitude
+        // dynamic neck pitch based on acceleration/deceleration
+        const targetPitch = newFwd > 2.0 ? -0.15 : newFwd > 0.5 ? -0.08 : 0
+        visual.current.rotation.x = THREE.MathUtils.lerp(visual.current.rotation.x, targetPitch, 0.2)
+        // body sway (side-to-side) with speed-dependent frequency and amplitude
+        const swayFreq = 3.0 + newFwd * 0.5 // sway faster at speed
+        const swayAmp = 0.05 + speedRatio * 0.08 // more sway at speed
+        visual.current.position.x = Math.sin(bobTime.current * swayFreq + Math.PI / 4) * swayAmp
+        // head bob with independent timing offset for realism
+        const headBobFreq = 3.5 + newFwd * 0.7
+        const headBobAmp = 0.06 + speedRatio * 0.07
+        visual.current.position.y += Math.abs(Math.sin(bobTime.current * headBobFreq + Math.PI / 2)) * headBobAmp * 0.6
+        // realistic gaits based on speed for UI/debugging
+        let gaitState = 'standing'
+        if (newFwd < 1.0) gaitState = 'walk'
+        else if (newFwd < 3.0) gaitState = 'trot'
+        else if (newFwd < 6.0) gaitState = 'canter'
+        else gaitState = 'gallop'
+        visual.current.userData.gait = gaitState
       } else {
         visual.current.position.y = 0
-        visual.current.rotation.x = THREE.MathUtils.lerp(visual.current.rotation.x, 0, 0.25)
+        visual.current.rotation.x = THREE.MathUtils.lerp(visual.current.rotation.x, 0, 0.2)
+        visual.current.position.x = 0
+        visual.current.userData.gait = 'standing'
+      }
+      ;(window as any).__horse = {
+        speed: speed.current,
+        yawVel: yawVel.current,
+        bobTime: bobTime.current,
+        gait: visual.current.userData.gait,
       }
     }
   })
