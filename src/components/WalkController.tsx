@@ -9,7 +9,7 @@ import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 import { transportState, type TransportPose } from '../store/transportState'
-import { walkState, inputState, walkHud, standingHipsY } from '../store/walkState'
+import { walkState, inputState, walkHud, feetLocalY } from '../store/walkState'
 import { angleDelta } from '../utils/attitude'
 import Soldier from './Soldier'
 
@@ -165,7 +165,7 @@ export default function WalkController({
     const pos = rb.translation()
     if (bodyRef && bodyRef.current !== rb) bodyRef.current = rb
 
-  const visualOffset = -CAPSULE_HALF_LEN + standingHipsY.current
+  const visualOffset = -CAPSULE_HALF_LEN - feetLocalY.current
 
   // ---- Scripted exit from the landed plane ----
   if (transportState.spawnWalk && scriptTime.current < 0) {

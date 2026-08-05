@@ -96,32 +96,29 @@ const SPLINE_POINTS = [
   new THREE.Vector3(-120, 97, 20),
   new THREE.Vector3(-76, 94, 112),
   new THREE.Vector3(24, 66, 112),
-  // The NE cliff (solid prop collider around (134, 26, 122), roughly
-  // x∈[110,158], z∈[108,136], top ≈104) sits right on the old downwind leg,
-  // so the plane flew straight through the rock. Route the circuit around the
-  // cliff's north edge (z>140) and down its east side (x>170), then ease the
-  // turn onto final — the aircraft never clips the mountain geometry.
+  // The circuit now clears ALL ring geometry, not just the NE cliff. Over the
+  // far ring (radii 205-235, far-peak tips up to y≈50) the aircraft holds ≥56;
+  // it stays above the near-ring giants (tips up to ~52) while rounding the
+  // east side, then a base-to-final turn passes south of the tall NE near peak
+  // (93, 96) — which sits only ~7.8 units off the z=88 runway line, so a
+  // straight final would clip its flanks — before lining up on the runway.
   new THREE.Vector3(60, 62, 152),
-  new THREE.Vector3(110, 60, 158),
-  new THREE.Vector3(145, 54, 158),
-  new THREE.Vector3(168, 48, 148),
-  // The NE cliff (solid prop collider around (134, 26, 122), roughly
-  // x∈[110,158], z∈[108,136], top ≈104) sits right on the old downwind leg,
-  // so the plane flew straight through the rock. Route the circuit well clear
-  // of the cliff — north of z=140 and east of x=180 — then ease the
-  // turn onto final — the aircraft never clips the mountain geometry.
-  new THREE.Vector3(188, 42, 148),
-  new THREE.Vector3(192, 36, 138),
-  new THREE.Vector3(188, 32, 122),
-  new THREE.Vector3(180, 28, 108),
-  new THREE.Vector3(170, 27, 98),
-  new THREE.Vector3(155, 26, 92),
-  new THREE.Vector3(150, 24.5, 88),
-  new THREE.Vector3(140, 24, 88),
-  new THREE.Vector3(118, 21, 88),
-  new THREE.Vector3(90, 16, 88),
-  new THREE.Vector3(60, 11, 88),
-  new THREE.Vector3(30, 5, 88),
+  new THREE.Vector3(110, 62, 158),
+  new THREE.Vector3(145, 62, 158),
+  new THREE.Vector3(168, 62, 150),
+  new THREE.Vector3(190, 60, 144),
+  new THREE.Vector3(198, 56, 128),
+  new THREE.Vector3(196, 50, 112),
+  new THREE.Vector3(186, 46, 92),
+  new THREE.Vector3(176, 38, 72),
+  new THREE.Vector3(160, 30, 50),
+  new THREE.Vector3(140, 24, 40),
+  new THREE.Vector3(116, 19, 36),
+  new THREE.Vector3(92, 15, 42),
+  new THREE.Vector3(70, 11, 52),
+  new THREE.Vector3(50, 8, 64),
+  new THREE.Vector3(40, 6, 78),
+  new THREE.Vector3(30, 4, 84),
   new THREE.Vector3(18, 1.5, 88),
 ]
 

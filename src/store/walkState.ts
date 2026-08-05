@@ -7,11 +7,12 @@ export const walkState = {
 }
 
 /**
- * Standing Hips Y position from the soldier's Idle animation first frame,
- * used by WalkController to offset the visual group so the model's feet
- * sit on the capsule bottom instead of the Hips.
+ * Lowest local Y (relative to the avatar's visual origin) of the avatar's
+ * skinned mesh at the retargeted Idle animation's first frame. WalkController
+ * offsets the visual group by `-CAPSULE_HALF_LEN - feetLocalY.current` so the
+ * model's feet rest on the physics capsule's bottom instead of floating.
  */
-export const standingHipsY = { current: 0 }
+export const feetLocalY = { current: 0 }
 
 /**
  * Shared movement input buffer for the walking soldier. Both the keyboard

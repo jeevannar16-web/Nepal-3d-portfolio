@@ -4,7 +4,7 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { assetUrl } from '../utils/assetUrl'
 import { retargetClips } from '../utils/retargetAnimations'
-import { standingHipsY } from '../store/walkState'
+import { feetLocalY } from '../store/walkState'
 import BlobShadow from './BlobShadow'
 
 /**
@@ -168,9 +168,6 @@ export default function Soldier({
     const standRot = idle
       ? firstTrackValue(idle, 'Hips.quaternion')
       : null
-    if (standPos && standPos.length >= 1) {
-      standingHipsY.current = standPos[1]
-    }
     const jumpClip = normalizeJumpClip(clips, standPos, standRot)
     for (const clip of clips) {
       const key = categoryOf(clip.name)
@@ -184,9 +181,29 @@ export default function Soldier({
         act.loop = THREE.LoopOnce
         act.clampWhenFinished = true
       }
-      act.paused = true
-      act.play()
+      // Every action starts disabled (weight 0): a paused action still
+      // accumulates its frozen pose at weight 1 in three.js, so playing all of
+      // them at once would permanently blend the Walk/Run/Jump t=0 poses into
+      // whatever is active. Each is (re)enabled by reset()/play() when the
+      // frame loop selects it.
+      act.enabled = false
       map.set(key, act)
+    }
+    // Settle the avatar into the Idle pose at t=0 so the very first rendered
+    // frame is upright and standing (no bind-pose T-flash), then measure the
+    // skinned mesh's lowest local Y there so the WalkController can rest the
+    // feet exactly on the capsule bottom. Detach while measuring so the
+    // physics body's world offset can't leak into the local box.
+    const idleAct = map.get('idle')
+    if (idle && idleAct) {
+      const parent = avatar.scene.parent
+      if (parent) parent.remove(avatar.scene)
+      idleAct.reset()
+      idleAct.play()
+      mixer.update(0)
+      feetLocalY.current = new THREE.Box3().setFromObject(avatar.scene, true).min.y
+      idleAct.paused = true
+      if (parent) parent.add(avatar.scene)
     }
     return map
   }, [clips, mixer])
@@ -209,7 +226,19 @@ export default function Soldier({
     const action = actions.get(want) ?? actions.get('idle')
     if (action && action !== current.current) {
       current.current?.fadeOut(0.2)
-      action.reset().fadeIn(0.2).play()
+      if (current.current) {
+        action.reset().fadeIn(0.2).play()
+      } else if (action === actions.get('idle')) {
+        // First frame and already settled at Idle weight 1 — just unpause so
+        // it keeps playing, instead of re-fading from 0 (which would show a
+        // brief T-pose while the weight ramps up).
+        action.play()
+      } else {
+        // First frame but already moving: fade the settled Idle out while the
+        // desired action fades in.
+        actions.get('idle')?.fadeOut(0.2)
+        action.reset().fadeIn(0.2).play()
+      }
       current.current = action
     }
     mixer.update(delta)
@@ -224,7 +253,7 @@ export default function Soldier({
   return (
     <group>
       <primitive object={avatar.scene} scale={SOLDIER_SCALE} />
-      <BlobShadow radius={0.8} y={0.01} />
+      <BlobShadow radius={0.8} y={feetLocalY.current + 0.01} />
     </group>
   )
 }
