@@ -12,6 +12,7 @@ import { useStore } from '../store/useStore'
 import { transportState } from '../store/transportState'
 import { HorseModel } from './VehicleModels'
 import BlobShadow from './BlobShadow'
+import Rider from './Rider'
 
 const MAX_SPEED = 10
 const KMH_FACTOR = 8
@@ -226,6 +227,7 @@ export default function HorseController({
       <CuboidCollider args={[0.55, 0.8, 1.05]} friction={0.3} />
       <group ref={visual}>
         <HorseModel />
+        {active && <Rider seat={[0, 1.1, -0.1]} />}
         <BlobShadow radius={1.2} y={0.01} />
       </group>
     </RigidBody>

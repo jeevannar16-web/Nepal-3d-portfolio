@@ -12,6 +12,7 @@ import { useStore } from '../store/useStore'
 import { transportState } from '../store/transportState'
 import { BikeModel } from './VehicleModels'
 import BlobShadow from './BlobShadow'
+import Rider from './Rider'
 
 const MAX_SPEED = 20
 const REVERSE_MAX_SPEED = 5
@@ -208,6 +209,7 @@ export default function BikeController({
       <CuboidCollider args={[0.42, 0.6, 1.05]} friction={0.3} />
       <group ref={visual}>
         <BikeModel />
+        {active && <Rider seat={[0, 0.55, -0.3]} />}
         <BlobShadow radius={1} y={0.01} />
       </group>
     </RigidBody>
