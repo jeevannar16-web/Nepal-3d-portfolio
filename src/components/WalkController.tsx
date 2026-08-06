@@ -16,7 +16,7 @@ import Soldier from './Soldier'
 const WALK_SPEED = 1.3
 const SPRINT_SPEED = 2.8
 const CROUCH_SPEED = 1.0
-const ACCEL = 10
+const ACCEL = 24 // snappy acceleration so the gait stays in phase with the body
 const JUMP_VEL = 5.5
 const ENTER_RADIUS = 3.6
 const ANTICIPATE_TIME = 0.15
@@ -271,15 +271,36 @@ export default function WalkController({
 
     const targetVel = new THREE.Vector3()
     let hasInput = false
-    let targetHeading = heading.current
+    let inputAngle = heading.current
+    let moveMag = 0
     if (fwdInput !== 0 || sideInput !== 0) {
       hasInput = true
+      // Camera-relative input -> a world-space desired travel angle + strength.
       const dx = Math.sin(camYaw) * fwdInput + Math.cos(camYaw) * sideInput
       const dz = Math.cos(camYaw) * fwdInput - Math.sin(camYaw) * sideInput
-      const len = Math.hypot(dx, dz)
-      targetVel.set((dx / len) * speed, 0, (dz / len) * speed)
-      targetHeading = Math.atan2(targetVel.x, targetVel.z)
+      moveMag = Math.hypot(dx, dz)
+      inputAngle = Math.atan2(dx, dz)
     }
+
+    // ---- Smoothly turn the soldier toward where the player wants to go, capped
+    // at TURN_RATE. This replaces the old instant snap of the travel heading to
+    // the camera each frame: holding W while turning the view no longer yanks the
+    // body through a full spin, and the feet always face the direction of travel
+    // (no sideways slide, no animation/velocity desync). ----
+    if (hasInput && moveMag > 0) {
+      const d = angleDelta(inputAngle, heading.current)
+      const step = Math.min(1, TURN_RATE * Math.max(delta, 1e-4))
+      heading.current += d * step
+    }
+
+    // Move along the heading we're facing, at the strength of the input, so the
+    // body and the velocity are always in phase.
+    const dir = new THREE.Vector3(
+      Math.sin(heading.current),
+      0,
+      Math.cos(heading.current),
+    )
+    targetVel.copy(dir).multiplyScalar(moveMag * speed)
 
     const curVel = rb.linvel()
     const nvx = THREE.MathUtils.lerp(curVel.x, targetVel.x, 1 - Math.exp(-delta * ACCEL))
@@ -305,17 +326,6 @@ export default function WalkController({
     rb.setLinvel({ x: finalVx, y: curVel.y, z: finalVz }, true)
 
     const moveSpeed = Math.hypot(finalVx, finalVz)
-
-    // ---- Smoothly turn the travel heading toward where the player intends to
-    // go (camera-relative). Snapping it instantly made the soldier point and
-    // slide sideways / pop when strafing or swiveling the camera, which read as
-    // "not smooth to control". Use the same turn rate as the visual facing so
-    // the body and the feet stay aligned instead of out of phase. ----
-    if (hasInput) {
-      const d = angleDelta(targetHeading, heading.current)
-      const step = Math.min(1, TURN_RATE * Math.max(delta, 1e-4))
-      heading.current += d * step
-    }
 
     // ---- Persist pose + minimap ----
     transportState.walk = {
@@ -343,6 +353,9 @@ export default function WalkController({
       running: moving && inputState.run && !crouching.current,
       crouching: crouching.current,
       jump: jumpState.current,
+      // Pace the gait to the ACTUAL velocity, not the intended input, so the
+      // legs never cycle faster than the body is really translating (that lag
+      // is what made the stride look "fast for the distance covered"). ----
       speed: moveSpeed,
     }
     walkState.crouching = crouching.current
