@@ -1,5 +1,5 @@
 import { useEffect, useRef, type JSX } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import {
   RigidBody,
   CapsuleCollider,
@@ -58,7 +58,6 @@ export default function WalkController({
   bodyRef,
   active,
 }: WalkControllerProps): JSX.Element {
-  const { camera } = useThree()
   const setPlayerMode = useStore((s) => s.setPlayerMode)
   const body = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
@@ -253,10 +252,7 @@ export default function WalkController({
     }
     grounded.current = groundedPhys
 
-    // ---- Movement relative to camera ----
-    const camDir = new THREE.Vector3()
-    camera.getWorldDirection(camDir)
-    const camYaw = Math.atan2(camDir.x, camDir.z)
+    // ---- Movement (character-relative: W/S along heading, A/D turn) ----
     const fwdInput = (inputState.fwd ? 1 : 0) - (inputState.back ? 1 : 0)
     const sideInput = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0)
     const speed = crouching.current
@@ -265,36 +261,31 @@ export default function WalkController({
         ? SPRINT_SPEED
         : WALK_SPEED
 
+    // ---- Character-relative control (like the vehicles): W/S move along the
+    // soldier's own forward, A/D turn it left/right. S is the exact mirror of W:
+    // same clean walk cycle, same facing, just velocity reversed. No heading
+    // flips, no 360, no extra world motion. ----
+    const turnInput = sideInput // A/D turn the heading, -1/+1
+    const turnRate = 6 // rad/s
+    heading.current += turnInput * turnRate * delta
+    heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
+
     const targetVel = new THREE.Vector3()
-    let hasInput = false
-    let inputAngle = heading.current
     let moveMag = 0
-    if (fwdInput !== 0 || sideInput !== 0) {
-      hasInput = true
-      // Camera-relative input -> a world-space desired travel angle + strength.
-      const dx = Math.sin(camYaw) * fwdInput + Math.cos(camYaw) * sideInput
-      const dz = Math.cos(camYaw) * fwdInput - Math.sin(camYaw) * sideInput
-      moveMag = Math.hypot(dx, dz)
-      inputAngle = Math.atan2(dx, dz)
+    if (fwdInput !== 0) {
+      moveMag = Math.abs(fwdInput)
+      const dir = new THREE.Vector3(
+        Math.sin(heading.current),
+        0,
+        Math.cos(heading.current),
+      )
+      targetVel.copy(dir).multiplyScalar(fwdInput * speed)
     }
-
-    // ---- Travel direction. The soldier always faces where the camera is
-    // pointing (camera-relative control): the moment you hold W the body faces
-    // the camera and moves that way. Heading is set directly (no lagging
-    // smoothing chasing a rotating camera) so turning the view while walking
-    // never winds the body into a 360. ----
-    if (moveMag > 0) {
-      heading.current = inputAngle
-    }
-
-    // Move along the heading we're facing, at the strength of the input, so the
-    // body and the velocity are always in phase.
-    const dir = new THREE.Vector3(
-      Math.sin(heading.current),
-      0,
-      Math.cos(heading.current),
-    )
-    targetVel.copy(dir).multiplyScalar(moveMag * speed)
+    // Body faces where we move. W and S share the SAME facing (current heading)
+    // so the walk cycle never flips 180 / never shows a second flickering
+    // image — S is simply W with reversed velocity. Heading is only turned by
+    // A/D; targetVel is built from heading, so there is nothing to snap here.
+    const faceAngle = heading.current
 
     const curVel = rb.linvel()
     const nvx = THREE.MathUtils.lerp(curVel.x, targetVel.x, 1 - Math.exp(-delta * ACCEL))
@@ -308,12 +299,12 @@ export default function WalkController({
     const stopThreshold = 0.06
     let finalVx = nvx
     let finalVz = nvz
-    if (!hasInput) {
+    if (moveMag === 0) {
       finalVx = THREE.MathUtils.lerp(curVel.x, 0, 1 - Math.exp(-delta * 8))
       finalVz = THREE.MathUtils.lerp(curVel.z, 0, 1 - Math.exp(-delta * 8))
     }
     // Snap to exactly zero just before it would creep, so `moving` stays stable.
-    if (!hasInput && Math.hypot(finalVx, finalVz) < stopThreshold) {
+    if (moveMag === 0 && Math.hypot(finalVx, finalVz) < stopThreshold) {
       finalVx = 0
       finalVz = 0
     }
@@ -332,12 +323,13 @@ export default function WalkController({
     minimapState.z = pos.z
     minimapState.heading = heading.current
 
-    // ---- Visual: point the body exactly at the travel heading (no lagging
-    // smoothing — that lag against a rotating camera is what spun the model
-    // through 360s). Facing == heading, always in phase with the velocity. ----
+    // ---- Visual: point the body at the travel direction (faceAngle). When W is
+    // held the nose leads; when S is held the back leads, so the walk/run clip
+    // animates cleanly with no foot slide. Heading (the A/D turn accumulator)
+    // is separate and only changed by turning. ----
     const moving = moveSpeed > 0.1
     if (visual.current) {
-      visual.current.rotation.y = heading.current
+      visual.current.rotation.y = faceAngle
     }
     motionRef.current = {
       moving,
