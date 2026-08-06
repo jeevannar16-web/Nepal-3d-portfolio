@@ -21,7 +21,7 @@ const JUMP_VEL = 5.5
 const ENTER_RADIUS = 3.6
 const ANTICIPATE_TIME = 0.15
 const LAND_TIME = 0.32
-const TURN_RATE = 14 // radians/s the soldier rotates toward the movement heading
+const TURN_RATE = 8 // radians/s the soldier rotates toward the movement heading
 // Physics capsule is CapsuleCollider[0.55, 0.32]; its bottom (and the soldier
 // model's feet, which sit at the visual group origin) hangs this far below the
 // body centre, so the visual rides the capsule's bottom.
@@ -270,18 +270,52 @@ export default function WalkController({
         : WALK_SPEED
 
     const targetVel = new THREE.Vector3()
+    let hasInput = false
+    let targetHeading = heading.current
     if (fwdInput !== 0 || sideInput !== 0) {
+      hasInput = true
       const dx = Math.sin(camYaw) * fwdInput + Math.cos(camYaw) * sideInput
       const dz = Math.cos(camYaw) * fwdInput - Math.sin(camYaw) * sideInput
       const len = Math.hypot(dx, dz)
       targetVel.set((dx / len) * speed, 0, (dz / len) * speed)
-      heading.current = Math.atan2(targetVel.x, targetVel.z)
+      targetHeading = Math.atan2(targetVel.x, targetVel.z)
     }
 
     const curVel = rb.linvel()
     const nvx = THREE.MathUtils.lerp(curVel.x, targetVel.x, 1 - Math.exp(-delta * ACCEL))
     const nvz = THREE.MathUtils.lerp(curVel.z, targetVel.z, 1 - Math.exp(-delta * ACCEL))
-    rb.setLinvel({ x: nvx, y: curVel.y, z: nvz }, true)
+
+    // ---- Ground friction: when the player isn't giving any input, drain the
+    // horizontal speed to a hard stop instead of letting the lerp decay into a
+    // slow slide. The slide made the soldier shuffle-to-a-halt (legs creeping)
+    // and caused a walk/idle animation pop as |vel| crossed the moving
+    // threshold. ----
+    const stopThreshold = 0.06
+    let finalVx = nvx
+    let finalVz = nvz
+    if (!hasInput) {
+      finalVx = THREE.MathUtils.lerp(curVel.x, 0, 1 - Math.exp(-delta * 8))
+      finalVz = THREE.MathUtils.lerp(curVel.z, 0, 1 - Math.exp(-delta * 8))
+    }
+    // Snap to exactly zero just before it would creep, so `moving` stays stable.
+    if (!hasInput && Math.hypot(finalVx, finalVz) < stopThreshold) {
+      finalVx = 0
+      finalVz = 0
+    }
+    rb.setLinvel({ x: finalVx, y: curVel.y, z: finalVz }, true)
+
+    const moveSpeed = Math.hypot(finalVx, finalVz)
+
+    // ---- Smoothly turn the travel heading toward where the player intends to
+    // go (camera-relative). Snapping it instantly made the soldier point and
+    // slide sideways / pop when strafing or swiveling the camera, which read as
+    // "not smooth to control". Use the same turn rate as the visual facing so
+    // the body and the feet stay aligned instead of out of phase. ----
+    if (hasInput) {
+      const d = angleDelta(targetHeading, heading.current)
+      const step = Math.min(1, TURN_RATE * Math.max(delta, 1e-4))
+      heading.current += d * step
+    }
 
     // ---- Persist pose + minimap ----
     transportState.walk = {
@@ -297,7 +331,7 @@ export default function WalkController({
     // ---- Visual: rotate smoothly toward the movement heading, then hand the
     // walk cycle to Soldier. Turning in place (input held while standing)
     // pivots the soldier, so side/back inputs read instantly. ----
-    const moving = Math.hypot(nvx, nvz) > 0.5
+    const moving = moveSpeed > 0.1
     const turning = fwdInput !== 0 || sideInput !== 0
     if (moving || turning) {
       const d = angleDelta(heading.current, facing.current)
@@ -309,7 +343,7 @@ export default function WalkController({
       running: moving && inputState.run && !crouching.current,
       crouching: crouching.current,
       jump: jumpState.current,
-      speed: Math.hypot(nvx, nvz),
+      speed: moveSpeed,
     }
     walkState.crouching = crouching.current
     ;(window as any).__body = {
