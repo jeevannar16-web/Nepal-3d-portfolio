@@ -10,7 +10,6 @@ import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 import { transportState, type TransportPose } from '../store/transportState'
 import { walkState, inputState, walkHud, feetLocalY } from '../store/walkState'
-import { angleDelta } from '../utils/attitude'
 import Soldier from './Soldier'
 
 const WALK_SPEED = 1.3
@@ -21,7 +20,6 @@ const JUMP_VEL = 5.5
 const ENTER_RADIUS = 3.6
 const ANTICIPATE_TIME = 0.15
 const LAND_TIME = 0.32
-const TURN_RATE = 8 // radians/s the soldier rotates toward the movement heading
 // Physics capsule is CapsuleCollider[0.55, 0.32]; its bottom (and the soldier
 // model's feet, which sit at the visual group origin) hangs this far below the
 // body centre, so the visual rides the capsule's bottom.
@@ -65,7 +63,6 @@ export default function WalkController({
   const body = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
   const heading = useRef(transportState.walk.heading)
-  const facing = useRef(transportState.walk.heading)
   const grounded = useRef(true)
   const crouching = useRef(false)
   const jumpState = useRef<'anticipate' | 'airborne' | 'land' | null>(null)
@@ -198,7 +195,6 @@ export default function WalkController({
     }
     if (visual.current) {
       visual.current.position.set(0, visualOffset, 0)
-      facing.current = heading.current
       visual.current.rotation.y = heading.current
     }
     motionRef.current = {
@@ -282,15 +278,13 @@ export default function WalkController({
       inputAngle = Math.atan2(dx, dz)
     }
 
-    // ---- Smoothly turn the soldier toward where the player wants to go, capped
-    // at TURN_RATE. This replaces the old instant snap of the travel heading to
-    // the camera each frame: holding W while turning the view no longer yanks the
-    // body through a full spin, and the feet always face the direction of travel
-    // (no sideways slide, no animation/velocity desync). ----
-    if (hasInput && moveMag > 0) {
-      const d = angleDelta(inputAngle, heading.current)
-      const step = Math.min(1, TURN_RATE * Math.max(delta, 1e-4))
-      heading.current += d * step
+    // ---- Travel direction. The soldier always faces where the camera is
+    // pointing (camera-relative control): the moment you hold W the body faces
+    // the camera and moves that way. Heading is set directly (no lagging
+    // smoothing chasing a rotating camera) so turning the view while walking
+    // never winds the body into a 360. ----
+    if (moveMag > 0) {
+      heading.current = inputAngle
     }
 
     // Move along the heading we're facing, at the strength of the input, so the
@@ -338,15 +332,12 @@ export default function WalkController({
     minimapState.z = pos.z
     minimapState.heading = heading.current
 
-    // ---- Visual: rotate smoothly toward the movement heading, then hand the
-    // walk cycle to Soldier. Turning in place (input held while standing)
-    // pivots the soldier, so side/back inputs read instantly. ----
+    // ---- Visual: point the body exactly at the travel heading (no lagging
+    // smoothing — that lag against a rotating camera is what spun the model
+    // through 360s). Facing == heading, always in phase with the velocity. ----
     const moving = moveSpeed > 0.1
-    const turning = fwdInput !== 0 || sideInput !== 0
-    if (moving || turning) {
-      const d = angleDelta(heading.current, facing.current)
-      const step = Math.min(1, TURN_RATE * Math.max(delta, 1e-4))
-      facing.current += d * step
+    if (visual.current) {
+      visual.current.rotation.y = heading.current
     }
     motionRef.current = {
       moving,
@@ -374,7 +365,7 @@ export default function WalkController({
       crouching: motionRef.current.crouching,
       jump: motionRef.current.jump,
     }
-    if (visual.current) visual.current.rotation.y = facing.current
+    if (visual.current) visual.current.rotation.y = heading.current
   })
 
   return (
