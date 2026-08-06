@@ -14,8 +14,8 @@ import { BikeModel } from './VehicleModels'
 import BlobShadow from './BlobShadow'
 import Rider from './Rider'
 
-const MAX_SPEED = 20
-const REVERSE_MAX_SPEED = 5
+const MAX_SPEED = 26
+const REVERSE_MAX_SPEED = 6
 const KMH_FACTOR = 8
 
 const THROTTLE_ACCEL = 26
@@ -90,7 +90,8 @@ export default function BikeController({
       if (k) {
         keys.current[k] = true
         e.preventDefault()
-      } else if (e.code === 'KeyF') {
+      } else if (e.code === 'KeyZ' || e.code === 'Escape') {
+        e.preventDefault()
         exit()
       }
     }
@@ -209,7 +210,7 @@ export default function BikeController({
       <CuboidCollider args={[0.42, 0.6, 1.05]} friction={0.3} />
       <group ref={visual}>
         <BikeModel />
-        {active && <Rider seat={[0, 0.55, -0.3]} />}
+        {active && <Rider seat={[0, 0.75, 0]} lean={0.45} />}
         <BlobShadow radius={1} y={0.01} />
       </group>
     </RigidBody>

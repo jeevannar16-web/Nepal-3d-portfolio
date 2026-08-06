@@ -38,7 +38,7 @@ function nearestVehicle(): Nearby {
 
 /**
  * Contextual control hints for the transport system: "E to climb in" when the
- * soldier stands near a vehicle, and "F to get out" whenever he's driving or
+ * soldier stands near a vehicle, and "Z to get out" whenever he's driving or
  * riding. A small mode chip shows the current way of moving.
  */
 export default function TransportPrompt(): JSX.Element | null {
@@ -65,7 +65,7 @@ export default function TransportPrompt(): JSX.Element | null {
         </div>
       ) : playerMode !== 'walk' ? (
         <div className="rounded-full border border-amber-300/30 bg-black/60 px-4 py-2 text-sm text-white/90 backdrop-blur">
-          Press <span className="font-semibold text-amber-300">F</span> to get out and walk
+          Press <span className="font-semibold text-amber-300">Z</span> (or <span className="font-semibold text-amber-300">Esc</span>) to get out and walk
         </div>
       ) : null}
     </div>

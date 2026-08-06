@@ -176,7 +176,7 @@ export default function Player({ bodyRef, active }: PlayerProps): JSX.Element {
           throttleTime.current = 0
           autoGear.current = 1
         }
-      } else if (e.code === 'KeyF') {
+      } else if (e.code === 'KeyZ' || e.code === 'Escape') {
         // Get out and walk. The soldier appears beside the door.
         const rb = body.current
         if (!rb) return

@@ -12,9 +12,9 @@ import { transportState, type TransportPose } from '../store/transportState'
 import { walkState, inputState, walkHud, feetLocalY } from '../store/walkState'
 import Soldier from './Soldier'
 
-const WALK_SPEED = 1.3
-const SPRINT_SPEED = 2.8
-const CROUCH_SPEED = 1.0
+const WALK_SPEED = 3.0
+const SPRINT_SPEED = 5.2
+const CROUCH_SPEED = 1.4
 const ACCEL = 24 // snappy acceleration so the gait stays in phase with the body
 const JUMP_VEL = 5.5
 const ENTER_RADIUS = 3.6
@@ -93,6 +93,10 @@ export default function WalkController({
     for (const kind of ['car', 'bike', 'horse'] as const) {
       const p = transportState[kind]
       if (Math.hypot(pos.x - p.x, pos.z - p.z) < ENTER_RADIUS) {
+        // Snap the vehicle's heading to the soldier's facing so "forward" (W)
+        // goes the way the player was looking when they mounted. Otherwise the
+        // vehicle keeps its parked heading and W drives it backward.
+        p.heading = heading.current
         setPlayerMode(kind)
         return
       }
@@ -266,8 +270,12 @@ export default function WalkController({
     // same clean walk cycle, same facing, just velocity reversed. No heading
     // flips, no 360, no extra world motion. ----
     const turnInput = sideInput // A/D turn the heading, -1/+1
-    const turnRate = 6 // rad/s
-    heading.current += turnInput * turnRate * delta
+    const turnRate = 4 // rad/s (controlled, never a full swing per press)
+    // Clamp the per-frame delta so a single keypress or a big delta frame can
+    // never spin the model a full turn in one step.
+    const maxTurn = THREE.MathUtils.degToRad(30) // 30 deg/frame cap @ 60fps-ish
+    const rawTurn = turnInput * turnRate * delta
+    heading.current += Math.max(-maxTurn, Math.min(maxTurn, rawTurn))
     heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
 
     const targetVel = new THREE.Vector3()

@@ -25,7 +25,7 @@ const MODE_OFFSETS: Record<string, [number, number, number]> = {
 const CROUCH_OFFSET: [number, number, number] = [0, 1.6, -5.2]
 // Top speed per mode, for the speed-based FOV kick to normalize evenly.
 const MODE_MAX_SPEED: Record<string, number> = {
-  walk: 6,
+  walk: 5,
   car: MAX_SPEED,
   bike: 20,
   horse: 10,
@@ -124,13 +124,16 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
       lookYaw.current += (0 - lookYaw.current) * settle
     }
 
-    // Chase the car's heading plus the free-look offset: when the car steers,
-    // the camera swings around to stay behind it so the scenery sweeps across
-    // the screen — the core of a "driving" feel. Tight while actively looking,
-    // slightly loose otherwise for dynamic, readable corners.
-    const desiredYaw = minimapState.heading + lookYaw.current
+    // On foot, the camera stays fixed to the world (it only moves on an explicit
+    // Q/E / right-drag orbit). Driving `camYaw` toward the soldier's heading made
+    // every A/D press swing the whole scene around the body ("the environment
+    // rotated"). The man turns in place; the world stays put. In vehicles the
+    // camera still chases the heading so the scenery sweeps on corners.
     const chase = 1 - Math.pow(2, -delta * (active ? 30 : 6))
-    camYaw.current += (desiredYaw - camYaw.current) * chase
+    const targetYaw = playerMode === 'walk'
+      ? camYaw.current
+      : minimapState.heading + lookYaw.current
+    camYaw.current += (targetYaw - camYaw.current) * chase
 
     bobTime.current += delta * (1 + speed * 0.25)
 

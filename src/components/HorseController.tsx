@@ -14,7 +14,7 @@ import { HorseModel } from './VehicleModels'
 import BlobShadow from './BlobShadow'
 import Rider from './Rider'
 
-const MAX_SPEED = 10
+const MAX_SPEED = 13
 const KMH_FACTOR = 8
 const GALLOP_ACCEL = 18
 const TURN_RATE = 1.9
@@ -33,7 +33,7 @@ interface HorseControllerProps {
 
 /**
  * The horse: a natural ride through the valley. Hold W to gallop, A/D to steer,
- * S to slow, F to dismount. The gallop rocks the horse up and down as it runs.
+ * S to slow, X to dismount. The gallop rocks the horse up and down as it runs.
  * Its body stays mounted forever, flipping between dynamic (ridden) and fixed
  * (parked), so mode switches never remove a physics body mid-contact.
  */
@@ -84,7 +84,8 @@ export default function HorseController({
       if (k) {
         keys.current[k] = true
         e.preventDefault()
-      } else if (e.code === 'KeyF') {
+      } else if (e.code === 'KeyZ' || e.code === 'Escape') {
+        e.preventDefault()
         exit()
       }
     }
@@ -227,7 +228,7 @@ export default function HorseController({
       <CuboidCollider args={[0.55, 0.8, 1.05]} friction={0.3} />
       <group ref={visual}>
         <HorseModel />
-        {active && <Rider seat={[0, 1.1, -0.1]} />}
+        {active && <Rider seat={[0, 1.05, 0]} lean={0.2} />}
         <BlobShadow radius={1.2} y={0.01} />
       </group>
     </RigidBody>

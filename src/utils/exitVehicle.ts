@@ -3,8 +3,8 @@ import { useStore } from '../store/useStore'
 
 /**
  * Get out of the active vehicle on foot: place the soldier beside the vehicle
- * (same offset the F key uses) and switch to walk mode. Shared by the
- * on-screen exit button so touch players get the same behaviour as the F key.
+ * (same offset X key uses) and switch to walk mode. Shared by the
+ * on-screen exit button so touch players get the same behaviour as X key.
  */
 export function exitVehicleToWalk(mode: TransportMode): void {
   if (mode === 'walk') return
