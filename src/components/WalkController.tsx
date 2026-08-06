@@ -344,10 +344,11 @@ export default function WalkController({
       running: moving && inputState.run && !crouching.current,
       crouching: crouching.current,
       jump: jumpState.current,
-      // Pace the gait to the ACTUAL velocity, not the intended input, so the
-      // legs never cycle faster than the body is really translating (that lag
-      // is what made the stride look "fast for the distance covered"). ----
-      speed: moveSpeed,
+      // Free Fire-style: pace the gait to the INTENT (how hard W/S is pressed),
+      // not the lagging actual velocity — so the legs lead the body the instant
+      // you press, with no stride catching up. A threshold floor keeps idle
+      // stable (no 0.x creeping legs) at the standstill.
+      speed: moveMag * speed,
     }
     walkState.crouching = crouching.current
     ;(window as any).__body = {
