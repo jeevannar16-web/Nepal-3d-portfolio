@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, type JSX } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import { clone as cloneScene } from 'three/addons/utils/SkeletonUtils.js'
 import { assetUrl } from '../utils/assetUrl'
 import { retargetClips } from '../utils/retargetAnimations'
 import { feetLocalY } from '../store/walkState'
@@ -152,24 +153,33 @@ export default function Soldier({
 }): JSX.Element {
   const avatar = useGLTF(assetUrl('/models/avaturn.glb'))
   const soldier = useGLTF(assetUrl('/models/soldier.glb'))
-  const mixer = useMemo(
-    () => new THREE.AnimationMixer(avatar.scene),
+  // Clone the avatar scene per Soldier instance. The walking soldier
+  // (WalkController) and the rider (Rider, on bike/horse) mount at the same
+  // time; useGLTF returns the same cached scene object to both, and a THREE
+  // Object3D can only have one parent — so the rider would steal the avatar
+  // from the walker and leave him invisible after dismounting.
+  const avatarScene = useMemo(
+    () => cloneScene(avatar.scene) as THREE.Scene,
     [avatar],
+  )
+  const mixer = useMemo(
+    () => new THREE.AnimationMixer(avatarScene),
+    [avatarScene],
   )
   const current = useRef<THREE.AnimationAction | null>(null)
 
   const clips = useMemo(
-    () => retargetClips(soldier.animations, soldier.scene, avatar.scene),
-    [soldier, avatar],
+    () => retargetClips(soldier.animations, soldier.scene, avatarScene),
+    [soldier, avatarScene],
   )
 
   useEffect(() => {
-    avatar.scene.traverse((o) => {
+    avatarScene.traverse((o) => {
       const mesh = o as THREE.Mesh
       const mat = mesh.material as THREE.MeshStandardMaterial | undefined
       if (mat && 'envMapIntensity' in mat) mat.envMapIntensity = 1.5
     })
-  }, [avatar])
+  }, [avatarScene])
 
   const actions = useMemo(() => {
     const map = new Map<string, THREE.AnimationAction>()
@@ -206,14 +216,14 @@ export default function Soldier({
     // physics body's world offset can't leak into the local box.
     const idleAct = map.get('idle')
     if (idle && idleAct) {
-      const parent = avatar.scene.parent
-      if (parent) parent.remove(avatar.scene)
+      const parent = avatarScene.parent
+      if (parent) parent.remove(avatarScene)
       idleAct.reset()
       idleAct.play()
       mixer.update(0)
-      feetLocalY.current = new THREE.Box3().setFromObject(avatar.scene, true).min.y
+      feetLocalY.current = new THREE.Box3().setFromObject(avatarScene, true).min.y
       idleAct.paused = true
-      if (parent) parent.add(avatar.scene)
+      if (parent) parent.add(avatarScene)
     }
     return map
   }, [clips, mixer])
@@ -270,12 +280,12 @@ export default function Soldier({
       active: current.current?.getClip().name ?? null,
       want,
     }
-    ;(window as any).__soldierScene = avatar.scene
+    ;(window as any).__soldierScene = avatarScene
   })
 
   return (
     <group>
-      <primitive object={avatar.scene} scale={SOLDIER_SCALE} />
+      <primitive object={avatarScene} scale={SOLDIER_SCALE} />
       <BlobShadow radius={0.8} y={feetLocalY.current + 0.01} />
     </group>
   )
