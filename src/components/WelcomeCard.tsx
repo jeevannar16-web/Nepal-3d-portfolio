@@ -32,7 +32,7 @@ export default function WelcomeCard(): JSX.Element | null {
         ['Shift', 'Sprint'],
         ['Space', 'Jump'],
         ['E', 'Enter vehicle'],
-        ['F', 'Get out'],
+        ['Z', 'Get out'],
         ['G · R · H', 'Engine · Reverse · Honk'],
         ['Q / E', 'Look around'],
       ]

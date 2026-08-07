@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import {
@@ -43,7 +43,6 @@ import Hud from './Hud'
 import TransportPrompt from './TransportPrompt'
 import TravelingIndicator from './TravelingIndicator'
 import Minimap from './Minimap'
-import LoadingScreen from './LoadingScreen'
 import SoundManager from './SoundManager'
 import EngineSound from './EngineSound'
 import HorseSound from './HorseSound'
@@ -51,7 +50,6 @@ import PlaneSound from './PlaneSound'
 import IntroOverlay from './IntroOverlay'
 import Toast from './Toast'
 import WelcomeCard from './WelcomeCard'
-import Menu from './Menu'
 import HudCluster from './HudCluster'
 import ExitVehicleButton from './ExitVehicleButton'
 import TouchControls from './TouchControls'
@@ -116,7 +114,11 @@ function Scene3D() {
     let mounted = true
     void detectCountry().then((res) => {
       if (!mounted) return
-      const variant = res.iso === 'NP' ? 'local' : res.country ? 'air' : 'standard'
+      // Always fly the airplane arrival — even if IP geolocation can't resolve a
+      // country (common on localhost), fall back to the international flight
+      // variant so the airplane scene is always visible. (Use ?intro=standard to
+      // force the short orbit fallback for testing.)
+      const variant = res.iso === 'NP' ? 'local' : 'air'
       setGeo(res.country, variant)
     })
     return () => {
@@ -205,16 +207,18 @@ function Scene3D() {
           <Ground />
           <Roads />
           {introDone && (
-            <>
+            <Suspense fallback={null}>
               <WalkController active={playerMode === 'walk'} bodyRef={playerBody} />
               <Player active={playerMode === 'car'} bodyRef={playerBody} />
               <BikeController active={playerMode === 'bike'} bodyRef={playerBody} />
               <HorseController active={playerMode === 'horse'} bodyRef={playerBody} />
-            </>
+            </Suspense>
           )}
           <Landmarks playerRef={playerBody} />
           <Props />
-          <ParkedArrivalPlane />
+          <Suspense fallback={null}>
+            <ParkedArrivalPlane />
+          </Suspense>
         </Physics>
 
         <MountainRange />
@@ -255,7 +259,6 @@ function Scene3D() {
       <NavBar />
       <Hud />
       <TransportPrompt />
-      <Menu />
       <Minimap />
       <HudCluster />
       <ExitVehicleButton />
@@ -266,7 +269,6 @@ function Scene3D() {
       <ContentPanel />
       <Toast />
       <WelcomeCard />
-      <LoadingScreen />
       <SoundManager />
       <EngineSound />
       <HorseSound />

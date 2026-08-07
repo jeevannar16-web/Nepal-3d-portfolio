@@ -414,7 +414,6 @@ const totalFor = (stages: Stage[]) => stages.reduce((a, s) => a + s.duration, 0)
  */
 export default function IntroSequence(): JSX.Element {
   const { camera } = useThree()
-  const geoResolved = useStore((s) => s.geoResolved)
   const variant = useStore((s) => s.introVariant)
   const skipIntro = useStore((s) => s.skipIntro)
   const setIntroStage = useStore((s) => s.setIntroStage)
@@ -491,7 +490,7 @@ export default function IntroSequence(): JSX.Element {
   }, [camera, setIntroStage, setIntroCaption])
 
   useFrame((_, delta) => {
-    if (done.current || !geoResolved) return
+    if (done.current) return
     if (!started.current) {
       started.current = true
       const t0 = flightPath.sample(0).tangent.clone().normalize()

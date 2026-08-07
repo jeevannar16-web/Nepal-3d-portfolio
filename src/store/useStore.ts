@@ -48,6 +48,7 @@ interface PortfolioState {
   setIsPanelOpen: (open: boolean) => void
   setDeviceType: (device: DeviceType) => void
   skipIntro: () => void
+  replayIntro: () => void
   setGeo: (country: string | null, variant: IntroVariant) => void
   setIntroStage: (stage: IntroStage) => void
   setIntroCaption: (caption: string | null) => void
@@ -75,7 +76,7 @@ export const useStore = create<PortfolioState>((set) => ({
   isPanelOpen: false,
   deviceType: 'desktop',
   introDone: false,
-  introVariant: 'standard',
+  introVariant: 'air',
   introStage: 'orbit',
   parkedPlane: null,
   introCaption: null,
@@ -93,6 +94,7 @@ export const useStore = create<PortfolioState>((set) => ({
   setIsPanelOpen: (open) => set({ isPanelOpen: open }),
   setDeviceType: (device) => set({ deviceType: device }),
   skipIntro: () => set({ introDone: true }),
+  replayIntro: () => set({ introDone: false }),
   setGeo: (country, variant) =>
     set({ visitorCountry: country, introVariant: variant, geoResolved: true }),
   setIntroStage: (stage) => set({ introStage: stage }),

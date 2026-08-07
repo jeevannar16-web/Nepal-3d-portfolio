@@ -9,10 +9,14 @@ import HonkButton from './HonkButton'
  * with the explored progress and honk button integrated into the same card so
  * there are no separate floating boxes stacked with gaps between them.
  */
-export default function HudCluster(): JSX.Element {
+export default function HudCluster(): JSX.Element | null {
   const visitedZones = useStore((s) => s.visitedZones)
+  const playerMode = useStore((s) => s.playerMode)
+  const riding = playerMode !== 'walk'
   const total = zones.length
   const visited = visitedZones.length
+
+  if (!riding) return null
 
   return (
     <div className="pointer-events-none absolute bottom-5 right-5 z-10 flex items-center gap-3 rounded-2xl border border-white/15 bg-black/40 p-3 shadow-lg shadow-black/40 backdrop-blur">

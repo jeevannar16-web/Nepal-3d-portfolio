@@ -6,8 +6,6 @@ export default function IntroOverlay(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
   const introStage = useStore((s) => s.introStage)
   const introCaption = useStore((s) => s.introCaption)
-  const skipIntro = useStore((s) => s.skipIntro)
-
   if (introDone) return null
 
   const stageText =
@@ -29,10 +27,10 @@ export default function IntroOverlay(): JSX.Element | null {
         <h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-2xl sm:text-6xl">
           {identity.name}
         </h1>
-        <p className="mt-3 text-sm font-medium uppercase tracking-[0.25em] text-amber-300 drop-shadow-lg sm:text-base">
+        <p className="mt-3 text-sm font-bold uppercase tracking-[0.25em] text-amber-300 drop-shadow-lg sm:text-base">
           {identity.role}
         </p>
-        <p className="mt-2 text-xs text-white/70 drop-shadow">
+        <p className="mt-2 text-sm font-semibold text-white/90 drop-shadow">
           {identity.location}
         </p>
         {stageText ? (
@@ -55,13 +53,6 @@ export default function IntroOverlay(): JSX.Element | null {
           </div>
         </div>
       ) : null}
-      <button
-        type="button"
-        onClick={skipIntro}
-        className="pointer-events-auto absolute right-5 top-5 rounded-full border border-white/15 bg-black/40 px-4 py-2 text-xs font-semibold text-white/90 backdrop-blur transition hover:bg-black/60 hover:text-white"
-      >
-        Skip
-      </button>
     </div>
   )
 }

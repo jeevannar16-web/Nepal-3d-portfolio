@@ -7,6 +7,7 @@ interface SceneErrorBoundaryProps {
 
 interface SceneErrorBoundaryState {
   failed: boolean
+  error: Error | null
 }
 
 /**
@@ -18,10 +19,10 @@ export default class SceneErrorBoundary extends Component<
   SceneErrorBoundaryProps,
   SceneErrorBoundaryState
 > {
-  state: SceneErrorBoundaryState = { failed: false }
+  state: SceneErrorBoundaryState = { failed: false, error: null }
 
-  static getDerivedStateFromError(): SceneErrorBoundaryState {
-    return { failed: true }
+  static getDerivedStateFromError(error: Error): SceneErrorBoundaryState {
+    return { failed: true, error }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
@@ -30,8 +31,11 @@ export default class SceneErrorBoundary extends Component<
 
   render(): ReactNode {
     if (this.state.failed) {
+      const msg = this.state.error?.message ?? 'Unknown error'
       return (
-        <FallbackView notice="The 3D view ran into a problem, so the simplified view is shown instead." />
+        <FallbackView
+          notice={`The 3D view ran into a problem (${msg}), so the simplified view is shown instead.`}
+        />
       )
     }
     return this.props.children
