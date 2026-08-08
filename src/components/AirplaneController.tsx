@@ -195,8 +195,12 @@ export default function AirplaneController({
       mass={500}
     >
       <CuboidCollider args={[1.6, 1.7, 4.4]} position={[0, 2.1, 0]} />
-      <group ref={visual} rotation={[0, Math.PI, 0]} position={[0, PLANE_BASE_OFFSET, 0]}>
-        <primitive object={planeScene} scale={PLANE_SCALE} />
+      {/* The model's nose faces local -Z, so it is yawed 180° on the primitive
+          (like ArrivalPlane) to point along +Z and match the heading math. It
+          lives on the model, not the visual group, because useFrame sets
+          rotation.y/rotation.z on the group every frame. */}
+      <group ref={visual} position={[0, PLANE_BASE_OFFSET, 0]}>
+        <primitive object={planeScene} scale={PLANE_SCALE} rotation={[0, Math.PI, 0]} />
       </group>
       <BlobShadow radius={2.5} y={-2.1} />
     </RigidBody>

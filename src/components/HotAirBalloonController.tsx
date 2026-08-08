@@ -15,6 +15,10 @@ const DRIFT_SPEED = 4
 const YAW_RATE = 1.2
 const MIN_ALT = 3
 const MAX_ALT = 50
+// hotairballoon.glb is 68 wide × 83 tall (a blimp-sized model), which swamps
+// the third-person chase frame. Scaled down so the whole envelope + gondola
+// fit the FollowCamera balloon offset (see MODE_OFFSETS.balloon).
+const BALLOON_SCALE = 0.3
 
 interface Keys {
   up: boolean
@@ -170,7 +174,7 @@ export default function HotAirBalloonController({
     >
       <CuboidCollider args={[1.2, 2.5, 1.2]} position={[0, 2.5, 0]} />
       <group ref={visual} position={[0, 0, 0]}>
-        <primitive object={balloonScene} scale={1} />
+        <primitive object={balloonScene} scale={BALLOON_SCALE} />
       </group>
       <BlobShadow radius={1.5} y={0.01} />
     </RigidBody>

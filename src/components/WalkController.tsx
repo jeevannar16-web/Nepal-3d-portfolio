@@ -118,13 +118,17 @@ export default function WalkController({
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (!activeRef.current) return
+      // Movement keys are tracked even while the soldier is riding (hidden), so
+      // a held W/S/A/D from the vehicle carries straight over the moment the
+      // player steps out — no need to release and re-press the key after
+      // dismounting.
       const k = keyMap[e.code]
       if (k) {
         inputState[k] = true
         e.preventDefault()
         return
       }
+      if (!activeRef.current) return
       if (e.code === 'Space') {
         e.preventDefault()
         inputState.jump = true
@@ -166,13 +170,17 @@ export default function WalkController({
     }
     if (visual.current) visual.current.visible = true
     // Stepping out of a vehicle: place the soldier where the exit handler
-    // decided, in case the physics body was parked at the hidden stash.
+    // decided, in case the physics body was parked at the hidden stash. The
+    // exit handler set transportState.walk.heading to the vehicle's facing, so
+    // re-sync the walker's heading ref here too — it only ever sees the pose
+    // written by exit handlers, never the soldier's pre-mount direction.
     if (!activePrev.current) {
       rb.setTranslation(
         { x: transportState.walk.x, y: transportState.walk.y, z: transportState.walk.z },
         true,
       )
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      heading.current = transportState.walk.heading
     }
     activePrev.current = true
 

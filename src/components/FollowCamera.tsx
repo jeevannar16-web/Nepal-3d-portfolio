@@ -21,7 +21,10 @@ const MODE_OFFSETS: Record<string, [number, number, number]> = {
   bike: [0, 3.0, -7.5],
   horse: [0, 3.1, -7],
   airplane: [0, 8, -16],
-  balloon: [0, 6, -12],
+  // The balloon model (scaled 0.3 in HotAirBalloonController) is ~25 units
+  // tall and centred ~12.5 above its body; this offset sits the camera level
+  // with the envelope so the whole balloon fills the frame.
+  balloon: [0, 12, -24],
 }
 // Lower, tighter camera while the soldier crouches, at his eye height.
 const CROUCH_OFFSET: [number, number, number] = [0, 1.6, -5.2]
@@ -153,7 +156,7 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     const smooth = 1 - Math.pow(2, -delta * 6)
     camera.position.lerp(desired, smooth)
     const lookY =
-      playerMode === 'walk' ? (crouching ? 0.7 : 1.3) : playerMode === 'airplane' ? -1 : 0.5
+      playerMode === 'walk' ? (crouching ? 0.7 : 1.3) : playerMode === 'airplane' ? -1 : playerMode === 'balloon' ? 11 : 0.5
     camera.lookAt(pos.x, pos.y + lookY, pos.z)
   })
 
