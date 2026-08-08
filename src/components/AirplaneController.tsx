@@ -10,6 +10,7 @@ import { autopilot } from '../store/autoPilot'
 import { minimapState } from '../store/minimapState'
 import BlobShadow from './BlobShadow'
 import { hideAirplaneGlitch, PLANE_SCALE, PLANE_BASE_OFFSET } from '../utils/airplane'
+import { clampXZ } from '../utils/bounds'
 
 const MAX_SPEED = 35
 const MIN_SPEED = 8
@@ -269,6 +270,22 @@ export default function AirplaneController({
     if (pos.y < MIN_ALT) {
       rb.setTranslation({ x: pos.x, y: MIN_ALT, z: pos.z }, true)
       rb.setLinvel({ x: nvx, y: Math.max(finalVy, 0), z: nvz }, true)
+    }
+
+    // Keep flight over the valley floor. The ground plane stops at WORLD_EDGE
+    // while this aircraft cruises at 30 (over the 2-unit perimeter walls), so
+    // past the soft boundary turn the nose back inward — otherwise a mid-air
+    // bail would land the player in the empty void beyond the world.
+    const [bx, bz] = clampXZ(pos.x, pos.z)
+    if (bx !== pos.x || bz !== pos.z) {
+      let dirX = Math.sin(heading.current)
+      let dirZ = Math.cos(heading.current)
+      if (bx !== pos.x) dirX = -Math.sign(pos.x) * Math.abs(dirX)
+      if (bz !== pos.z) dirZ = -Math.sign(pos.z) * Math.abs(dirZ)
+      heading.current = Math.atan2(dirX, dirZ)
+      rb.setTranslation({ x: bx, y: pos.y, z: bz }, true)
+      pos.x = bx
+      pos.z = bz
     }
 
     // Persist pose

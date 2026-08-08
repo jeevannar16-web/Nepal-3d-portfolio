@@ -9,6 +9,7 @@ import { transportState } from '../store/transportState'
 import { minimapState } from '../store/minimapState'
 import { inputState, feetLocalY } from '../store/walkState'
 import Soldier from './Soldier'
+import { clampXZ, LAND_LIMIT } from '../utils/bounds'
 
 const DESCENT_SPEED = 5.5 // steady controlled fall, not a free-fall
 const FLARE_SPEED = 2.2 // holding W flares the canopy (slower)
@@ -85,6 +86,16 @@ export default function ParachuteController({
 
     const pos = rb.translation()
     if (bodyRef && bodyRef.current !== rb) bodyRef.current = rb
+
+    // Glide back inside the ground plane if a bail happened at the world edge
+    // (or the canopy's drift carried the player out), so landing is always on
+    // solid floor — never over the void where the walker would fall forever.
+    const [cx, cz] = clampXZ(pos.x, pos.z, LAND_LIMIT)
+    if (cx !== pos.x || cz !== pos.z) {
+      rb.setTranslation({ x: cx, y: pos.y, z: cz }, true)
+      pos.x = cx
+      pos.z = cz
+    }
 
     // A/D steer the canopy (same yaw convention as the other vehicles).
     const steer = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0)

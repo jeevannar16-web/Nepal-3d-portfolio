@@ -52,6 +52,7 @@ import Toast from './Toast'
 import WelcomeCard from './WelcomeCard'
 import HudCluster from './HudCluster'
 import TouchControls from './TouchControls'
+import LoadingOverlay from './LoadingOverlay'
 import ParkedArrivalPlane from './ParkedArrivalPlane'
 import Wayfinder from './Wayfinder'
 import AirplaneController from './AirplaneController'
@@ -275,6 +276,7 @@ function Scene3D() {
       </Canvas>
 
       <NavBar />
+      <LoadingOverlay />
       <TransportPrompt />
       <Minimap />
       <HudCluster />

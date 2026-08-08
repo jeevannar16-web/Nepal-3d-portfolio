@@ -10,6 +10,7 @@ import { autopilot } from '../store/autoPilot'
 import { minimapState } from '../store/minimapState'
 import BlobShadow from './BlobShadow'
 import Rider from './Rider'
+import { clampXZ } from '../utils/bounds'
 
 const RISE_SPEED = 9
 const FALL_SPEED = 3.5
@@ -191,6 +192,25 @@ export default function HotAirBalloonController({
     const clampedY = THREE.MathUtils.clamp(pos.y, MIN_ALT, MAX_ALT)
     if (pos.y !== clampedY) {
       rb.setTranslation({ x: pos.x, y: clampedY, z: pos.z }, true)
+    }
+
+    // Keep the balloon over the valley floor: slow drift, so clamping the
+    // position (and nudging the velocity back inward) gently holds it inside
+    // the world instead of letting it sail over the perimeter walls.
+    const [bx, bz] = clampXZ(pos.x, pos.z)
+    if (bx !== pos.x || bz !== pos.z) {
+      rb.setTranslation({ x: bx, y: pos.y, z: bz }, true)
+      const vel = rb.linvel()
+      rb.setLinvel(
+        {
+          x: bx !== pos.x ? -Math.sign(pos.x) * Math.min(Math.abs(vel.x), 1) : vel.x,
+          y: vel.y,
+          z: bz !== pos.z ? -Math.sign(pos.z) * Math.min(Math.abs(vel.z), 1) : vel.z,
+        },
+        true,
+      )
+      pos.x = bx
+      pos.z = bz
     }
 
     // Persist pose
