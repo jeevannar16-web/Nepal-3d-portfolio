@@ -126,9 +126,12 @@ export default function AirplaneController({
     const rb = body.current
     if (!rb) return
     const p = rb.translation()
+    // Safety: never start the parachute beyond the ground plane, whatever
+    // state the plane is in — landing over the void shows only sky.
+    const [px, pz] = clampXZ(p.x, p.z)
     const pose: TransportPose = {
-      x: p.x,
-      z: p.z,
+      x: px,
+      z: pz,
       y: p.y,
       heading: heading.current,
     }
