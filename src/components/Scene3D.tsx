@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
+import * as THREE from 'three'
 import {
   EffectComposer,
   Bloom,
@@ -135,17 +136,6 @@ function Scene3D() {
   }, [setTimeOfDay, setWeather])
 
   useEffect(() => {
-    setTimeOfDay(getTimeOfDay())
-    let mounted = true
-    void fetchKathmanduWeather().then((kind) => {
-      if (mounted) setWeather(kind)
-    })
-    return () => {
-      mounted = false
-    }
-  }, [setTimeOfDay, setWeather])
-
-  useEffect(() => {
     let timer: number | undefined
     const onLost = (event: Event) => {
       event.preventDefault()
@@ -184,7 +174,11 @@ function Scene3D() {
     <div ref={containerRef} className="relative h-full w-full">
       <Canvas
         camera={{ position: [0, 26, 42], fov: 70 }}
-        dpr={lowPower ? [0.5, 1] : [1, 1.5]}
+        dpr={lowPower ? [0.5, 1] : [1, 2]}
+        gl={{
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.15,
+        }}
       >
         <color attach="background" args={[theme.skyTop]} />
         <fog attach="fog" args={[theme.fog, fogNear, fogFar]} />
@@ -215,7 +209,7 @@ function Scene3D() {
         <SceneRef />
         <CameraRef />
 
-        <Physics gravity={[0, -9.81, 0]}>
+        <Physics gravity={[0, -9.81, 0]} timeStep={1 / 60} maxCcdSubsteps={4}>
           <Ground />
           <Roads />
           {introDone && (

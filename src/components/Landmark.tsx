@@ -1,4 +1,4 @@
-import { useRef, type JSX } from 'react'
+import { useEffect, useRef, useState, type JSX } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
@@ -71,24 +71,33 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
   const trigger = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
   const ring = useRef<THREE.Mesh>(null)
+  const halo = useRef<THREE.Mesh>(null)
   const pulse = useRef(0)
+  const [hovered, setHovered] = useState(false)
   const setActiveZone = useStore((s) => s.setActiveZone)
   const setIsPanelOpen = useStore((s) => s.setIsPanelOpen)
   const markZoneVisited = useStore((s) => s.markZoneVisited)
   const showToast = useStore((s) => s.showToast)
   const introDone = useStore((s) => s.introDone)
 
+  const openPanel = () => {
+    // Nothing can open a panel while the intro is playing, so the intro
+    // overlay and a ContentPanel can never render at the same time.
+    if (!introDone) return
+    if (markZoneVisited(config.contentKey)) {
+      const zone = zones.find((z) => z.key === config.contentKey)
+      showToast(`${zone?.title ?? 'Zone'} unlocked!`)
+    }
+    setActiveZone(config.contentKey)
+    setIsPanelOpen(true)
+  }
+
   const enter = (e: { other: { rigidBody?: RapierRigidBody } }) => {
     // Landmark triggers stay inert until the intro completes, so a panel can
     // never open while the intro's name overlay is still on screen.
     if (!introDone) return
     if (e.other.rigidBody && e.other.rigidBody === playerRef.current) {
-      if (markZoneVisited(config.contentKey)) {
-        const zone = zones.find((z) => z.key === config.contentKey)
-        showToast(`${zone?.title ?? 'Zone'} unlocked!`)
-      }
-      setActiveZone(config.contentKey)
-      setIsPanelOpen(true)
+      openPanel()
     }
   }
 
@@ -98,6 +107,13 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
       setIsPanelOpen(false)
     }
   }
+
+  useEffect(() => {
+    document.body.style.cursor = hovered ? 'pointer' : ''
+    return () => {
+      document.body.style.cursor = ''
+    }
+  }, [hovered])
 
   useFrame((state) => {
     const rb = playerRef.current
@@ -122,6 +138,14 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
       const s = 1 + glow * 0.5
       ring.current.scale.setScalar(s)
     }
+
+    if (halo.current) {
+      const mat = halo.current.material as THREE.MeshBasicMaterial
+      mat.opacity = hovered ? 0.9 : pulse.current * 0.18
+      halo.current.rotation.y = state.clock.elapsedTime * (hovered ? 1.6 : 0.4)
+      const s = (hovered ? 1.25 : 1) + Math.sin(t * 4) * 0.04
+      halo.current.scale.setScalar(s)
+    }
   })
 
   return (
@@ -136,7 +160,20 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
         />
       </RigidBody>
 
-      <group ref={visual}>
+      <group
+        ref={visual}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          setHovered(true)
+        }}
+        onPointerOut={() => setHovered(false)}
+        onClick={(e) => {
+          e.stopPropagation()
+          // Ignore tiny drags so orbit-camera swipes don't pop a panel open.
+          if (e.delta > 5) return
+          openPanel()
+        }}
+      >
         {config.modelPath ? (
           <LandmarkModel
             path={config.modelPath}
@@ -148,6 +185,14 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
           <ProceduralLandmark config={config} />
         )}
       </group>
+
+      {/* Hover outline: a glowing halo ring that floats above the landmark and
+          lights up when the pointer hovers over it (and glows faintly while
+          the player is nearby). */}
+      <mesh ref={halo} position={[0, 2.6, 0]}>
+        <torusGeometry args={[config.triggerRadius * 1.1, 0.045, 10, 48]} />
+        <meshBasicMaterial color={config.color} transparent opacity={0} depthWrite={false} />
+      </mesh>
 
       <BlobShadow radius={config.triggerRadius * 0.9} />
 

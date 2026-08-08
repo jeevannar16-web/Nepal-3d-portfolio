@@ -48,6 +48,7 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
   const { camera, gl } = useThree()
   const flyTarget = useStore((s) => s.flyTarget)
   const playerMode = useStore((s) => s.playerMode)
+  const cameraSensitivity = useStore((s) => s.settings.cameraSensitivity)
   const camYaw = useRef(0) // current camera orbit angle around the car
   const lookYaw = useRef(0) // free-look orbit offset on top of the car heading
   const bobTime = useRef(0)
@@ -105,6 +106,9 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     if (flyTarget) return
     const body = target.current
     if (!body) return
+    // Camera sensitivity scales the response speeds (not the input magnitudes):
+    // 1 = default, >1 snaps toward the target faster, <1 drifts more smoothly.
+    const sd = Math.min(delta, 0.05) * cameraSensitivity
     const pos = body.translation()
     const lin = body.linvel()
     const speed = Math.hypot(lin.x, lin.z)
@@ -125,8 +129,8 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     // orbit is kept exactly where the player left it — a classic TPS 360° orbit
     // you steer the soldier against.
     const keys = orbitKeys.current
-    if (keys.left) lookYaw.current -= LOOK_KEY_RATE * delta
-    if (keys.right) lookYaw.current += LOOK_KEY_RATE * delta
+    if (keys.left) lookYaw.current -= LOOK_KEY_RATE * cameraSensitivity * delta
+    if (keys.right) lookYaw.current += LOOK_KEY_RATE * cameraSensitivity * delta
     const active = looking.current || keys.left || keys.right
     if (!active && playerMode !== 'walk') {
       const settle = 1 - Math.pow(2, -delta * 3)
@@ -136,7 +140,7 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     // Chase the actor's heading in every mode (including on foot) so A/D turns
     // swing the view with the soldier — Free Fire-style full control, where W
     // always leads into the screen and the world sweeps past on corners.
-    const chase = 1 - Math.pow(2, -delta * (active ? 30 : 6))
+    const chase = 1 - Math.pow(2, -sd * (active ? 30 : 6))
     const targetYaw = minimapState.heading + lookYaw.current
     camYaw.current += (targetYaw - camYaw.current) * chase
 
@@ -155,7 +159,7 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
       pos.z + rotated.z,
     )
 
-    const smooth = 1 - Math.pow(2, -delta * 6)
+    const smooth = 1 - Math.pow(2, -sd * 6)
     camera.position.lerp(desired, smooth)
     const lookY =
       playerMode === 'walk' ? (crouching ? 0.7 : 1.3) : playerMode === 'airplane' ? -1 : playerMode === 'balloon' ? 11 : 0.5

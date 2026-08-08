@@ -53,7 +53,7 @@ export const zones: ZoneContent[] = [
     subtitle: identity.role,
     body: `Hi, I'm ${identity.name} — a ${identity.role} based in ${identity.location}. I love building practical software and understanding how computers work under the hood.
 
-I grew up in Kalikot, a district in the hills of Karnali Province, and moved to Kathmandu for school. What started as curiosity about how my own computer worked became a habit of taking things apart and putting them back together better. I taught myself to code by building small, useful tools, and then graduated to real projects that people actually use online.
+I was born in Kalikot but raised in Kailali, in Sudurpaschim Province, before moving to Kathmandu for school. What started as curiosity about how my own computer worked became a habit of taking things apart and putting them back together better. I taught myself to code by building small, useful tools, and then graduated to real projects that people actually use online.
 
 My sweet spot is the intersection of systems and the web — knowing what happens between a keystroke and the server, while shipping interfaces that feel effortless. I value clean, honest code, and I'm happiest when something I built quietly makes someone's day a little easier.`,
     skills: ['Python', 'Django', 'SQL', 'JavaScript', 'Exploring Linux internals'],
@@ -62,11 +62,11 @@ My sweet spot is the intersection of systems and the web — knowing what happen
     key: 'story',
     title: 'My Story',
     subtitle: 'Beyond the resume',
-    body: `I was born in Kalikot district, in the rugged mid-western hills of Karnali Province — the Nepal most people never get to see. Growing up there meant steep terraced fields, the sound of the Karnali river far below, and a long road to anywhere else. I studied at Shree Nata Academy up to class 8, where I first met computers in a classroom and fell in love with the idea that a machine could be taught to think.
+    body: `I was born in Kalikot district, in the rugged mid-western hills of Karnali Province — the Nepal most people never get to see — but I was raised in Kailali, in the green farmlands of Sudurpaschim Province. Growing up in the far west meant flat monsoon fields, the smell of wet earth after rain, and a long road to anywhere else. I studied at Shree Nata Academy up to class 8, where I first met computers in a classroom and fell in love with the idea that a machine could be taught to think.
 
-At the start of class 9 I transferred to Kathmandu — a huge leap from a quiet district to the capital. The first months were about finding my feet in a crowded, fast-moving city, but the curiosity I brought from Kalikot never left. I started tinkering with my own machine, breaking it, fixing it, and finally writing code to make it do what I wanted.
+At the start of class 9 I transferred to Kathmandu — a huge leap from a quiet district to the capital. The first months were about finding my feet in a crowded, fast-moving city, but the curiosity I brought from the west never left. I started tinkering with my own machine, breaking it, fixing it, and finally writing code to make it do what I wanted.
 
-Today I study at Shivapuri College in Maharajgunj, Kathmandu — a community campus affiliated with Tribhuvan University that serves students like me who arrive in the city from across the country. My mornings are for classes; my evenings are for building. Every project I ship is a step from a small hill-town kid to a developer who can build software for the world — while staying grounded in the valley that raised me.`,
+Today I study at Shivapuri College in Maharajgunj, Kathmandu — a community campus affiliated with Tribhuvan University that serves students like me who arrive in the city from across the country. My mornings are for classes; my evenings are for building. Every project I ship is a step from a small-town western kid to a developer who can build software for the world — while staying grounded in the valley that raised me.`,
     skills: ['Linux', 'Systems', 'Self-taught builder', 'Problem solving'],
   },
   {

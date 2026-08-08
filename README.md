@@ -17,10 +17,15 @@ scrolling portfolio sites.
   a motorcycle, a horse, two flyable airplanes (one at the airport, one at a
   second airstrip) and a hot-air balloon with a seated rider. In the plane or
   balloon, press **Z / Esc** to bail out and parachute down while the vehicle
-  auto-lands itself back at its parking spot.
+  auto-lands itself back at its parking spot. The **Transport** menu tab hops
+  you into any vehicle you've parked from anywhere on foot.
 - **Five landmarks** (pagoda temple, Dharahara tower, city gate, mountain,
   stupa) load from real `.glb` models with soft blob shadows and proximity glow
-  rings — each one opens a portfolio section.
+  rings — click or tap any landmark to open its portfolio section, and a halo
+  ring highlights it on hover.
+- **Touch-friendly everywhere** — on mobile, an on-screen joystick + action
+  buttons drive every mode (walk, car, bike, horse, plane, balloon, parachute),
+  not just walking.
 - **Navigation** — WASD to drive, click-to-fly on the minimap, and a top bar
   that flies the camera between sections with a travelling indicator. The
   minimap tracks your position and heading in every mode.
@@ -31,9 +36,15 @@ scrolling portfolio sites.
   flyover, landing) auto-skips when you're ready, and the variant is chosen by
   your IP region.
 - **Live atmosphere** — day/dusk/night lighting and real Kathmandu weather
-  (rain, fog) are fetched live and applied to the scene.
+  (rain, fog) are fetched live and applied to the scene; both are overridable
+  from the Settings tab.
 - **Sound** — procedural engine, horse-gait and airplane soundtracks, honk,
   and UI clicks, all respecting the mute toggle.
+- **Persistent preferences** — settings (sound, reduced graphics, camera
+  sensitivity) and unlocked zones survive reloads via localStorage.
+- **Adaptive performance** — a GPU/RAM tier check runs reduced graphics (lower
+  DPR, no HDRI bloom/SSAO, smaller shadows) on weak hardware, and a WebGL
+  context-loss handler swaps to the 2D view instead of going blank.
 - **Responsive fallback** — low-end devices and mobile get a clean 2D page
   driven by the same content file.
 
@@ -91,7 +102,13 @@ scrolling portfolio sites.
 | **G / R** | Car: ignition / D-R gear selector |
 | **Q / E** | Airplane: bank left / right |
 | **Minimap** | Click a landmark to fly the camera to it |
-| **Nav bar buttons** | Fly between portfolio sections |
+| **Nav menu** | Explore / Transport / Settings / About tabs |
+| **Click / tap a landmark** | Open its portfolio panel |
+| **Touch** | On-screen joystick + action buttons in every mode (mobile) |
+
+The top-right menu has four tabs: **Explore** (the portfolio sections),
+**Transport** (hop straight into any vehicle you've parked), **Settings** (sound,
+reduced graphics, camera sensitivity, time of day, weather) and **About**.
 
 ## Tuning the driving feel
 

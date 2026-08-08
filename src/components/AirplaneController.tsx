@@ -18,6 +18,8 @@ const ALT_BAND = 6
 const THROTTLE_RAMP = 1.8
 const YAW_RATE = 1.4
 const ROLL_GAIN = 0.6
+const TURN_BANK = 0.45
+const MAX_PITCH = 0.5
 const LIFT_SMOOTH = 3
 const MIN_ALT = 4
 
@@ -240,8 +242,11 @@ export default function AirplaneController({
     if (keys.yawRight) heading.current -= YAW_RATE * dt
     heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
 
-    // Roll
-    const targetRoll = (keys.rollLeft ? 1 : 0) - (keys.rollRight ? 1 : 0)
+    // Roll: bank into turns and auto-level when the stick is centred, so the
+    // plane stays stable without the player constantly correcting it.
+    const turnBank = (keys.yawRight ? 1 : 0) - (keys.yawLeft ? 1 : 0)
+    const inputRoll = (keys.rollLeft ? 1 : 0) - (keys.rollRight ? 1 : 0)
+    const targetRoll = clamp(inputRoll + turnBank * TURN_BANK, -1, 1)
     rollAngle.current += (targetRoll * ROLL_GAIN - rollAngle.current) * (1 - Math.pow(2, -dt * 4))
 
     // Direction
@@ -277,11 +282,13 @@ export default function AirplaneController({
     minimapState.z = pos.z
     minimapState.heading = heading.current
 
-    // Visual banking
+    // Visual banking + gentle pitch tied to climb rate (clamped so the nose
+    // never dives/stalls visually).
+    const visualPitch = clamp(finalVy * 0.03, -MAX_PITCH, MAX_PITCH)
     if (visual.current) {
       visual.current.rotation.y = heading.current
       visual.current.rotation.z = rollAngle.current
-      visual.current.rotation.x = 0
+      visual.current.rotation.x = visualPitch
     }
   })
 

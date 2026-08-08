@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { TimeOfDay } from '../utils/timeOfDay'
 import type { WeatherKind } from '../utils/weather'
 import { detectGraphicsTier } from '../utils/webgl'
@@ -42,7 +43,7 @@ interface PortfolioState {
   flyTarget: { x: number; z: number } | null
   toast: string | null
   welcomeDismissed: boolean
-  settings: { muted: boolean; lowGraphics: boolean }
+  settings: { muted: boolean; lowGraphics: boolean; cameraSensitivity: number }
   targetLandmark: string | null
   playerMode: PlayerMode
   setActiveZone: (zone: string | null) => void
@@ -69,62 +70,98 @@ interface PortfolioState {
   dismissWelcome: () => void
   toggleMuted: () => void
   toggleLowGraphics: () => void
+  setCameraSensitivity: (value: number) => void
   setTargetLandmark: (id: string | null) => void
 }
 
-export const useStore = create<PortfolioState>((set) => ({
-  activeZone: null,
-  isPanelOpen: false,
-  deviceType: 'desktop',
-  introDone: true,
-  introVariant: 'air',
-  introStage: 'orbit',
-  parkedPlane: null,
-  introCaption: null,
-  visitorCountry: null,
-  geoResolved: false,
-  timeOfDay: 'day',
-  weather: 'clear',
-  visitedZones: [],
-  prefersSimple: false,
-  webglFailed: false,
-  flyTarget: null,
-  toast: null,
-  welcomeDismissed: false,
-  setActiveZone: (zone) => set({ activeZone: zone }),
-  setIsPanelOpen: (open) => set({ isPanelOpen: open }),
-  setDeviceType: (device) => set({ deviceType: device }),
-  skipIntro: () => set({ introDone: true }),
-  replayIntro: () => set({ introDone: false }),
-  setGeo: (country, variant) =>
-    set({ visitorCountry: country, introVariant: variant, geoResolved: true }),
-  setIntroStage: (stage) => set({ introStage: stage }),
-  setIntroCaption: (caption) => set({ introCaption: caption }),
-  setParkedPlane: (pose) => set({ parkedPlane: pose }),
-  setPlayerMode: (mode) => set({ playerMode: mode }),
-  setTimeOfDay: (time) => set({ timeOfDay: time }),
-  setWeather: (weather) => set({ weather }),
-  // Returns true only the first time a zone is marked, so callers can fire a
-  // one-time "Zone unlocked!" toast without double-toasting.
-  markZoneVisited: (zone) => {
-    const state = useStore.getState()
-    if (state.visitedZones.includes(zone)) return false
-    set({ visitedZones: [...state.visitedZones, zone] })
-    return true
-  },
-  setPrefersSimple: (prefer) => set({ prefersSimple: prefer }),
-  setWebglFailed: (failed) => set({ webglFailed: failed }),
-  flyTo: (x, z) => set({ flyTarget: { x, z } }),
-  clearFly: () => set({ flyTarget: null }),
-  showToast: (text) => set({ toast: text }),
-  clearToast: () => set({ toast: null }),
-  dismissWelcome: () => set({ welcomeDismissed: true }),
-  settings: { muted: false, lowGraphics: detectGraphicsTier() === 'low' },
-  targetLandmark: null,
-  playerMode: 'walk',
-  toggleMuted: () =>
-    set((s) => ({ settings: { ...s.settings, muted: !s.settings.muted } })),
-  toggleLowGraphics: () =>
-    set((s) => ({ settings: { ...s.settings, lowGraphics: !s.settings.lowGraphics } })),
-  setTargetLandmark: (id) => set({ targetLandmark: id }),
-}))
+export const useStore = create<PortfolioState>()(
+  persist(
+    (set) => ({
+      activeZone: null,
+      isPanelOpen: false,
+      deviceType: 'desktop',
+      introDone: true,
+      introVariant: 'air',
+      introStage: 'orbit',
+      parkedPlane: null,
+      introCaption: null,
+      visitorCountry: null,
+      geoResolved: false,
+      timeOfDay: 'day',
+      weather: 'clear',
+      visitedZones: [],
+      prefersSimple: false,
+      webglFailed: false,
+      flyTarget: null,
+      toast: null,
+      welcomeDismissed: false,
+      setActiveZone: (zone) => set({ activeZone: zone }),
+      setIsPanelOpen: (open) => set({ isPanelOpen: open }),
+      setDeviceType: (device) => set({ deviceType: device }),
+      skipIntro: () => set({ introDone: true }),
+      replayIntro: () => set({ introDone: false }),
+      setGeo: (country, variant) =>
+        set({ visitorCountry: country, introVariant: variant, geoResolved: true }),
+      setIntroStage: (stage) => set({ introStage: stage }),
+      setIntroCaption: (caption) => set({ introCaption: caption }),
+      setParkedPlane: (pose) => set({ parkedPlane: pose }),
+      setPlayerMode: (mode) => set({ playerMode: mode }),
+      setTimeOfDay: (time) => set({ timeOfDay: time }),
+      setWeather: (weather) => set({ weather }),
+      // Returns true only the first time a zone is marked, so callers can fire a
+      // one-time "Zone unlocked!" toast without double-toasting.
+      markZoneVisited: (zone) => {
+        const state = useStore.getState()
+        if (state.visitedZones.includes(zone)) return false
+        set({ visitedZones: [...state.visitedZones, zone] })
+        return true
+      },
+      setPrefersSimple: (prefer) => set({ prefersSimple: prefer }),
+      setWebglFailed: (failed) => set({ webglFailed: failed }),
+      flyTo: (x, z) => set({ flyTarget: { x, z } }),
+      clearFly: () => set({ flyTarget: null }),
+      showToast: (text) => set({ toast: text }),
+      clearToast: () => set({ toast: null }),
+      dismissWelcome: () => set({ welcomeDismissed: true }),
+      settings: {
+        muted: false,
+        lowGraphics: detectGraphicsTier() === 'low',
+        cameraSensitivity: 1,
+      },
+      targetLandmark: null,
+      playerMode: 'walk',
+      toggleMuted: () =>
+        set((s) => ({ settings: { ...s.settings, muted: !s.settings.muted } })),
+      toggleLowGraphics: () =>
+        set((s) => ({ settings: { ...s.settings, lowGraphics: !s.settings.lowGraphics } })),
+      setCameraSensitivity: (value) =>
+        set((s) => ({
+          settings: { ...s.settings, cameraSensitivity: Math.min(2, Math.max(0.5, value)) },
+        })),
+      setTargetLandmark: (id) => set({ targetLandmark: id }),
+    }),
+    {
+      name: 'nepal-portfolio-settings',
+      storage: createJSONStorage(() => localStorage),
+      // Shallow merge would let an older saved settings object (missing newer
+      // fields like cameraSensitivity) clobber the defaults, so merge the
+      // settings object field-by-field on top of the fresh defaults.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<PortfolioState>
+        return {
+          ...current,
+          ...p,
+          settings: { ...current.settings, ...(p.settings ?? {}) },
+        }
+      },
+      // Only the user's durable preferences persist; the transient game state
+      // (player pose, active zone, webgl failure...) resets every session.
+      partialize: (s) => ({
+        settings: s.settings,
+        visitedZones: s.visitedZones,
+        prefersSimple: s.prefersSimple,
+        welcomeDismissed: s.welcomeDismissed,
+      }),
+    },
+  ),
+)
