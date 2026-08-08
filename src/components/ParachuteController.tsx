@@ -11,6 +11,7 @@ import { inputState, feetLocalY } from '../store/walkState'
 import Soldier from './Soldier'
 import { clampXZ, LAND_LIMIT } from '../utils/bounds'
 import { WORLD_EDGE } from './Ground'
+import { findClearLanding } from '../utils/landingZones'
 
 const DESCENT_SPEED = 5.5 // steady controlled fall, not a free-fall
 const FLARE_SPEED = 2.2 // holding W flares the canopy (slower)
@@ -64,6 +65,7 @@ export default function ParachuteController({
   useFrame((_, delta) => {
     const rb = body.current
     if (!rb) return
+    ;(window as any).__parachuteBody = rb
     const dt = Math.min(delta, 0.05)
 
     if (!active) {
@@ -139,12 +141,17 @@ export default function ParachuteController({
     rb.setLinvel({ x: nvx, y: nvy, z: nvz }, true)
 
     // Land: touch down and hand control back to the walker. The landing spot is
-    // kept inside the ground plane, and if the canopy settled near the world's
-    // rim the soldier is re-faced toward the centre — so the follow camera
-    // looks back over the valley instead of out past the walls into the empty
-    // void, which reads as a solid blue screen on any device.
+    // kept inside the ground plane and nudged to clear open ground — never on
+    // top of or inside a building/landmark, where the chase camera would sit in
+    // a wall and the screen fills with a flat colour instead of the world. If
+    // the canopy settled near the world's rim the soldier is re-faced toward
+    // the centre — so the follow camera looks back over the valley instead of
+    // out past the walls into the empty void.
     if (pos.y <= LAND_Y) {
-      const [lx, lz] = clampXZ(pos.x, pos.z, LAND_LIMIT)
+      const [clampedX, clampedZ] = clampXZ(pos.x, pos.z, LAND_LIMIT)
+      const clear = findClearLanding(clampedX, clampedZ)
+      const lx = clear.x
+      const lz = clear.z
       let landHeading = heading.current
       if (Math.hypot(lx, lz) > SAFE_LAND_RADIUS) {
         landHeading = Math.atan2(-lx, -lz)

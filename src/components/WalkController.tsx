@@ -78,6 +78,23 @@ export default function WalkController({
   activeRef.current = active
   const activePrev = useRef(active)
 
+  // Reactivation must run in a parent effect so it flushes AFTER the child
+  // RigidBody's mutable-options effect. That library effect re-syncs the body
+  // to the (stale) matrixWorld of the parked object3D on type/position changes,
+  // which would otherwise stomp any teleport done from useFrame — leaving the
+  // soldier buried at the hidden stash. Running last guarantees we win, so we
+  // always re-place the body when the walker activates (mount + each reactivate).
+  useEffect(() => {
+    const rb = body.current
+    if (!rb) return
+    if (active) {
+      const tx = transportState.walk
+      rb.setTranslation({ x: tx.x, y: tx.y, z: tx.z }, true)
+      rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      heading.current = tx.heading
+    }
+  }, [active])
+
   const nearVehicle = (pos: { x: number; z: number }) => {
     for (const kind of ['car', 'bike', 'horse'] as const) {
       const p = transportState[kind]
@@ -164,6 +181,7 @@ export default function WalkController({
   useFrame((_, delta) => {
     const rb = body.current
     if (!rb) return
+    ;(window as any).__walkBody = rb
 
     if (!active) {
       // Riding a vehicle: park the soldier far below the world, hidden.
