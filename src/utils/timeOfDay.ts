@@ -23,10 +23,10 @@ export interface DayTheme {
 
 export const DAY_THEMES: Record<TimeOfDay, DayTheme> = {
   morning: {
-    skyTop: '#5b7cc2',
-    skyHorizon: '#f7c59f',
-    skyZenith: '#f0a585',
-    fog: '#f2c29e',
+    skyTop: '#5f88c8',
+    skyHorizon: '#e6eef7',
+    skyZenith: '#c7d9ef',
+    fog: '#d7e2ef',
     fogNear: 90,
     fogFar: 320,
     ambient: 0.55,
@@ -34,10 +34,10 @@ export const DAY_THEMES: Record<TimeOfDay, DayTheme> = {
     sunIntensity: 1.1,
   },
   day: {
-    skyTop: '#3f5b8c',
-    skyHorizon: '#f0a585',
-    skyZenith: '#e88f74',
-    fog: '#f0a585',
+    skyTop: '#4a76b8',
+    skyHorizon: '#dbe7f4',
+    skyZenith: '#b8d1ec',
+    fog: '#ccdcec',
     fogNear: 90,
     fogFar: 320,
     ambient: 0.5,
