@@ -55,6 +55,7 @@ import ParkedArrivalPlane from './ParkedArrivalPlane'
 import Wayfinder from './Wayfinder'
 import AirplaneController from './AirplaneController'
 import HotAirBalloonController from './HotAirBalloonController'
+import ParachuteController from './ParachuteController'
 
 /** three r163+ exposes scene.environmentIntensity; drei's Environment has no
  *  intensity prop, so set it here to keep the HDRI at the intended brightness. */
@@ -223,8 +224,18 @@ function Scene3D() {
               <Player active={playerMode === 'car'} bodyRef={playerBody} />
               <BikeController active={playerMode === 'bike'} bodyRef={playerBody} />
               <HorseController active={playerMode === 'horse'} bodyRef={playerBody} />
-              <AirplaneController active={playerMode === 'airplane'} bodyRef={playerBody} />
+              <AirplaneController
+                slot="airplane"
+                active={playerMode === 'airplane' && transportState.activePlane === 'airplane'}
+                bodyRef={playerBody}
+              />
+              <AirplaneController
+                slot="airplane2"
+                active={playerMode === 'airplane' && transportState.activePlane === 'airplane2'}
+                bodyRef={playerBody}
+              />
               <HotAirBalloonController active={playerMode === 'balloon'} bodyRef={playerBody} />
+              <ParachuteController active={playerMode === 'parachute'} bodyRef={playerBody} />
             </Suspense>
           )}
           <Landmarks playerRef={playerBody} />

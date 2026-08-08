@@ -5,20 +5,27 @@ import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
 import { assetUrl } from '../utils/assetUrl'
 import { useStore } from '../store/useStore'
-import { transportState } from '../store/transportState'
+import { transportState, type TransportPose } from '../store/transportState'
+import { autopilot } from '../store/autoPilot'
 import { minimapState } from '../store/minimapState'
 import BlobShadow from './BlobShadow'
+import Rider from './Rider'
 
-const RISE_SPEED = 6
-const FALL_SPEED = 2
-const DRIFT_SPEED = 4
+const RISE_SPEED = 9
+const FALL_SPEED = 3.5
+const DRIFT_SPEED = 4.5
 const YAW_RATE = 1.2
 const MIN_ALT = 3
-const MAX_ALT = 50
+const MAX_ALT = 80
 // hotairballoon.glb is 68 wide × 83 tall (a blimp-sized model), which swamps
 // the third-person chase frame. Scaled down so the whole envelope + gondola
-// fit the FollowCamera balloon offset (see MODE_OFFSETS.balloon).
-const BALLOON_SCALE = 0.3
+// fit the FollowCamera balloon offset (see MODE_OFFSETS.balloon). A touch
+// smaller than before so the rider seated in the basket reads clearly.
+const BALLOON_SCALE = 0.27
+// The gondola basket occupies model-local y 0..~2.8 (floor to rim), so at this
+// scale a rider's hips rest just inside the basket, below the rim — the upper
+// body rises above the rim while the legs stay hidden inside.
+const GONDOLA_SEAT_Y = 2 * BALLOON_SCALE
 
 interface Keys {
   up: boolean
@@ -40,6 +47,8 @@ const keyMap: Record<string, keyof Keys> = {
 
 const keys: Keys = { up: false, down: false, left: false, right: false }
 
+const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
+
 export default function HotAirBalloonController({
   bodyRef,
   active,
@@ -54,6 +63,30 @@ export default function HotAirBalloonController({
   const heading = useRef(transportState.balloon.heading)
   const activeRef = useRef(active)
   activeRef.current = active
+  const activePrev = useRef(active)
+  const descendT = useRef(0)
+
+  const exitToParachute = () => {
+    const rb = body.current
+    if (!rb) return
+    const p = rb.translation()
+    const pose: TransportPose = {
+      x: p.x,
+      z: p.z,
+      y: p.y,
+      heading: heading.current,
+    }
+    transportState.parachute = { ...pose }
+    // The balloon lets go of its hot air and sinks to a parked altitude while
+    // the player glides down, so it can be boarded again where it lands.
+    autopilot.balloon = {
+      active: true,
+      from: pose,
+      to: { x: p.x, z: p.z, y: MIN_ALT, heading: heading.current },
+      duration: clamp((p.y - MIN_ALT) / 3, 3, 12),
+    }
+    setPlayerMode('parachute')
+  }
 
   useEffect(() => {
     const isExit = (e: KeyboardEvent) =>
@@ -61,16 +94,8 @@ export default function HotAirBalloonController({
     const down = (e: KeyboardEvent) => {
       if (!activeRef.current) return
       if (isExit(e)) {
-        const rb = body.current
-        if (!rb) return
-        const p = rb.translation()
-        transportState.walk = {
-          x: p.x + 2,
-          z: p.z + 2,
-          y: 0.91,
-          heading: heading.current + Math.PI,
-        }
-        setPlayerMode('walk')
+        e.preventDefault()
+        exitToParachute()
         return
       }
       const k = keyMap[e.code]
@@ -89,13 +114,36 @@ export default function HotAirBalloonController({
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
     }
-  }, [setPlayerMode])
+  })
 
   useFrame((_, delta) => {
     const rb = body.current
     if (!rb) return
+    const dt = Math.min(delta, 0.05)
 
     if (!active) {
+      // Bail-out autopilot: the balloon sinks to its parked altitude while the
+      // player parachutes down.
+      const ap = autopilot.balloon
+      if (ap.active) {
+        descendT.current += dt
+        const t = Math.min(descendT.current / ap.duration, 1)
+        const ease = 1 - Math.pow(1 - t, 2)
+        const y = ap.from.y + (ap.to.y - ap.from.y) * ease
+        rb.setTranslation({ x: ap.from.x, y, z: ap.from.z }, true)
+        rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
+        if (visual.current) {
+          visual.current.rotation.y = ap.from.heading
+          visual.current.rotation.z = Math.sin(t * 20) * 0.02
+        }
+        if (t >= 1) {
+          transportState.balloon = { ...ap.to }
+          ap.active = false
+          descendT.current = 0
+        }
+        return
+      }
+
       rb.setTranslation(
         { x: transportState.balloon.x, y: transportState.balloon.y, z: transportState.balloon.z },
         true,
@@ -112,7 +160,10 @@ export default function HotAirBalloonController({
       bodyRef.current = rb
     }
 
-    const dt = Math.min(delta, 0.05)
+    if (!activePrev.current) {
+      heading.current = transportState.balloon.heading
+    }
+    activePrev.current = true
 
     // Vertical movement
     const vy = keys.up ? RISE_SPEED : keys.down ? -FALL_SPEED : 0
@@ -175,6 +226,7 @@ export default function HotAirBalloonController({
       <CuboidCollider args={[1.2, 2.5, 1.2]} position={[0, 2.5, 0]} />
       <group ref={visual} position={[0, 0, 0]}>
         <primitive object={balloonScene} scale={BALLOON_SCALE} />
+        {active && <Rider seat={[0, GONDOLA_SEAT_Y, 0]} />}
       </group>
       <BlobShadow radius={1.5} y={0.01} />
     </RigidBody>

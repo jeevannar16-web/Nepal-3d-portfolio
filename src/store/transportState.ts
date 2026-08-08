@@ -1,4 +1,4 @@
-export type TransportMode = 'walk' | 'car' | 'bike' | 'horse' | 'airplane' | 'balloon'
+export type TransportMode = 'walk' | 'car' | 'bike' | 'horse' | 'airplane' | 'balloon' | 'parachute'
 
 export interface TransportPose {
   x: number
@@ -27,7 +27,14 @@ export const transportState = {
   bike: { x: 18, z: 97, y: 0.5, heading: 0 } as TransportPose,
   horse: { x: 24, z: 97, y: 0.5, heading: 0 } as TransportPose,
   airplane: { x: -12, z: 88, y: 0, heading: -Math.PI / 2 } as TransportPose,
+  airplane2: { x: -30, z: 72, y: 0, heading: Math.PI / 2 } as TransportPose,
   balloon: { x: 40, z: -30, y: 2, heading: 0 } as TransportPose,
+  /** Bail-out point when the player jumps from the airplane or balloon: the
+   *  ParachuteController spawns here and glides to the ground. */
+  parachute: { x: 0, z: 0, y: 40, heading: 0 } as TransportPose,
+  /** Which of the two flyable airplanes the player is currently piloting.
+   *  Both share the 'airplane' player mode; this picks the active controller. */
+  activePlane: 'airplane' as 'airplane' | 'airplane2',
   /** Optional scripted walk performed right after the intro (soldier exits
    *  the landed plane), before the player gets control. */
   spawnWalk: null as SpawnWalk | null,

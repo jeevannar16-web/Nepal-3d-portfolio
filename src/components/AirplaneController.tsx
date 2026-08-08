@@ -5,7 +5,8 @@ import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
 import { assetUrl } from '../utils/assetUrl'
 import { useStore } from '../store/useStore'
-import { transportState } from '../store/transportState'
+import { transportState, type TransportPose } from '../store/transportState'
+import { autopilot } from '../store/autoPilot'
 import { minimapState } from '../store/minimapState'
 import BlobShadow from './BlobShadow'
 import { hideAirplaneGlitch, PLANE_SCALE, PLANE_BASE_OFFSET } from '../utils/airplane'
@@ -19,6 +20,46 @@ const YAW_RATE = 1.4
 const ROLL_GAIN = 0.6
 const LIFT_SMOOTH = 3
 const MIN_ALT = 4
+
+export type PlaneSlot = 'airplane' | 'airplane2'
+
+interface PlaneConfig {
+  model: string
+  scale: number
+  baseOffset: number
+  /** Yaw applied to the model primitive so its nose faces +Z (matching the
+   *  heading math where W = forward). */
+  modelRotY: number
+  collider: { args: [number, number, number]; y: number }
+  park: TransportPose
+}
+
+/**
+ * Per-slot plane tuning. airplane = the nice intro aircraft (airplane.glb),
+ * airplane2 = the low-poly runway plane (plane.glb) parked at the second
+ * airstrip. plane.glb's nose already faces +Z in model space (verified: tall
+ * tail fin at -Z, nose at +Z), so it needs no model rotation; it is 1566 units
+ * long, so it uses a tiny scale and a base offset so the wheels rest on the
+ * ground (its bbox bottom is y=-216.2 at scale 1).
+ */
+const PLANE_CONFIGS: Record<PlaneSlot, PlaneConfig> = {
+  airplane: {
+    model: '/models/airplane.glb',
+    scale: PLANE_SCALE,
+    baseOffset: PLANE_BASE_OFFSET,
+    modelRotY: Math.PI,
+    collider: { args: [1.6, 1.7, 4.4], y: 2.1 },
+    park: { x: -12, z: 88, y: 0, heading: -Math.PI / 2 },
+  },
+  airplane2: {
+    model: '/models/plane.glb',
+    scale: 0.005,
+    baseOffset: 1.081,
+    modelRotY: 0,
+    collider: { args: [1.4, 1.2, 3.8], y: 1.2 },
+    park: { x: -30, z: 72, y: 0, heading: Math.PI / 2 },
+  },
+}
 
 interface Keys {
   throttleUp: boolean
@@ -51,23 +92,53 @@ const keys: Keys = {
   rollRight: false,
 }
 
+const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
+
 export default function AirplaneController({
   bodyRef,
   active,
+  slot = 'airplane',
 }: {
   bodyRef?: React.RefObject<RapierRigidBody | null>
   active: boolean
+  slot?: PlaneSlot
 }): JSX.Element {
-  const { scene: planeScene } = useGLTF(assetUrl('/models/airplane.glb'))
-  useMemo(() => hideAirplaneGlitch(planeScene), [planeScene])
+  const cfg = PLANE_CONFIGS[slot]
+  const { scene: planeScene } = useGLTF(assetUrl(cfg.model))
+  useMemo(() => {
+    if (slot === 'airplane') hideAirplaneGlitch(planeScene)
+  }, [slot, planeScene])
   const setPlayerMode = useStore((s) => s.setPlayerMode)
   const body = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
-  const heading = useRef(transportState.airplane.heading)
+  const heading = useRef(transportState[slot].heading)
   const throttleLevel = useRef(0.5)
   const rollAngle = useRef(0)
   const activeRef = useRef(active)
   activeRef.current = active
+  const activePrev = useRef(active)
+  const landingT = useRef(0)
+
+  const exitToParachute = () => {
+    const rb = body.current
+    if (!rb) return
+    const p = rb.translation()
+    const pose: TransportPose = {
+      x: p.x,
+      z: p.z,
+      y: p.y,
+      heading: heading.current,
+    }
+    transportState.parachute = { ...pose }
+    const dist = Math.hypot(pose.x - cfg.park.x, pose.z - cfg.park.z)
+    autopilot[slot] = {
+      active: true,
+      from: pose,
+      to: { ...cfg.park },
+      duration: clamp(3 + dist / 30, 4, 12),
+    }
+    setPlayerMode('parachute')
+  }
 
   useEffect(() => {
     const isExit = (e: KeyboardEvent) =>
@@ -75,16 +146,8 @@ export default function AirplaneController({
     const down = (e: KeyboardEvent) => {
       if (!activeRef.current) return
       if (isExit(e)) {
-        const rb = body.current
-        if (!rb) return
-        const p = rb.translation()
-        transportState.walk = {
-          x: p.x + 3,
-          z: p.z + 3,
-          y: 0.91,
-          heading: heading.current + Math.PI,
-        }
-        setPlayerMode('walk')
+        e.preventDefault()
+        exitToParachute()
         return
       }
       const k = keyMap[e.code]
@@ -103,22 +166,53 @@ export default function AirplaneController({
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
     }
-  }, [setPlayerMode])
+  })
 
   useFrame((_, delta) => {
     const rb = body.current
     if (!rb) return
+    const dt = Math.min(delta, 0.05)
 
     if (!active) {
+      // Bail-out autopilot: fly the plane home while the player parachutes.
+      const ap = autopilot[slot]
+      if (ap.active) {
+        landingT.current += dt
+        const t = Math.min(landingT.current / ap.duration, 1)
+        const ease = 1 - Math.pow(1 - t, 3) // fast early, flares into the spot
+        const to = ap.to
+        const from = ap.from
+        const nx = from.x + (to.x - from.x) * ease
+        const nz = from.z + (to.z - from.z) * ease
+        const ny = from.y + (to.y - from.y) * ease
+        rb.setTranslation({ x: nx, y: ny, z: nz }, true)
+        rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
+        if (visual.current) {
+          const turn = Math.atan2(Math.sin(to.heading - from.heading), Math.cos(to.heading - from.heading))
+          visual.current.rotation.y = from.heading + turn * ease
+          // Nose-down on the way in, flare level at the end.
+          const pitch = t < 0.7 ? THREE.MathUtils.lerp(-0.1, 0, t / 0.7) : 0
+          visual.current.rotation.x = pitch
+          visual.current.rotation.z = t < 0.4 ? -turn * 0.35 * (1 - t / 0.4) : 0
+        }
+        if (t >= 1) {
+          transportState[slot] = { ...to }
+          ap.active = false
+          landingT.current = 0
+        }
+        return
+      }
+
       rb.setTranslation(
-        { x: transportState.airplane.x, y: transportState.airplane.y, z: transportState.airplane.z },
+        { x: transportState[slot].x, y: transportState[slot].y, z: transportState[slot].z },
         true,
       )
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
       rb.setAngvel({ x: 0, y: 0, z: 0 }, true)
       if (visual.current) {
-        visual.current.rotation.y = transportState.airplane.heading
+        visual.current.rotation.y = transportState[slot].heading
         visual.current.rotation.z = 0
+        visual.current.rotation.x = 0
       }
       return
     }
@@ -127,7 +221,13 @@ export default function AirplaneController({
       bodyRef.current = rb
     }
 
-    const dt = Math.min(delta, 0.05)
+    // Re-boarding an already-parked plane: pick up the heading the player
+    // chose at the moment they walked up (stored in transportState by the
+    // enter handler) instead of a stale mount-time value.
+    if (!activePrev.current) {
+      heading.current = transportState[slot].heading
+    }
+    activePrev.current = true
 
     // Throttle
     if (keys.throttleUp) throttleLevel.current = Math.min(1, throttleLevel.current + THROTTLE_RAMP * dt)
@@ -167,7 +267,7 @@ export default function AirplaneController({
     }
 
     // Persist pose
-    transportState.airplane = {
+    transportState[slot] = {
       x: pos.x,
       z: pos.z,
       y: pos.y,
@@ -181,6 +281,7 @@ export default function AirplaneController({
     if (visual.current) {
       visual.current.rotation.y = heading.current
       visual.current.rotation.z = rollAngle.current
+      visual.current.rotation.x = 0
     }
   })
 
@@ -188,19 +289,18 @@ export default function AirplaneController({
     <RigidBody
       ref={body}
       type={active ? 'dynamic' : 'fixed'}
-      position={[transportState.airplane.x, transportState.airplane.y, transportState.airplane.z]}
+      position={[transportState[slot].x, transportState[slot].y, transportState[slot].z]}
       colliders={false}
       lockRotations
       ccd
       mass={500}
     >
-      <CuboidCollider args={[1.6, 1.7, 4.4]} position={[0, 2.1, 0]} />
-      {/* The model's nose faces local -Z, so it is yawed 180° on the primitive
-          (like ArrivalPlane) to point along +Z and match the heading math. It
-          lives on the model, not the visual group, because useFrame sets
-          rotation.y/rotation.z on the group every frame. */}
-      <group ref={visual} position={[0, PLANE_BASE_OFFSET, 0]}>
-        <primitive object={planeScene} scale={PLANE_SCALE} rotation={[0, Math.PI, 0]} />
+      <CuboidCollider args={cfg.collider.args} position={[0, cfg.collider.y, 0]} />
+      {/* The model is yawed on the primitive (not the visual group) so the
+          nose points +Z, because useFrame sets rotation.y/rotation.z on the
+          group every frame. */}
+      <group ref={visual} position={[0, cfg.baseOffset, 0]}>
+        <primitive object={planeScene} scale={cfg.scale} rotation={[0, cfg.modelRotY, 0]} />
       </group>
       <BlobShadow radius={2.5} y={-2.1} />
     </RigidBody>

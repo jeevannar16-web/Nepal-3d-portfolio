@@ -7,7 +7,7 @@ export type DeviceType = 'desktop' | 'mobile'
 
 export type IntroVariant = 'air' | 'local' | 'standard'
 
-export type PlayerMode = 'walk' | 'car' | 'bike' | 'horse' | 'airplane' | 'balloon'
+export type PlayerMode = 'walk' | 'car' | 'bike' | 'horse' | 'airplane' | 'balloon' | 'parachute'
 
 export type IntroStage =
   | 'taxi'

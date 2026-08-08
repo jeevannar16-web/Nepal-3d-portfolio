@@ -2,7 +2,6 @@ import { type JSX } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { assetUrl } from '../utils/assetUrl'
-import { useStore } from '../store/useStore'
 import Helicopter from './Helicopter'
 
 interface ColliderSpec {
@@ -238,10 +237,6 @@ function Bridge(): JSX.Element {
 
 /** Runway + helipad on the north plain, just off the northern ring road. */
 function Airport(): JSX.Element {
-  const introDone = useStore((s) => s.introDone)
-  const parkedPlane = useStore((s) => s.parkedPlane)
-  const playerMode = useStore((s) => s.playerMode)
-  const parkedPlaneScene = useGLTF(assetUrl('/models/plane.glb')).scene
   return (
     <group>
       {/* Asphalt runway with edge lines */}
@@ -255,18 +250,21 @@ function Airport(): JSX.Element {
           <meshStandardMaterial color="#e8e8ec" roughness={0.8} />
         </mesh>
       ))}
-      {/* Parked plane (nose +X) — hidden while the user is flying so the runway
-          never holds two planes. */}
-      {introDone && !parkedPlane && playerMode !== 'airplane' && (
-        <RigidBody type="fixed" position={[0, 1.08, 88]} colliders={false}>
-          <CuboidCollider args={[1.45, 1.45, 4.2]} position={[0, 1.45, 0]} />
-          <primitive
-            object={parkedPlaneScene}
-            rotation={[0, Math.PI / 2, 0]}
-            scale={0.005}
-          />
-        </RigidBody>
-      )}
+      {/* The flyable airplane (AirplaneController slot 'airplane') parks on this
+          runway; the second flyable plane (slot 'airplane2') lives at the
+          second airstrip on the north-west plain. */}
+      {/* Second airstrip: a short dirt strip where the second flyable airplane
+          (slot 'airplane2') parks, just west of the main airport. */}
+      <mesh position={[-30, 0.02, 72]}>
+        <boxGeometry args={[16, 0.04, 5]} />
+        <meshStandardMaterial color="#4a463f" roughness={1} />
+      </mesh>
+      {[69.2, 74.8].map((z) => (
+        <mesh key={z} position={[-30, 0.045, z]}>
+          <boxGeometry args={[16, 0.02, 0.4]} />
+          <meshStandardMaterial color="#d8d2c2" roughness={0.9} />
+        </mesh>
+      ))}
       {/* Helipad beside the runway */}
       <mesh position={[-10, 0.02, 80]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[3.2, 24]} />

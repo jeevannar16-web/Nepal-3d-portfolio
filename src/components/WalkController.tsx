@@ -83,8 +83,10 @@ export default function WalkController({
       const p = transportState[kind]
       if (Math.hypot(pos.x - p.x, pos.z - p.z) < ENTER_RADIUS) return true
     }
-    const ap = transportState.airplane
-    if (Math.hypot(pos.x - ap.x, pos.z - ap.z) < ENTER_RADIUS * 1.5) return true
+    for (const plane of ['airplane', 'airplane2'] as const) {
+      const ap = transportState[plane]
+      if (Math.hypot(pos.x - ap.x, pos.z - ap.z) < ENTER_RADIUS * 1.5) return true
+    }
     const bl = transportState.balloon
     if (Math.hypot(pos.x - bl.x, pos.z - bl.z) < ENTER_RADIUS * 1.5) return true
     return false
@@ -102,11 +104,14 @@ export default function WalkController({
         return
       }
     }
-    const ap = transportState.airplane
-    if (Math.hypot(pos.x - ap.x, pos.z - ap.z) < ENTER_RADIUS * 1.5) {
-      ap.heading = heading.current
-      setPlayerMode('airplane')
-      return
+    for (const plane of ['airplane', 'airplane2'] as const) {
+      const ap = transportState[plane]
+      if (Math.hypot(pos.x - ap.x, pos.z - ap.z) < ENTER_RADIUS * 1.5) {
+        ap.heading = heading.current
+        transportState.activePlane = plane
+        setPlayerMode('airplane')
+        return
+      }
     }
     const bl = transportState.balloon
     if (Math.hypot(pos.x - bl.x, pos.z - bl.z) < ENTER_RADIUS * 1.5) {

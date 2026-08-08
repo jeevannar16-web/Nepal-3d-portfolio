@@ -25,6 +25,7 @@ const MODE_OFFSETS: Record<string, [number, number, number]> = {
   // tall and centred ~12.5 above its body; this offset sits the camera level
   // with the envelope so the whole balloon fills the frame.
   balloon: [0, 12, -24],
+  parachute: [0, 7, -14],
 }
 // Lower, tighter camera while the soldier crouches, at his eye height.
 const CROUCH_OFFSET: [number, number, number] = [0, 1.6, -5.2]
@@ -36,6 +37,7 @@ const MODE_MAX_SPEED: Record<string, number> = {
   horse: 10,
   airplane: 35,
   balloon: 8,
+  parachute: 8,
 }
 
 interface FollowCameraProps {
