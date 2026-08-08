@@ -16,3 +16,6 @@ brunette.glb
 heli.glb
 *.zip
 quaternius-*.webp
+
+# raw downloaded source models (kept locally for reference, not shipped)
+downloads/
