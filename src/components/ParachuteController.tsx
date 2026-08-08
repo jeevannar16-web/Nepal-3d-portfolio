@@ -10,6 +10,7 @@ import { minimapState } from '../store/minimapState'
 import { inputState, feetLocalY } from '../store/walkState'
 import Soldier from './Soldier'
 import { clampXZ, LAND_LIMIT } from '../utils/bounds'
+import { WORLD_EDGE } from './Ground'
 
 const DESCENT_SPEED = 5.5 // steady controlled fall, not a free-fall
 const FLARE_SPEED = 2.2 // holding W flares the canopy (slower)
@@ -19,6 +20,10 @@ const YAW_RATE = 1.2
 const CAPSULE_HALF_LEN = 0.55 + 0.32
 // The capsule body sits this high when the soldier's feet touch the ground.
 const LAND_Y = 0.91
+// Landings inside this radius keep the camera over the valley; any closer to
+// the rim and the soldier is re-faced toward the centre so the view never
+// points out past the walls into the empty void (a flat blue screen).
+const SAFE_LAND_RADIUS = WORLD_EDGE - 30
 // The parachute's harness point (model-local y=0) is placed at the soldier's
 // chest, so the canopy opens high above and the suspension lines run down to
 // the hanging rider.
@@ -104,6 +109,23 @@ export default function ParachuteController({
       heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
     }
 
+    // Near the rim, gently steer the canopy back toward the valley centre so the
+    // drift — and the follow camera behind it — always looks over the world,
+    // never out past the walls where the screen fills with the empty blue void.
+    // The pull ramps in over the outer ~35 units and is absolute by the landing
+    // ring, so the descent view swings back inside long before touchdown.
+    const radial = Math.hypot(pos.x, pos.z)
+    const rimPull = THREE.MathUtils.clamp((radial - (WORLD_EDGE - 55)) / 35, 0, 1)
+    if (rimPull > 0) {
+      const centerAngle = Math.atan2(-pos.x, -pos.z)
+      const delta = Math.atan2(
+        Math.sin(centerAngle - heading.current),
+        Math.cos(centerAngle - heading.current),
+      )
+      heading.current += delta * rimPull * (1 - Math.exp(-dt * 3))
+      heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
+    }
+
     // W flares (slower), S dives (faster), otherwise a steady descent.
     const descend = inputState.back ? DIVE_SPEED : inputState.fwd ? FLARE_SPEED : DESCENT_SPEED
 
@@ -116,15 +138,24 @@ export default function ParachuteController({
     const nvz = THREE.MathUtils.lerp(cur.z, drift.z, 1 - Math.exp(-dt * 2.5))
     rb.setLinvel({ x: nvx, y: nvy, z: nvz }, true)
 
-    // Land: touch down and hand control back to the walker.
+    // Land: touch down and hand control back to the walker. The landing spot is
+    // kept inside the ground plane, and if the canopy settled near the world's
+    // rim the soldier is re-faced toward the centre — so the follow camera
+    // looks back over the valley instead of out past the walls into the empty
+    // void, which reads as a solid blue screen on any device.
     if (pos.y <= LAND_Y) {
-      rb.setTranslation({ x: pos.x, y: LAND_Y, z: pos.z }, true)
+      const [lx, lz] = clampXZ(pos.x, pos.z, LAND_LIMIT)
+      let landHeading = heading.current
+      if (Math.hypot(lx, lz) > SAFE_LAND_RADIUS) {
+        landHeading = Math.atan2(-lx, -lz)
+      }
+      rb.setTranslation({ x: lx, y: LAND_Y, z: lz }, true)
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
       transportState.walk = {
-        x: pos.x,
-        z: pos.z,
+        x: lx,
+        z: lz,
         y: LAND_Y,
-        heading: heading.current,
+        heading: landHeading,
       }
       setPlayerMode('walk')
       return

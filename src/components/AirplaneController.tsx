@@ -8,6 +8,7 @@ import { useStore } from '../store/useStore'
 import { transportState, type TransportPose } from '../store/transportState'
 import { autopilot } from '../store/autoPilot'
 import { minimapState } from '../store/minimapState'
+import { planeState } from '../store/planeState'
 import BlobShadow from './BlobShadow'
 import { hideAirplaneGlitch, PLANE_SCALE, PLANE_BASE_OFFSET } from '../utils/airplane'
 import { clampXZ } from '../utils/bounds'
@@ -17,6 +18,7 @@ const MIN_SPEED = 8
 const CRUISE_ALT = 30
 const ALT_BAND = 6
 const THROTTLE_RAMP = 1.8
+const SPOOL_TIME = 2
 const YAW_RATE = 1.4
 const ROLL_GAIN = 0.6
 const TURN_BANK = 0.45
@@ -117,6 +119,10 @@ export default function AirplaneController({
   const heading = useRef(transportState[slot].heading)
   const throttleLevel = useRef(0.5)
   const rollAngle = useRef(0)
+  // Takeoff spool (0..1): starts at 0 after boarding and ramps to full thrust
+  // over SPOOL_TIME, so the plane rolls from a standstill and only climbs once
+  // the short runway run is over — no more instant flight.
+  const spool = useRef(1)
   const activeRef = useRef(active)
   activeRef.current = active
   const activePrev = useRef(active)
@@ -229,17 +235,24 @@ export default function AirplaneController({
 
     // Re-boarding an already-parked plane: pick up the heading the player
     // chose at the moment they walked up (stored in transportState by the
-    // enter handler) instead of a stale mount-time value.
+    // enter handler) instead of a stale mount-time value, and restart the
+    // takeoff spool so every flight begins with a runway roll.
     if (!activePrev.current) {
       heading.current = transportState[slot].heading
+      spool.current = 0
     }
     activePrev.current = true
+
+    // Takeoff spool: the plane accelerates from a standstill over SPOOL_TIME
+    // and only gains full thrust (and its climb) after the short runway run.
+    if (spool.current < 1) spool.current = Math.min(1, spool.current + dt / SPOOL_TIME)
+    const thrust = spool.current
 
     // Throttle
     if (keys.throttleUp) throttleLevel.current = Math.min(1, throttleLevel.current + THROTTLE_RAMP * dt)
     if (keys.throttleDown) throttleLevel.current = Math.max(0, throttleLevel.current - THROTTLE_RAMP * dt)
 
-    const speed = MIN_SPEED + throttleLevel.current * (MAX_SPEED - MIN_SPEED)
+    const speed = (MIN_SPEED + throttleLevel.current * (MAX_SPEED - MIN_SPEED)) * thrust
 
     // Yaw
     if (keys.yawLeft) heading.current += YAW_RATE * dt
@@ -261,16 +274,16 @@ export default function AirplaneController({
     const nvx = THREE.MathUtils.lerp(cur.x, targetVel.x, 1 - Math.exp(-dt * LIFT_SMOOTH))
     const nvz = THREE.MathUtils.lerp(cur.z, targetVel.z, 1 - Math.exp(-dt * LIFT_SMOOTH))
 
-    // Gentle altitude hold
+    // Gentle altitude hold. During the takeoff roll the plane stays on the
+    // ground (no climb until the spool has finished building airspeed).
     const pos = rb.translation()
     const altError = (CRUISE_ALT + Math.sin(heading.current) * ALT_BAND) - pos.y
-    const targetVy = altError * 2.5
-    const finalVy = THREE.MathUtils.clamp(targetVy, -3, 10)
+    const finalVy = THREE.MathUtils.clamp(altError * 2.5, -3, 10) * thrust
 
     rb.setLinvel({ x: nvx, y: finalVy, z: nvz }, true)
 
-    // Enforce minimum altitude
-    if (pos.y < MIN_ALT) {
+    // Enforce minimum altitude (only once the takeoff roll has finished).
+    if (spool.current >= 1 && pos.y < MIN_ALT) {
       rb.setTranslation({ x: pos.x, y: MIN_ALT, z: pos.z }, true)
       rb.setLinvel({ x: nvx, y: Math.max(finalVy, 0), z: nvz }, true)
     }
@@ -301,6 +314,11 @@ export default function AirplaneController({
     minimapState.x = pos.x
     minimapState.z = pos.z
     minimapState.heading = heading.current
+    planeState.throttle = throttleLevel.current * thrust
+    planeState.speed = Math.hypot(nvx, nvz)
+    planeState.spool = spool.current
+    planeState.throttleLevel = throttleLevel.current
+    planeState.active = true
 
     // Visual banking + gentle pitch tied to climb rate (clamped so the nose
     // never dives/stalls visually).

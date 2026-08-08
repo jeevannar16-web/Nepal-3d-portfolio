@@ -12,6 +12,7 @@ import { Environment } from '@react-three/drei'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useStore } from '../store/useStore'
 import { transportState } from '../store/transportState'
+import { planeState } from '../store/planeState'
 import { walkHud } from '../store/walkState'
 import { assetUrl } from '../utils/assetUrl'
 import { detectCountry } from '../utils/geo'
@@ -47,6 +48,7 @@ import SoundManager from './SoundManager'
 import EngineSound from './EngineSound'
 import HorseSound from './HorseSound'
 import PlaneSound from './PlaneSound'
+import PlayerPlaneSound from './PlayerPlaneSound'
 import IntroOverlay from './IntroOverlay'
 import Toast from './Toast'
 import WelcomeCard from './WelcomeCard'
@@ -95,6 +97,8 @@ function Scene3D() {
     ;(window as any).__scene3dMounted = true
     ;(window as any).__transport = transportState
     ;(window as any).__walkHud = walkHud
+    ;(window as any).__planeState = planeState
+    ;(window as any).__playerBody = playerBody
   }, [])
 
   const introDone = useStore((s) => s.introDone)
@@ -291,6 +295,7 @@ function Scene3D() {
       <EngineSound />
       <HorseSound />
       <PlaneSound />
+      <PlayerPlaneSound />
     </div>
   )
 }
