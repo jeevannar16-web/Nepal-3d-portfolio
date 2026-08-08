@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import { useStore } from '../store/useStore'
 import { identity } from '../data'
 
@@ -6,6 +6,13 @@ export default function IntroOverlay(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
   const introStage = useStore((s) => s.introStage)
   const introCaption = useStore((s) => s.introCaption)
+  // The identity block only frames the start of the flight — it fades away a
+  // few seconds in so it never blocks the airplane view for the whole journey.
+  const [identityHidden, setIdentityHidden] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setIdentityHidden(true), 6000)
+    return () => clearTimeout(t)
+  }, [])
   if (introDone) return null
 
   const stageText =
@@ -23,7 +30,11 @@ export default function IntroOverlay(): JSX.Element | null {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-      <div className="animate-intro-name text-center">
+      <div
+        className={`animate-intro-name text-center transition-opacity duration-1000 ${
+          identityHidden ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
         <h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-2xl sm:text-6xl">
           {identity.name}
         </h1>
@@ -33,12 +44,12 @@ export default function IntroOverlay(): JSX.Element | null {
         <p className="mt-2 text-sm font-semibold text-white/90 drop-shadow">
           {identity.location}
         </p>
-        {stageText ? (
-          <p className="mt-3 text-sm font-semibold tracking-wide text-amber-300 drop-shadow">
-            {stageText}
-          </p>
-        ) : null}
       </div>
+      {stageText ? (
+        <p className="animate-intro-name absolute bottom-10 left-1/2 -translate-x-1/2 text-sm font-semibold tracking-wide text-amber-300 drop-shadow">
+          {stageText}
+        </p>
+      ) : null}
       {introCaption ? (
         <div
           key={introCaption}

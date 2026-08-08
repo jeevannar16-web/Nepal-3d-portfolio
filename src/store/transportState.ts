@@ -1,4 +1,4 @@
-export type TransportMode = 'walk' | 'car' | 'bike' | 'horse'
+export type TransportMode = 'walk' | 'car' | 'bike' | 'horse' | 'airplane' | 'balloon'
 
 export interface TransportPose {
   x: number
@@ -26,6 +26,8 @@ export const transportState = {
   car: { x: 12, z: 97, y: 0.5, heading: 0 } as TransportPose,
   bike: { x: 18, z: 97, y: 0.5, heading: 0 } as TransportPose,
   horse: { x: 24, z: 97, y: 0.5, heading: 0 } as TransportPose,
+  airplane: { x: -12, z: 88, y: 0, heading: -Math.PI / 2 } as TransportPose,
+  balloon: { x: 40, z: -30, y: 2, heading: 0 } as TransportPose,
   /** Optional scripted walk performed right after the intro (soldier exits
    *  the landed plane), before the player gets control. */
   spawnWalk: null as SpawnWalk | null,

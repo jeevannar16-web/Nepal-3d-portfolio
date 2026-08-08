@@ -18,10 +18,13 @@ import {
 export default function ParkedArrivalPlane(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
   const parkedPlane = useStore((s) => s.parkedPlane)
+  const playerMode = useStore((s) => s.playerMode)
   const gltf = useGLTF(assetUrl('/models/airplane.glb'))
   useMemo(() => hideAirplaneGlitch(gltf.scene), [gltf])
 
-  if (!introDone || !parkedPlane) return null
+  // Hide the intro landed plane; the default airplane to board is the one
+  // already on the runway (Airport), so we don't show two parked planes.
+  if (!introDone || !parkedPlane || playerMode === 'airplane') return null
 
   return (
     <RigidBody

@@ -1,11 +1,8 @@
-import { useRef, type JSX } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { type JSX } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
-import * as THREE from 'three'
 import { assetUrl } from '../utils/assetUrl'
 import { useStore } from '../store/useStore'
-import { orientAircraft } from '../utils/attitude'
 import Helicopter from './Helicopter'
 
 interface ColliderSpec {
@@ -243,6 +240,7 @@ function Bridge(): JSX.Element {
 function Airport(): JSX.Element {
   const introDone = useStore((s) => s.introDone)
   const parkedPlane = useStore((s) => s.parkedPlane)
+  const playerMode = useStore((s) => s.playerMode)
   const parkedPlaneScene = useGLTF(assetUrl('/models/plane.glb')).scene
   return (
     <group>
@@ -257,11 +255,9 @@ function Airport(): JSX.Element {
           <meshStandardMaterial color="#e8e8ec" roughness={0.8} />
         </mesh>
       ))}
-      {/* Parked plane (nose +X) — same model the user has in the repo root. A
-          fixed hitbox keeps walkers/vehicles from driving through it. Shown
-          only once the intro has finished AND the intro aircraft did not land
-          here itself, so the runway never holds two parked planes. */}
-      {introDone && !parkedPlane && (
+      {/* Parked plane (nose +X) — hidden while the user is flying so the runway
+          never holds two planes. */}
+      {introDone && !parkedPlane && playerMode !== 'airplane' && (
         <RigidBody type="fixed" position={[0, 1.08, 88]} colliders={false}>
           <CuboidCollider args={[1.45, 1.45, 4.2]} position={[0, 1.45, 0]} />
           <primitive
@@ -290,38 +286,5 @@ function Airport(): JSX.Element {
  * after the intro, so the airplane is always visible wherever you drive.
  */
 function AmbientPlane(): JSX.Element | null {
-  const introDone = useStore((s) => s.introDone)
-  const gltf = useGLTF(assetUrl('/models/plane.glb'))
-  const ref = useRef<THREE.Group>(null)
-
-  useFrame((state) => {
-    const g = ref.current
-    if (!g || !introDone) return
-    const t = state.clock.elapsedTime * 0.06
-    const r = 55
-    const x = Math.sin(t) * r
-    const z = Math.cos(t) * r
-    g.position.set(x, 30 + Math.sin(t * 0.5) * 2, z)
-    // Follow the path and bank into the circle (toward its center), like a
-    // real airplane holding a constant-radius turn.
-    const forward = new THREE.Vector3(
-      Math.cos(t) * r * 0.06,
-      Math.cos(t * 0.5) * 0.06,
-      -Math.sin(t) * r * 0.06,
-    ).normalize()
-    const centerDir = new THREE.Vector3(-x, 0, -z).normalize()
-    const right = new THREE.Vector3().crossVectors(
-      new THREE.Vector3(0, 1, 0),
-      forward,
-    )
-    const bank = right.dot(centerDir) >= 0 ? 0.35 : -0.35
-    orientAircraft(g, forward, bank)
-  })
-
-  if (!introDone) return null
-  return (
-    <group ref={ref} position={[0, 30, 55]}>
-      <primitive object={gltf.scene} scale={0.005} position={[0, 1.08, 0]} />
-    </group>
-  )
+  return null
 }

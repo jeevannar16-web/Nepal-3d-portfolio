@@ -31,6 +31,8 @@ interface PlaneNodes {
   windGain: GainNode
   windSource: AudioBufferSourceNode
   windFilter: BiquadFilterNode
+  /** AudioContext time (seconds) when the graph came online. */
+  startAt: number
 }
 
 function makeNoiseBuffer(ctx: AudioContext): AudioBuffer {
@@ -58,80 +60,90 @@ export default function PlaneSound(): JSX.Element {
   const started = useRef(false)
   const nodes = useRef<PlaneNodes | null>(null)
 
+  // Build the graph once on mount. Browsers start an AudioContext created
+  // outside a gesture in the "suspended" state, so nothing is audible yet —
+  // the first pointer/key/touch resumes it, which unblocks audio while keeping
+  // the autoplay policy happy.
   useEffect(() => {
+    const Ctor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext
+    if (!Ctor) return
+
+    const ctx = new Ctor()
+    const master = ctx.createGain()
+    master.gain.value = 0
+    master.connect(ctx.destination)
+
+    const osc1 = ctx.createOscillator()
+    osc1.type = 'sawtooth'
+    osc1.frequency.value = IDLE_FREQ
+
+    const osc2 = ctx.createOscillator()
+    osc2.type = 'square'
+    osc2.frequency.value = IDLE_FREQ * 2.1
+
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = 240
+    filter.Q.value = 1.1
+
+    const g1 = ctx.createGain()
+    g1.gain.value = 0.55
+    const g2 = ctx.createGain()
+    g2.gain.value = 0.18
+    osc1.connect(g1).connect(filter)
+    osc2.connect(g2).connect(filter)
+
+    // Propeller beat: a slow amplitude pulse whose depth and rate follow
+    // the throttle, so the drone "putt-putts" faster and stronger as it
+    // speeds up, like a real prop plane.
+    const propDepth = ctx.createGain()
+    propDepth.gain.value = 0
+    const propLfo = ctx.createOscillator()
+    propLfo.type = 'sine'
+    propLfo.frequency.value = IDLE_PROP
+    propLfo.connect(propDepth.gain)
+    filter.connect(propDepth).connect(master)
+
+    // Wind roar: looped white noise through a bandpass, louder with speed.
+    const windFilter = ctx.createBiquadFilter()
+    windFilter.type = 'bandpass'
+    windFilter.frequency.value = 620
+    windFilter.Q.value = 0.5
+    const windGain = ctx.createGain()
+    windGain.gain.value = 0
+    const windSource = ctx.createBufferSource()
+    windSource.buffer = makeNoiseBuffer(ctx)
+    windSource.loop = true
+    windSource.connect(windFilter).connect(windGain).connect(master)
+
+    osc1.start()
+    osc2.start()
+    propLfo.start()
+    windSource.start()
+    nodes.current = { ctx, master, osc1, osc2, filter, propDepth, propLfo, windGain, windSource, windFilter, startAt: ctx.currentTime }
+    started.current = true
+
+    // Unlock audio as soon as the browser will allow: immediately (repeat
+    // visits where autoplay is permitted) and again on the first gesture.
+    if (ctx.state === 'suspended') void ctx.resume()
+
     const resume = () => {
-      if (started.current) return
-      started.current = true
-      window.removeEventListener('pointerdown', resume)
-      window.removeEventListener('keydown', resume)
-
-      const Ctor =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext
-      if (!Ctor) return
-
-      const ctx = new Ctor()
-      const master = ctx.createGain()
-      master.gain.value = 0
-      master.connect(ctx.destination)
-
-      const osc1 = ctx.createOscillator()
-      osc1.type = 'sawtooth'
-      osc1.frequency.value = IDLE_FREQ
-
-      const osc2 = ctx.createOscillator()
-      osc2.type = 'square'
-      osc2.frequency.value = IDLE_FREQ * 2.1
-
-      const filter = ctx.createBiquadFilter()
-      filter.type = 'lowpass'
-      filter.frequency.value = 240
-      filter.Q.value = 1.1
-
-      const g1 = ctx.createGain()
-      g1.gain.value = 0.55
-      const g2 = ctx.createGain()
-      g2.gain.value = 0.18
-      osc1.connect(g1).connect(filter)
-      osc2.connect(g2).connect(filter)
-
-      // Propeller beat: a slow amplitude pulse whose depth and rate follow
-      // the throttle, so the drone "putt-putts" faster and stronger as it
-      // speeds up, like a real prop plane.
-      const propDepth = ctx.createGain()
-      propDepth.gain.value = 0
-      const propLfo = ctx.createOscillator()
-      propLfo.type = 'sine'
-      propLfo.frequency.value = IDLE_PROP
-      propLfo.connect(propDepth.gain)
-      filter.connect(propDepth).connect(master)
-
-      // Wind roar: looped white noise through a bandpass, louder with speed.
-      const windFilter = ctx.createBiquadFilter()
-      windFilter.type = 'bandpass'
-      windFilter.frequency.value = 620
-      windFilter.Q.value = 0.5
-      const windGain = ctx.createGain()
-      windGain.gain.value = 0
-      const windSource = ctx.createBufferSource()
-      windSource.buffer = makeNoiseBuffer(ctx)
-      windSource.loop = true
-      windSource.connect(windFilter).connect(windGain).connect(master)
-
-      osc1.start()
-      osc2.start()
-      propLfo.start()
-      windSource.start()
-      nodes.current = { ctx, master, osc1, osc2, filter, propDepth, propLfo, windGain, windSource, windFilter }
+      const n = nodes.current
+      if (!n) return
+      if (n.ctx.state === 'suspended') void n.ctx.resume()
     }
 
     window.addEventListener('pointerdown', resume)
     window.addEventListener('keydown', resume)
+    window.addEventListener('touchstart', resume, { passive: true })
 
     return () => {
       window.removeEventListener('pointerdown', resume)
       window.removeEventListener('keydown', resume)
+      window.removeEventListener('touchstart', resume)
       const n = nodes.current
       if (n) {
         try {
@@ -156,6 +168,11 @@ export default function PlaneSound(): JSX.Element {
         const now = n.ctx.currentTime
         const audible = !introDone && !muted
         const base = audible ? STAGE_THROTTLE[introStage] ?? 0 : 0
+        // Let the first moments of the intro breathe in silence — fade the
+        // drone in from zero over the first two seconds of flight.
+        const sinceStart = now - n.startAt
+        const fade = Math.min(1, sinceStart / 2)
+        const scaled = base * (fade > 0 ? fade : 0)
         // Faint throttle surge on the windy stages so the drone wavers with the
         // plane's visible turbulence instead of sitting on a constant note.
         const turbulent =
@@ -165,7 +182,7 @@ export default function PlaneSound(): JSX.Element {
         const wob = turbulent
           ? (Math.sin(now * 1.4) * 0.5 + Math.sin(now * 3.2 + 2) * 0.5) * 0.06
           : 0
-        const throttle = Math.max(0, Math.min(1, base + wob))
+        const throttle = Math.max(0, Math.min(1, scaled + wob))
 
         const freq = IDLE_FREQ + (TOP_FREQ - IDLE_FREQ) * throttle
         const prop = IDLE_PROP + (TOP_PROP - IDLE_PROP) * throttle

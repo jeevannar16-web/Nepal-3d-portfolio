@@ -4,12 +4,14 @@ import { transportState } from '../store/transportState'
 
 const ENTER_RADIUS = 3.6
 
-type Nearby = 'car' | 'bike' | 'horse' | null
+type Nearby = 'car' | 'bike' | 'horse' | 'airplane' | 'balloon' | null
 
 const VEHICLE_NAME: Record<Exclude<Nearby, null>, string> = {
   car: 'the car',
   bike: 'the motorcycle',
   horse: 'the horse',
+  airplane: 'the airplane',
+  balloon: 'the hot air balloon',
 }
 
 const MODE_NAME = {
@@ -17,6 +19,8 @@ const MODE_NAME = {
   car: 'Driving',
   bike: 'Riding',
   horse: 'Riding the horse',
+  airplane: 'Flying',
+  balloon: 'Flying balloon',
 } as const
 
 function nearestVehicle(): Nearby {
@@ -25,7 +29,7 @@ function nearestVehicle(): Nearby {
   const pos = transportState.walk
   let best: Nearby = null
   let bestDist = ENTER_RADIUS
-  for (const kind of ['car', 'bike', 'horse'] as const) {
+  for (const kind of ['car', 'bike', 'horse', 'airplane', 'balloon'] as const) {
     const p = transportState[kind]
     const d = Math.hypot(pos.x - p.x, pos.z - p.z)
     if (d < bestDist) {
@@ -60,7 +64,7 @@ export default function TransportPrompt(): JSX.Element | null {
       </div>
       {playerMode === 'walk' && nearby ? (
         <div className="rounded-full border border-amber-300/30 bg-black/60 px-4 py-2 text-sm text-white/90 backdrop-blur">
-          Press <span className="font-semibold text-amber-300">E</span> to ride{' '}
+          Press <span className="font-semibold text-amber-300">E</span> to board{' '}
           {VEHICLE_NAME[nearby]}
         </div>
       ) : playerMode !== 'walk' ? (

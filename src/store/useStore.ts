@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import type { TimeOfDay } from '../utils/timeOfDay'
 import type { WeatherKind } from '../utils/weather'
+import { detectGraphicsTier } from '../utils/webgl'
 
 export type DeviceType = 'desktop' | 'mobile'
 
 export type IntroVariant = 'air' | 'local' | 'standard'
 
-export type PlayerMode = 'walk' | 'car' | 'bike' | 'horse'
+export type PlayerMode = 'walk' | 'car' | 'bike' | 'horse' | 'airplane' | 'balloon'
 
 export type IntroStage =
   | 'taxi'
@@ -75,7 +76,7 @@ export const useStore = create<PortfolioState>((set) => ({
   activeZone: null,
   isPanelOpen: false,
   deviceType: 'desktop',
-  introDone: false,
+  introDone: true,
   introVariant: 'air',
   introStage: 'orbit',
   parkedPlane: null,
@@ -118,7 +119,7 @@ export const useStore = create<PortfolioState>((set) => ({
   showToast: (text) => set({ toast: text }),
   clearToast: () => set({ toast: null }),
   dismissWelcome: () => set({ welcomeDismissed: true }),
-  settings: { muted: false, lowGraphics: false },
+  settings: { muted: false, lowGraphics: detectGraphicsTier() === 'low' },
   targetLandmark: null,
   playerMode: 'walk',
   toggleMuted: () =>

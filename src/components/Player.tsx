@@ -149,8 +149,28 @@ export default function Player({ bodyRef, active }: PlayerProps): JSX.Element {
   }, [carScene])
 
   useEffect(() => {
+    const isExit = (e: KeyboardEvent) =>
+      e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ' || e.key === 'Escape' || e.code === 'Escape'
     const down = (e: KeyboardEvent) => {
       if (!activeRef.current) return
+      // Get out and walk. The soldier appears beside the door. Checked first so
+      // keyboard layouts where Z sits at a different physical position (QWERTZ)
+      // still exit instead of being eaten by the movement keymap.
+      if (isExit(e)) {
+        const rb = body.current
+        if (!rb) return
+        const p = rb.translation()
+        const rightX = Math.cos(heading.current)
+        const rightZ = -Math.sin(heading.current)
+        transportState.walk = {
+          x: p.x + rightX * 2.2,
+          z: p.z + rightZ * 2.2,
+          y: 0.87,
+          heading: heading.current,
+        }
+        setPlayerMode('walk')
+        return
+      }
       const k = keyMap[e.code]
       if (k) {
         keys[k] = true
@@ -176,20 +196,6 @@ export default function Player({ bodyRef, active }: PlayerProps): JSX.Element {
           throttleTime.current = 0
           autoGear.current = 1
         }
-      } else if (e.code === 'KeyZ' || e.code === 'Escape') {
-        // Get out and walk. The soldier appears beside the door.
-        const rb = body.current
-        if (!rb) return
-        const p = rb.translation()
-        const rightX = Math.cos(heading.current)
-        const rightZ = -Math.sin(heading.current)
-        transportState.walk = {
-          x: p.x + rightX * 2.2,
-          z: p.z + rightZ * 2.2,
-          y: 0.87,
-          heading: heading.current,
-        }
-        setPlayerMode('walk')
       }
     }
     const up = (e: KeyboardEvent) => {

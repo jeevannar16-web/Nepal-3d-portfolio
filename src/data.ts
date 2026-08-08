@@ -53,7 +53,7 @@ export const zones: ZoneContent[] = [
     subtitle: identity.role,
     body: `Hi, I'm ${identity.name} — a ${identity.role} based in ${identity.location}. I love building practical software and understanding how computers work under the hood.
 
-What started as curiosity about how my own computer worked became a habit of taking things apart and putting them back together better. I taught myself to code by building small, useful tools, and then graduated to real projects that people actually use online.
+I grew up in Kalikot, a district in the hills of Karnali Province, and moved to Kathmandu for school. What started as curiosity about how my own computer worked became a habit of taking things apart and putting them back together better. I taught myself to code by building small, useful tools, and then graduated to real projects that people actually use online.
 
 My sweet spot is the intersection of systems and the web — knowing what happens between a keystroke and the server, while shipping interfaces that feel effortless. I value clean, honest code, and I'm happiest when something I built quietly makes someone's day a little easier.`,
     skills: ['Python', 'Django', 'SQL', 'JavaScript', 'Exploring Linux internals'],
@@ -62,11 +62,11 @@ My sweet spot is the intersection of systems and the web — knowing what happen
     key: 'story',
     title: 'My Story',
     subtitle: 'Beyond the resume',
-    body: `I grew up in Kathmandu, surrounded by centuries-old temples and the mountains on the horizon — so I've always seen the world through layers of history and craftsmanship. That curiosity carried over to computers: I started by tinkering with my own machine, breaking it, fixing it, and finally writing code to make it do what I wanted.
+    body: `I was born in Kalikot district, in the rugged mid-western hills of Karnali Province — the Nepal most people never get to see. Growing up there meant steep terraced fields, the sound of the Karnali river far below, and a long road to anywhere else. I studied at Shree Nata Academy up to class 8, where I first met computers in a classroom and fell in love with the idea that a machine could be taught to think.
 
-These days I split my time between the classroom and the command line — learning computer engineering during the day and building real, working things at night. I believe the best way to learn is to ship: every project I publish teaches me something a textbook can't.
+At the start of class 9 I transferred to Kathmandu — a huge leap from a quiet district to the capital. The first months were about finding my feet in a crowded, fast-moving city, but the curiosity I brought from Kalikot never left. I started tinkering with my own machine, breaking it, fixing it, and finally writing code to make it do what I wanted.
 
-Right now I'm deepening my systems knowledge — Linux internals, networks, how operating systems really work — while polishing the craft of clean web apps. One day I want to build software that feels as natural as walking through the valley I grew up in.`,
+Today I study at Shivapuri College in Maharajgunj, Kathmandu — a community campus affiliated with Tribhuvan University that serves students like me who arrive in the city from across the country. My mornings are for classes; my evenings are for building. Every project I ship is a step from a small hill-town kid to a developer who can build software for the world — while staying grounded in the valley that raised me.`,
     skills: ['Linux', 'Systems', 'Self-taught builder', 'Problem solving'],
   },
   {

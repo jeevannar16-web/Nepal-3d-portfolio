@@ -151,7 +151,7 @@ export default function Soldier({
 }: {
   motionRef?: React.RefObject<Motion>
 }): JSX.Element {
-  const avatar = useGLTF(assetUrl('/models/avaturn.glb'))
+  const avatar = useGLTF(assetUrl('/models/boy.glb'))
   const soldier = useGLTF(assetUrl('/models/soldier.glb'))
   // Clone the avatar scene per Soldier instance. The walking soldier
   // (WalkController) and the rider (Rider, on bike/horse) mount at the same

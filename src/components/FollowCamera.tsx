@@ -20,6 +20,8 @@ const MODE_OFFSETS: Record<string, [number, number, number]> = {
   car: [0, 3.4, -8.5],
   bike: [0, 3.0, -7.5],
   horse: [0, 3.1, -7],
+  airplane: [0, 8, -16],
+  balloon: [0, 6, -12],
 }
 // Lower, tighter camera while the soldier crouches, at his eye height.
 const CROUCH_OFFSET: [number, number, number] = [0, 1.6, -5.2]
@@ -29,6 +31,8 @@ const MODE_MAX_SPEED: Record<string, number> = {
   car: MAX_SPEED,
   bike: 20,
   horse: 10,
+  airplane: 35,
+  balloon: 8,
 }
 
 interface FollowCameraProps {
@@ -124,15 +128,11 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
       lookYaw.current += (0 - lookYaw.current) * settle
     }
 
-    // On foot, the camera stays fixed to the world (it only moves on an explicit
-    // Q/E / right-drag orbit). Driving `camYaw` toward the soldier's heading made
-    // every A/D press swing the whole scene around the body ("the environment
-    // rotated"). The man turns in place; the world stays put. In vehicles the
-    // camera still chases the heading so the scenery sweeps on corners.
+    // Chase the actor's heading in every mode (including on foot) so A/D turns
+    // swing the view with the soldier — Free Fire-style full control, where W
+    // always leads into the screen and the world sweeps past on corners.
     const chase = 1 - Math.pow(2, -delta * (active ? 30 : 6))
-    const targetYaw = playerMode === 'walk'
-      ? camYaw.current
-      : minimapState.heading + lookYaw.current
+    const targetYaw = minimapState.heading + lookYaw.current
     camYaw.current += (targetYaw - camYaw.current) * chase
 
     bobTime.current += delta * (1 + speed * 0.25)
@@ -153,7 +153,7 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     const smooth = 1 - Math.pow(2, -delta * 6)
     camera.position.lerp(desired, smooth)
     const lookY =
-      playerMode === 'walk' ? (crouching ? 0.7 : 1.3) : 0.5
+      playerMode === 'walk' ? (crouching ? 0.7 : 1.3) : playerMode === 'airplane' ? -1 : 0.5
     camera.lookAt(pos.x, pos.y + lookY, pos.z)
   })
 

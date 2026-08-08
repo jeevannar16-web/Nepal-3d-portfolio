@@ -39,7 +39,6 @@ import FlyCamera from './FlyCamera'
 import Landmarks from './Landmarks'
 import ContentPanel from './ContentPanel'
 import NavBar from './NavBar'
-import Hud from './Hud'
 import TransportPrompt from './TransportPrompt'
 import TravelingIndicator from './TravelingIndicator'
 import Minimap from './Minimap'
@@ -51,10 +50,11 @@ import IntroOverlay from './IntroOverlay'
 import Toast from './Toast'
 import WelcomeCard from './WelcomeCard'
 import HudCluster from './HudCluster'
-import ExitVehicleButton from './ExitVehicleButton'
 import TouchControls from './TouchControls'
 import ParkedArrivalPlane from './ParkedArrivalPlane'
 import Wayfinder from './Wayfinder'
+import AirplaneController from './AirplaneController'
+import HotAirBalloonController from './HotAirBalloonController'
 
 /** three r163+ exposes scene.environmentIntensity; drei's Environment has no
  *  intensity prop, so set it here to keep the HDRI at the intended brightness. */
@@ -114,10 +114,6 @@ function Scene3D() {
     let mounted = true
     void detectCountry().then((res) => {
       if (!mounted) return
-      // Always fly the airplane arrival — even if IP geolocation can't resolve a
-      // country (common on localhost), fall back to the international flight
-      // variant so the airplane scene is always visible. (Use ?intro=standard to
-      // force the short orbit fallback for testing.)
       const variant = res.iso === 'NP' ? 'local' : 'air'
       setGeo(res.country, variant)
     })
@@ -125,6 +121,17 @@ function Scene3D() {
       mounted = false
     }
   }, [setGeo])
+
+  useEffect(() => {
+    setTimeOfDay(getTimeOfDay())
+    let mounted = true
+    void fetchKathmanduWeather().then((kind) => {
+      if (mounted) setWeather(kind)
+    })
+    return () => {
+      mounted = false
+    }
+  }, [setTimeOfDay, setWeather])
 
   useEffect(() => {
     setTimeOfDay(getTimeOfDay())
@@ -170,11 +177,13 @@ function Scene3D() {
     fogFar -= 110
   }
 
+  const lowPower = lowGraphics || weakDevice
+
   return (
     <div ref={containerRef} className="relative h-full w-full">
       <Canvas
         camera={{ position: [0, 26, 42], fov: 70 }}
-        dpr={lowGraphics || weakDevice ? [1, 1.5] : [1, 2]}
+        dpr={lowPower ? [0.5, 1] : [1, 1.5]}
       >
         <color attach="background" args={[theme.skyTop]} />
         <fog attach="fog" args={[theme.fog, fogNear, fogFar]} />
@@ -187,9 +196,9 @@ function Scene3D() {
           position={[10, 15, 10]}
           intensity={theme.sunIntensity}
           color={theme.sunColor}
-          castShadow
-          shadow-mapSize-width={1024}
-          shadow-mapSize-height={1024}
+          castShadow={!lowPower}
+          shadow-mapSize-width={lowPower ? 512 : 1024}
+          shadow-mapSize-height={lowPower ? 512 : 1024}
           shadow-camera-near={0.5}
           shadow-camera-far={100}
           shadow-camera-left={-15}
@@ -198,8 +207,10 @@ function Scene3D() {
           shadow-camera-bottom={-15}
         />
 
-        <Environment files={assetUrl('/hdr/forest_slope_1k.hdr')} background={false} />
-        <EnvIntensity value={0.6} />
+        {/* The HDRI environment drives image-based lighting; it's a real GPU
+            cost, so reduced mode skips it and relies on the plain lights. */}
+        {!lowPower && <Environment files={assetUrl('/hdr/forest_slope_1k.hdr')} background={false} />}
+        {!lowPower && <EnvIntensity value={0.6} />}
         <SceneRef />
         <CameraRef />
 
@@ -212,6 +223,8 @@ function Scene3D() {
               <Player active={playerMode === 'car'} bodyRef={playerBody} />
               <BikeController active={playerMode === 'bike'} bodyRef={playerBody} />
               <HorseController active={playerMode === 'horse'} bodyRef={playerBody} />
+              <AirplaneController active={playerMode === 'airplane'} bodyRef={playerBody} />
+              <HotAirBalloonController active={playerMode === 'balloon'} bodyRef={playerBody} />
             </Suspense>
           )}
           <Landmarks playerRef={playerBody} />
@@ -236,7 +249,7 @@ function Scene3D() {
 
         <FlyCamera />
 
-        {!lowGraphics && (
+        {!lowPower && (
           <EffectComposer>
             <Bloom
               mipmapBlur
@@ -257,11 +270,9 @@ function Scene3D() {
       </Canvas>
 
       <NavBar />
-      <Hud />
       <TransportPrompt />
       <Minimap />
       <HudCluster />
-      <ExitVehicleButton />
       <TouchControls />
       <Wayfinder />
       <TravelingIndicator />

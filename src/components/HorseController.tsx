@@ -80,13 +80,15 @@ export default function HorseController({
     }
     const down = (e: KeyboardEvent) => {
       if (!activeRef.current) return
+      if (e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ' || e.key === 'Escape' || e.code === 'Escape') {
+        e.preventDefault()
+        exit()
+        return
+      }
       const k = keyMap[e.code]
       if (k) {
         keys.current[k] = true
         e.preventDefault()
-      } else if (e.code === 'KeyZ' || e.code === 'Escape') {
-        e.preventDefault()
-        exit()
       }
     }
     const up = (e: KeyboardEvent) => {
