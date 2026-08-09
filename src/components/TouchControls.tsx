@@ -45,7 +45,7 @@ export default function TouchControls(): JSX.Element | null {
   const flashRef = useRef<Record<string, number>>({})
   const [nearVehicle, setNearVehicle] = useState(false)
 
-  const visible = introDone
+  const visible = deviceType === 'mobile' && introDone
   const isMobile = deviceType === 'mobile'
   const isWalk = playerMode === 'walk'
 
