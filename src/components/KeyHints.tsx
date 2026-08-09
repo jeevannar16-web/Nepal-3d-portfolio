@@ -71,13 +71,14 @@ export default function KeyHints(): JSX.Element {
   const playerMode = useStore((s) => s.playerMode)
   const deviceType = useDeviceType()
 
+  const bindings = useControls((s) => s.bindings)
+
   // On touch devices the on-screen D-pad (TouchControls) already carries the
   // arrow buttons + Exit in the corners, so a full-width hint bar down there
   // would just overlap it. Show the keyboard-centric hint bar on desktop only.
   if (deviceType === 'mobile') return <></>
   if (!introDone || isPanelOpen) return <></>
 
-  const bindings = useControls((s) => s.bindings)
   const ride = isVehicle(playerMode)
   const chute = playerMode === 'parachute'
   const walk = playerMode === 'walk'
