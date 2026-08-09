@@ -1,5 +1,6 @@
 import { type JSX, type ReactNode } from 'react'
 import { useStore, type PlayerMode } from '../store/useStore'
+import { useControls, type ControlAction } from '../store/controlsStore'
 import { useDeviceType } from '../hooks/useDeviceType'
 
 function specLabel(spec: string): string {
@@ -75,23 +76,57 @@ export default function KeyHints(): JSX.Element {
   // would just overlap it. Show the keyboard-centric hint bar on desktop only.
   if (deviceType === 'mobile') return <></>
   if (!introDone || isPanelOpen) return <></>
-  // No on-foot hints at the bottom middle: the bar only appears when it has
-  // real content to show — riding a vehicle or steering a parachute.
-  if (playerMode === 'walk') return <></>
 
+  const bindings = useControls((s) => s.bindings)
   const ride = isVehicle(playerMode)
   const chute = playerMode === 'parachute'
+  const walk = playerMode === 'walk'
 
-  return (
+  const ActionChips = ({ action }: { action: ControlAction }) => (
+    <>
+      {bindings[action].map((spec) => (
+        <Key key={spec} spec={spec} />
+      ))}
+    </>
+  )
+
+return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
-      <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 via-white/10 to-emerald-500/20 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white/90 shadow-[0_0_28px_rgba(251,191,36,0.4)] backdrop-blur-md">
+      <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 via-white/10 to-emerald-500/20 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white/90 shadow-[0_0_28px_rgba(251,191,36,0.45)] backdrop-blur-md">
+        {walk && (
+          <>
+            <Chip>
+              <ActionChips action="forward" />
+              <ActionChips action="back" />
+              <ActionChips action="left" />
+              <ActionChips action="right" />
+              <span className="ml-1">Move</span>
+            </Chip>
+            <span className="h-3 w-px bg-white/20" />
+            <Chip>
+              <ActionChips action="run" />
+              <span className="ml-1">Run</span>
+            </Chip>
+            <span className="h-3 w-px bg-white/20" />
+            <Chip>
+              <ActionChips action="jump" />
+              <span className="ml-1">Jump</span>
+            </Chip>
+            <span className="h-3 w-px bg-white/20" />
+            <Chip>
+              <ActionChips action="interact" />
+              <span className="ml-1">Interact</span>
+            </Chip>
+            <span className="h-3 w-px bg-white/20" />
+          </>
+        )}
         {ride && (
           <>
             <Chip>
-              <Key spec="ArrowUp" />
-              <Key spec="ArrowLeft" />
-              <Key spec="ArrowDown" />
-              <Key spec="ArrowRight" />
+              <ActionChips action="forward" />
+              <ActionChips action="back" />
+              <ActionChips action="left" />
+              <ActionChips action="right" />
               <span className="ml-1">Drive</span>
             </Chip>
             <span className="h-3 w-px bg-white/20" />
@@ -100,10 +135,10 @@ export default function KeyHints(): JSX.Element {
         {chute && (
           <>
             <Chip>
-              <Key spec="ArrowUp" />
-              <Key spec="ArrowDown" />
-              <Key spec="ArrowLeft" />
-              <Key spec="ArrowRight" />
+              <ActionChips action="forward" />
+              <ActionChips action="back" />
+              <ActionChips action="left" />
+              <ActionChips action="right" />
               <span className="ml-1">Steer</span>
             </Chip>
             <span className="h-3 w-px bg-white/20" />
@@ -113,17 +148,17 @@ export default function KeyHints(): JSX.Element {
           <span className="ml-1 text-amber-100/90">Mouse Look</span>
         </Chip>
         <span className="h-3 w-px bg-white/20" />
-        {ride && (
+        {(ride || chute) && (
           <>
             <Chip>
-              <Key spec="Escape" />
+              <ActionChips action="exit" />
               <span className="ml-1">Exit</span>
             </Chip>
             <span className="h-3 w-px bg-white/20" />
           </>
         )}
         <Chip>
-          <Key spec="Escape" />
+          <ActionChips action="exit" />
           <span className="ml-1">Menu</span>
         </Chip>
       </div>

@@ -1,0 +1,71 @@
+{
+  "profiles": [
+    {
+      "key": "default",
+      "name": "Default Profile",
+      "identity": {
+        "name": "Jeevan Neupane",
+        "role": "Computer Engineering student (Grade XI)",
+        "location": "Kathmandu, Nepal"
+      },
+      "zones": [
+        {
+          "key": "about",
+          "title": "About Me",
+          "subtitle": "Computer Engineering student (Grade XI)",
+          "body": "Hi, I'm Jeevan Neupane — a Computer Engineering student (Grade XI) based in Kathmandu, Nepal. I love building practical software and understanding how computers work under the hood.\n\nI was born in Kalikot but raised in Kailali, in Sudurpaschim Province, before moving to Kathmandu for school. What started as curiosity about how my own computer worked became a habit of taking things apart and putting them back together better. I taught myself to code by building small, useful tools, and then graduated to real projects that people actually use online.\n\nMy sweet spot is the intersection of systems and the web — knowing what happens between a keystroke and the server, while shipping interfaces that feel effortless. I value clean, honest code, and I'm happiest when something I built quietly makes someone's day a little easier.",
+          "skills": ["Python", "Django", "SQL", "JavaScript", "Exploring Linux internals"]
+        },
+        {
+          "key": "story",
+          "title": "My Story",
+          "subtitle": "Beyond the resume",
+          "body": "I was born in Kalikot district, in the rugged mid-western hills of Karnali Province — the Nepal most people never get to see — but I was raised in Kailali, in the green farmlands of Sudurpaschim Province. Growing up in the far west meant flat monsoon fields, the smell of wet earth after rain, and a long road to anywhere else. I studied at Shree Nata Academy up to class 8, where I first met computers in a classroom and fell in love with the idea that a machine could be taught to think.\n\nAt the start of class 9 I transferred to Kathmandu — a huge leap from a quiet district to the capital. The first months were about finding my feet in a crowded, fast-moving city, but the curiosity I brought from the west never left. I started tinkering with my own machine, breaking it, fixing it, and finally writing code to make it do what I wanted.\n\nToday I study at Shivapuri College in Maharajgunj, Kathmandu — a community campus affiliated with Tribhuvan University that serves students like me who arrive in the city from across the country. My mornings are for classes; my evenings are for building. Every project I ship is a step from a small-town western kid to a developer who can build software for the world — while staying grounded in the valley that raised me.",
+          "skills": ["Linux", "Systems", "Self-taught builder", "Problem solving"]
+        },
+        {
+          "key": "skills",
+          "title": "Skills",
+          "subtitle": "What I work with every day",
+          "body": "From backend web apps to low-level system tinkering, here is the toolkit I reach for.",
+          "skills": ["Python", "Django", "SQL", "JavaScript", "TypeScript", "Linux internals"]
+        },
+        {
+          "key": "projects",
+          "title": "Projects",
+          "subtitle": "Things I have built and shipped",
+          "body": "Real projects, live on the internet. Click through to try them.",
+          "projects": [
+            {
+              "id": "os-installation",
+              "title": "OS-installation",
+              "description": "Interactive OS installation simulator — practice installing Ubuntu, Windows & more before doing it for real.",
+              "tech": ["TypeScript", "React", "Vercel"],
+              "liveUrl": "https://os-installation.vercel.app",
+              "repoUrl": "https://github.com/jeevannar16-web/OS-installation"
+            },
+            {
+              "id": "ojt-ecommerce",
+              "title": "Ojt-Ecommerce-Website",
+              "description": "Fitness Hub — a Django fitness platform with product listings, cart and checkout.",
+              "tech": ["Django", "Python", "CSS", "Render"],
+              "liveUrl": "https://ojt-ecommerce-website.onrender.com",
+              "repoUrl": "https://github.com/jeevannar16-web/Ojt-Ecommerce-Website"
+            }
+          ]
+        },
+        {
+          "key": "contact",
+          "title": "Contact",
+          "subtitle": "Let's talk",
+          "body": "Got a project, an internship, or just want to chat about tech? Reach out.",
+          "contact": {
+            "email": "jeevannar16@gmail.com",
+            "github": "https://github.com/jeevannar16-web",
+            "leetcode": "https://leetcode.com/u/jeevannar16-web"
+          }
+        }
+      ]
+    }
+  ]
+}

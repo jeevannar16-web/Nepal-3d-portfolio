@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from 'react'
 import { useStore } from '../store/useStore'
-import { zones, landmarks } from '../data'
+import { usePortfolio } from '../hooks/usePortfolio'
+import { landmarks } from '../data'
 import { playClick } from '../utils/sounds'
 
 const EXIT_MS = 220
@@ -10,6 +11,8 @@ export default function ContentPanel(): JSX.Element | null {
   const isPanelOpen = useStore((s) => s.isPanelOpen)
   const setIsPanelOpen = useStore((s) => s.setIsPanelOpen)
   const flyTo = useStore((s) => s.flyTo)
+
+  const { getZones, loading } = usePortfolio()
 
   const [renderPanel, setRenderPanel] = useState(false)
   const [exiting, setExiting] = useState(false)
@@ -29,7 +32,9 @@ export default function ContentPanel(): JSX.Element | null {
   }, [isPanelOpen, activeZone, renderPanel])
 
   if (!renderPanel || !activeZone) return null
+  if (loading) return null // wait for portfolio data to load
 
+  const zones = getZones()
   const zone = zones.find((z) => z.key === activeZone)
   if (!zone) return null
 
