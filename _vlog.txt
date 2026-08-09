@@ -1,7 +1,0 @@
-npm notice run nepal-3d-portfolio@0.0.0 dev
-npm notice run vite --host
-
-  VITE v8.2.1  ready in 375 ms
-
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: http://192.168.1.64:5173/  wlo1
