@@ -23,7 +23,6 @@ export const feetLocalY = { current: 0 }
  */
 export const inputState = {
   fwd: false,
-  back: false,
   left: false,
   right: false,
   run: false,

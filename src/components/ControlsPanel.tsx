@@ -11,17 +11,14 @@ import ToggleRow from './ToggleRow'
 
 /**
  * The dedicated Controls / Games panel: every action's current keys shown as
- * chips, click-to-rebind (press the new key), plus quick toggles for the
- * walking conveniences (backward walking, grow/shrink model) and a reset.
- * All bindings live in the persisted controlsStore, so they apply to the
- * keyboard and the on-screen touch controls at once.
+ * chips, click-to-rebind (press the new key), plus quick toggles (grow/shrink
+ * model) and a reset. All bindings live in the persisted controlsStore, so
+ * they apply to the keyboard and the on-screen touch controls at once.
  */
 export default function ControlsPanel(): JSX.Element {
   const bindings = useControls((s) => s.bindings)
   const setBinding = useControls((s) => s.setBinding)
   const resetBindings = useControls((s) => s.resetBindings)
-  const backwardEnabled = useControls((s) => s.backwardEnabled)
-  const setBackwardEnabled = useControls((s) => s.setBackwardEnabled)
   const bigMode = useControls((s) => s.bigMode)
   const setBigMode = useControls((s) => s.setBigMode)
 
@@ -140,12 +137,6 @@ export default function ControlsPanel(): JSX.Element {
         <div className="mb-2 text-[11px] font-bold uppercase tracking-widest text-amber-400/90">
           Quick toggles
         </div>
-        <ToggleRow
-          label="Backward walking"
-          hint="Off by default: S / Down move forward instead, so you never walk back"
-          on={backwardEnabled}
-          onToggle={() => setBackwardEnabled(!backwardEnabled)}
-        />
         <ToggleRow
           label="Grow / shrink model"
           hint="Make the character bigger (moves slower)"

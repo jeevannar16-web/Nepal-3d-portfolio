@@ -1,6 +1,6 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useState, type JSX } from 'react'
 import { useStore } from '../store/useStore'
-import { matchesAction, primaryCode, useControls } from '../store/controlsStore'
+import { primaryCode, useControls } from '../store/controlsStore'
 
 function specLabel(spec: string): string {
   const map: Record<string, string> = {
@@ -32,29 +32,8 @@ export default function KeyHints(): JSX.Element {
   const introDone = useStore((s) => s.introDone)
   const isPanelOpen = useStore((s) => s.isPanelOpen)
   const [finePointer] = useState(() => window.matchMedia('(pointer: fine)').matches)
-  const [dismissed, setDismissed] = useState(false)
 
-  // Hide the hint the moment the player starts moving or after a short while,
-  // so it never lingers over the action.
-  useEffect(() => {
-    if (!finePointer) return
-    const onKey = (e: KeyboardEvent) => {
-      const movement =
-        matchesAction(e, 'forward') ||
-        matchesAction(e, 'back') ||
-        matchesAction(e, 'left') ||
-        matchesAction(e, 'right')
-      if (movement) setDismissed(true)
-    }
-    window.addEventListener('keydown', onKey)
-    const t = setTimeout(() => setDismissed(true), 14000)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      clearTimeout(t)
-    }
-  }, [finePointer])
-
-  if (!introDone || !finePointer || dismissed || isPanelOpen) return <></>
+  if (!introDone || !finePointer || isPanelOpen) return <></>
 
   const b = useControls.getState().bindings
   const move = [b.forward[0], b.back[0], b.left[0], b.right[0]]

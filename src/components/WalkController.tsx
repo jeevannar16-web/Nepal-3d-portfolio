@@ -129,11 +129,10 @@ export default function WalkController({
     }
   }
 
-  // Physical keys currently acting as forward / back. Tracked by code so that
-  // when "Backward walking" is off (default) and S doubles as forward, holding
-  // W + S and releasing one never drops the other.
+  // Physical keys currently acting as forward. Tracked by code so that when S
+  // doubles as forward (it always does — the soldier never walks backward),
+  // holding W + S and releasing one never drops the other.
   const fwdCodes = useRef(new Set<string>())
-  const backCodes = useRef(new Set<string>())
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -155,17 +154,12 @@ export default function WalkController({
         return
       }
       if (matchesAction(e, 'back')) {
-        // Backward walking is off by default (can be enabled in Settings →
-        // Controls). While off, S / ArrowDown still move the model AHEAD so a
-        // forward keypress always advances — never walks the soldier backward.
+        // The back binding (S / ArrowDown) ALWAYS moves the soldier forward —
+        // the walk cycle never plays backward and the model never walks away
+        // from the camera. S is simply a second forward key.
         e.preventDefault()
-        if (useControls.getState().backwardEnabled) {
-          backCodes.current.add(e.code)
-          inputState.back = true
-        } else {
-          fwdCodes.current.add(e.code)
-          inputState.fwd = true
-        }
+        fwdCodes.current.add(e.code)
+        inputState.fwd = true
         return
       }
       if (matchesAction(e, 'left')) {
@@ -202,28 +196,31 @@ export default function WalkController({
       }
     }
     const up = (e: KeyboardEvent) => {
-      if (matchesAction(e, 'forward')) {
+      if (matchesAction(e, 'forward') || matchesAction(e, 'back')) {
+        // Always remove from the set and recompute from its size. Both the
+        // forward and back bindings write into fwdCodes, so either release
+        // simply drops the code — a stale entry could never linger here.
         fwdCodes.current.delete(e.code)
-        if (fwdCodes.current.size === 0) inputState.fwd = false
-      }
-      if (matchesAction(e, 'back')) {
-        if (useControls.getState().backwardEnabled) {
-          backCodes.current.delete(e.code)
-          if (backCodes.current.size === 0) inputState.back = false
-        } else {
-          fwdCodes.current.delete(e.code)
-          if (fwdCodes.current.size === 0) inputState.fwd = false
-        }
+        inputState.fwd = fwdCodes.current.size > 0
       }
       if (matchesAction(e, 'left')) inputState.left = false
       if (matchesAction(e, 'right')) inputState.right = false
       if (matchesAction(e, 'run')) inputState.run = false
     }
+    const onBlur = () => {
+      fwdCodes.current.clear()
+      inputState.fwd = false
+      inputState.left = false
+      inputState.right = false
+      inputState.run = false
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    window.addEventListener('blur', onBlur)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', onBlur)
     }
   }, [])
 
@@ -352,7 +349,7 @@ export default function WalkController({
     // ---- Movement (character-relative: W/S along heading, A/D turn) ----
     const bigMode = useControls.getState().bigMode
     const speedMult = bigMode ? BIG_SPEED_MULT : 1
-    const fwdInput = (inputState.fwd ? 1 : 0) - (inputState.back ? 1 : 0)
+    const fwdInput = inputState.fwd ? 1 : 0
     const sideInput = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0)
     const speed =
       (crouching.current
@@ -362,9 +359,8 @@ export default function WalkController({
           : WALK_SPEED) * speedMult
 
     // ---- Character-relative control (like the vehicles): W/S move along the
-    // soldier's own forward, A/D turn it left/right. S is the exact mirror of W:
-    // same clean walk cycle, same facing, just velocity reversed. No heading
-    // flips, no 360, no extra world motion. ----
+    // soldier's own forward, A/D turn it left/right. S is simply another
+    // forward key — the walk cycle always advances and never plays backward. ---
     const turnInput = sideInput // A/D turn the heading, -1/+1
     const turnRate = 4 // rad/s (controlled, never a full swing per press)
     // Clamp the per-frame delta so a single keypress or a big delta frame can
@@ -385,10 +381,9 @@ export default function WalkController({
       )
       targetVel.copy(dir).multiplyScalar(fwdInput * speed)
     }
-    // Body faces where we move. W and S share the SAME facing (current heading)
-    // so the walk cycle never flips 180 / never shows a second flickering
-    // image — S is simply W with reversed velocity. Heading is only turned by
-    // A/D; targetVel is built from heading, so there is nothing to snap here.
+    // Body always faces where it moves: W and S both advance along the current
+    // heading, so the walk cycle never plays backward. Heading is only turned
+    // by A/D; targetVel is built from heading, so there is nothing to snap.
     const faceAngle = heading.current
 
     const curVel = rb.linvel()

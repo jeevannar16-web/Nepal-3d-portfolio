@@ -21,7 +21,6 @@ function Keycap({ spec }: { spec: string }): JSX.Element {
 
 export default function KeyboardShortcuts(): JSX.Element {
   const bindings = useControls((s) => s.bindings)
-  const backwardEnabled = useControls((s) => s.backwardEnabled)
 
   return (
     <section className="flex flex-col rounded-xl border border-white/10 bg-white/5 p-3">
@@ -47,11 +46,6 @@ export default function KeyboardShortcuts(): JSX.Element {
           </li>
         ))}
       </ul>
-      <div className="mt-1 px-2 text-[11px] font-semibold text-white/40">
-        {backwardEnabled
-          ? 'Backward walking is on — S / Down move you back.'
-          : 'Backward walking is off — S / Down move you forward instead.'}
-      </div>
     </section>
   )
 }

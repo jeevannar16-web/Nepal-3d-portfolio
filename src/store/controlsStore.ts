@@ -66,13 +66,11 @@ export const DEFAULT_BINDINGS: Record<ControlAction, string[]> = {
 
 interface ControlsState {
   bindings: Record<ControlAction, string[]>
-  backwardEnabled: boolean
   bigMode: boolean
   /** Incremented whenever the player asks to snap the camera behind them. */
   cameraSnapTick: number
   setBinding: (action: ControlAction, spec: string) => void
   resetBindings: () => void
-  setBackwardEnabled: (on: boolean) => void
   toggleBigMode: () => void
   setBigMode: (on: boolean) => void
   requestCameraSnap: () => void
@@ -152,7 +150,6 @@ export const useControls = create<ControlsState>()(
   persist(
     (set) => ({
       bindings: DEFAULT_BINDINGS,
-      backwardEnabled: false,
       bigMode: false,
       cameraSnapTick: 0,
       setBinding: (action, spec) =>
@@ -163,7 +160,6 @@ export const useControls = create<ControlsState>()(
           },
         })),
       resetBindings: () => set({ bindings: DEFAULT_BINDINGS }),
-      setBackwardEnabled: (on) => set({ backwardEnabled: on }),
       toggleBigMode: () => set((s) => ({ bigMode: !s.bigMode })),
       setBigMode: (on) => set({ bigMode: on }),
       requestCameraSnap: () => set((s) => ({ cameraSnapTick: s.cameraSnapTick + 1 })),
@@ -186,7 +182,6 @@ export const useControls = create<ControlsState>()(
       },
       partialize: (s) => ({
         bindings: s.bindings,
-        backwardEnabled: s.backwardEnabled,
         bigMode: s.bigMode,
       }),
     },

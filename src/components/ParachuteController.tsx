@@ -14,8 +14,7 @@ import { WORLD_EDGE } from './Ground'
 import { findClearLanding } from '../utils/landingZones'
 
 const DESCENT_SPEED = 5.5 // steady controlled fall, not a free-fall
-const FLARE_SPEED = 2.2 // holding W flares the canopy (slower)
-const DIVE_SPEED = 8.5 // holding S dives (faster)
+const FLARE_SPEED = 2.2 // holding forward (W/S) flares the canopy (slower)
 const DRIFT_SPEED = 3.2 // forward glide speed while descending
 const YAW_RATE = 1.2
 const CAPSULE_HALF_LEN = 0.55 + 0.32
@@ -128,8 +127,9 @@ export default function ParachuteController({
       heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
     }
 
-    // W flares (slower), S dives (faster), otherwise a steady descent.
-    const descend = inputState.back ? DIVE_SPEED : inputState.fwd ? FLARE_SPEED : DESCENT_SPEED
+    // Forward input (W/S — both advance now) flares for a gentler landing;
+    // otherwise a steady descent.
+    const descend = inputState.fwd ? FLARE_SPEED : DESCENT_SPEED
 
     const dir = new THREE.Vector3(Math.sin(heading.current), 0, Math.cos(heading.current))
     const drift = dir.clone().multiplyScalar(DRIFT_SPEED)
