@@ -45,7 +45,8 @@ export default function TouchControls(): JSX.Element | null {
   const flashRef = useRef<Record<string, number>>({})
   const [nearVehicle, setNearVehicle] = useState(false)
 
-  const visible = deviceType === 'mobile' && introDone
+  const visible = introDone
+  const isMobile = deviceType === 'mobile'
   const isWalk = playerMode === 'walk'
 
   // Derive the synthetic key codes straight from the subscribed bindings so a
@@ -165,6 +166,23 @@ export default function TouchControls(): JSX.Element | null {
   }
   const holdEnd = (code: string) => () => release(code)
 
+  // On touch/mobile a sustained forward press should sprint (hold Run as well
+  // as Forward), matching the desktop Shift+W behaviour — otherwise the forward
+  // arrow only walks. Desktop keeps Forward alone so Shift can still be used as
+  // a modifier.
+  const startForward = isMobile
+    ? (e: React.PointerEvent<HTMLButtonElement>) => {
+        holdStart(KEY_UP)(e)
+        press(KEY_RUN)
+      }
+    : holdStart(KEY_UP)
+  const endForward = isMobile
+    ? () => {
+        holdEnd(KEY_UP)()
+        release(KEY_RUN)
+      }
+    : holdEnd(KEY_UP)
+
   const showExit = playerMode !== 'walk' && playerMode !== 'parachute'
 
   // Sizes scale with the uiScale setting (0.75x..1.5x).
@@ -190,10 +208,10 @@ export default function TouchControls(): JSX.Element | null {
         <div />
         <button
           type="button"
-          onPointerDown={holdStart(KEY_UP)}
-          onPointerUp={holdEnd(KEY_UP)}
-          onPointerCancel={holdEnd(KEY_UP)}
-          onPointerLeave={holdEnd(KEY_UP)}
+          onPointerDown={startForward}
+          onPointerUp={endForward}
+          onPointerCancel={endForward}
+          onPointerLeave={endForward}
           className={`${glassBtn} touch-none${pressed(KEY_UP) ? pressedCls : ''}`}
           style={{ width: padBtn, height: padBtn }}
           aria-label="Forward"
