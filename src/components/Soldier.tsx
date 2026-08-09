@@ -6,6 +6,7 @@ import { clone as cloneScene } from 'three/addons/utils/SkeletonUtils.js'
 import { assetUrl } from '../utils/assetUrl'
 import { retargetClips } from '../utils/retargetAnimations'
 import { feetLocalY } from '../store/walkState'
+import { useControls } from '../store/controlsStore'
 import BlobShadow from './BlobShadow'
 
 /**
@@ -17,6 +18,8 @@ import BlobShadow from './BlobShadow'
  * the same poses, facing and scale (no model rescale needed).
  */
 const SOLDIER_SCALE = 1
+// "Big" mode (Ctrl+Home) scales the avatar up; the shadow grows with it.
+const BIG_SCALE = 1.6
 
 interface Motion {
   moving: boolean
@@ -151,6 +154,7 @@ export default function Soldier({
 }: {
   motionRef?: React.RefObject<Motion>
 }): JSX.Element {
+  const bigMode = useControls((s) => s.bigMode)
   const avatar = useGLTF(assetUrl('/models/boy.glb'))
   const soldier = useGLTF(assetUrl('/models/soldier.glb'))
   // Clone the avatar scene per Soldier instance. The walking soldier
@@ -285,8 +289,16 @@ export default function Soldier({
 
   return (
     <group>
-      <primitive object={avatarScene} scale={SOLDIER_SCALE} />
-      <BlobShadow radius={0.8} y={feetLocalY.current + 0.01} />
+      {/* Big mode scales the avatar about the origin and counter-shifts it so
+          the feet (measured at scale 1 as feetLocalY) stay pinned to the same
+          spot — the capsule's bottom — instead of sinking through the ground. */}
+      <group
+        scale={bigMode ? BIG_SCALE : 1}
+        position={[0, bigMode ? (1 - BIG_SCALE) * feetLocalY.current : 0, 0]}
+      >
+        <primitive object={avatarScene} scale={SOLDIER_SCALE} />
+      </group>
+      <BlobShadow radius={bigMode ? 0.8 * BIG_SCALE : 0.8} y={feetLocalY.current + 0.01} />
     </group>
   )
 }

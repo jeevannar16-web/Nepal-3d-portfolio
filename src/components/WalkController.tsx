@@ -10,11 +10,15 @@ import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 import { transportState, type TransportPose } from '../store/transportState'
 import { walkState, inputState, walkHud, feetLocalY } from '../store/walkState'
+import { useControls, matchesAction } from '../store/controlsStore'
 import Soldier from './Soldier'
 
 const WALK_SPEED = 3.0
 const SPRINT_SPEED = 5.2
 const CROUCH_SPEED = 1.4
+// "Big" mode (Ctrl+Home) scales the avatar up and makes every pace slower, so
+// the oversized model still feels deliberate instead of blasting around.
+const BIG_SPEED_MULT = 0.55
 const ACCEL = 24 // snappy acceleration so the gait stays in phase with the body
 const JUMP_VEL = 5.5
 const ENTER_RADIUS = 3.6
@@ -26,19 +30,6 @@ const LAND_TIME = 0.32
 const CAPSULE_HALF_LEN = 0.55 + 0.32
 // Runway top; the intro's scripted exit walk stays on the tarmac (z 84..92).
 const RUNWAY_TOP = 0.04
-
-const keyMap: Record<string, 'fwd' | 'back' | 'left' | 'right' | 'run'> = {
-  KeyW: 'fwd',
-  ArrowUp: 'fwd',
-  KeyS: 'back',
-  ArrowDown: 'back',
-  KeyA: 'left',
-  ArrowLeft: 'left',
-  KeyD: 'right',
-  ArrowRight: 'right',
-  ShiftLeft: 'run',
-  ShiftRight: 'run',
-}
 
 interface WalkControllerProps {
   bodyRef: React.RefObject<RapierRigidBody | null>
@@ -143,32 +134,65 @@ export default function WalkController({
       // Movement keys are tracked even while the soldier is riding (hidden), so
       // a held W/S/A/D from the vehicle carries straight over the moment the
       // player steps out — no need to release and re-press the key after
-      // dismounting.
-      const k = keyMap[e.code]
-      if (k) {
-        inputState[k] = true
+      // dismounting. Everything resolves through the shared control bindings.
+      if (matchesAction(e, 'forward')) {
+        inputState.fwd = true
+        e.preventDefault()
+        return
+      }
+      // Run is matched before back so the Shift+S sprint chord resolves to
+      // running instead of being swallowed by the plain-S back binding.
+      if (matchesAction(e, 'run')) {
+        inputState.run = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'back')) {
+        // Backward walking is off by default (can be enabled in Settings →
+        // Controls), so S only reads as back when the player opted in.
+        if (useControls.getState().backwardEnabled) inputState.back = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'left')) {
+        inputState.left = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'right')) {
+        inputState.right = true
         e.preventDefault()
         return
       }
       if (!activeRef.current) return
-      if (e.code === 'Space') {
+      if (matchesAction(e, 'jump')) {
         e.preventDefault()
         inputState.jump = true
         return
       }
-      if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC') {
+      if (matchesAction(e, 'crouch')) {
+        if (e.repeat) return
         e.preventDefault()
         crouching.current = !crouching.current
         return
       }
-      if (e.code === 'KeyE') {
+      if (matchesAction(e, 'sizeToggle')) {
+        if (e.repeat) return
+        e.preventDefault()
+        useControls.getState().toggleBigMode()
+        return
+      }
+      if (matchesAction(e, 'interact')) {
         e.preventDefault()
         inputState.interact = true
       }
     }
     const up = (e: KeyboardEvent) => {
-      const k = keyMap[e.code]
-      if (k) inputState[k] = false
+      if (matchesAction(e, 'forward')) inputState.fwd = false
+      if (matchesAction(e, 'back')) inputState.back = false
+      if (matchesAction(e, 'left')) inputState.left = false
+      if (matchesAction(e, 'right')) inputState.right = false
+      if (matchesAction(e, 'run')) inputState.run = false
     }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
@@ -301,13 +325,16 @@ export default function WalkController({
     grounded.current = groundedPhys
 
     // ---- Movement (character-relative: W/S along heading, A/D turn) ----
+    const bigMode = useControls.getState().bigMode
+    const speedMult = bigMode ? BIG_SPEED_MULT : 1
     const fwdInput = (inputState.fwd ? 1 : 0) - (inputState.back ? 1 : 0)
     const sideInput = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0)
-    const speed = crouching.current
-      ? CROUCH_SPEED
-      : inputState.run
-        ? SPRINT_SPEED
-        : WALK_SPEED
+    const speed =
+      (crouching.current
+        ? CROUCH_SPEED
+        : inputState.run
+          ? SPRINT_SPEED
+          : WALK_SPEED) * speedMult
 
     // ---- Character-relative control (like the vehicles): W/S move along the
     // soldier's own forward, A/D turn it left/right. S is the exact mirror of W:
@@ -410,6 +437,7 @@ export default function WalkController({
       crouching: motionRef.current.crouching,
       jump: motionRef.current.jump,
     }
+    ;(window as any).__input = inputState
     if (visual.current) visual.current.rotation.y = heading.current
   })
 

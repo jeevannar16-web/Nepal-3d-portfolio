@@ -7,6 +7,7 @@ import { minimapState } from '../store/minimapState'
 import { driveState, type EngineState, type GearLabel } from '../store/driveState'
 import { useStore } from '../store/useStore'
 import { transportState } from '../store/transportState'
+import { matchesAction } from '../store/controlsStore'
 import { glowTexture } from '../utils/textures'
 import { assetUrl } from '../utils/assetUrl'
 import BlobShadow from './BlobShadow'
@@ -59,17 +60,6 @@ interface PlayerProps {
   bodyRef?: React.RefObject<RapierRigidBody | null>
   /** When false the car body sits fixed and parked at its saved spot. */
   active: boolean
-}
-
-const keyMap: Record<string, keyof Keys> = {
-  KeyW: 'forward',
-  ArrowUp: 'forward',
-  KeyS: 'backward',
-  ArrowDown: 'backward',
-  KeyA: 'left',
-  ArrowLeft: 'left',
-  KeyD: 'right',
-  ArrowRight: 'right',
 }
 
 const keys: Keys = { forward: false, backward: false, left: false, right: false }
@@ -149,14 +139,12 @@ export default function Player({ bodyRef, active }: PlayerProps): JSX.Element {
   }, [carScene])
 
   useEffect(() => {
-    const isExit = (e: KeyboardEvent) =>
-      e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ' || e.key === 'Escape' || e.code === 'Escape'
     const down = (e: KeyboardEvent) => {
       if (!activeRef.current) return
       // Get out and walk. The soldier appears beside the door. Checked first so
       // keyboard layouts where Z sits at a different physical position (QWERTZ)
       // still exit instead of being eaten by the movement keymap.
-      if (isExit(e)) {
+      if (matchesAction(e, 'exit')) {
         const rb = body.current
         if (!rb) return
         const p = rb.translation()
@@ -171,9 +159,23 @@ export default function Player({ bodyRef, active }: PlayerProps): JSX.Element {
         setPlayerMode('walk')
         return
       }
-      const k = keyMap[e.code]
-      if (k) {
-        keys[k] = true
+      if (matchesAction(e, 'forward')) {
+        keys.forward = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'back')) {
+        keys.backward = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'left')) {
+        keys.left = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'right')) {
+        keys.right = true
         e.preventDefault()
         return
       }
@@ -199,8 +201,10 @@ export default function Player({ bodyRef, active }: PlayerProps): JSX.Element {
       }
     }
     const up = (e: KeyboardEvent) => {
-      const k = keyMap[e.code]
-      if (k) keys[k] = false
+      if (matchesAction(e, 'forward')) keys.forward = false
+      if (matchesAction(e, 'back')) keys.backward = false
+      if (matchesAction(e, 'left')) keys.left = false
+      if (matchesAction(e, 'right')) keys.right = false
     }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)

@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
 import { assetUrl } from '../utils/assetUrl'
 import { useStore } from '../store/useStore'
+import { matchesAction } from '../store/controlsStore'
 import { transportState, type TransportPose } from '../store/transportState'
 import { autopilot } from '../store/autoPilot'
 import { minimapState } from '../store/minimapState'
@@ -33,17 +34,6 @@ interface Keys {
   down: boolean
   left: boolean
   right: boolean
-}
-
-const keyMap: Record<string, keyof Keys> = {
-  KeyW: 'up',
-  ArrowUp: 'up',
-  KeyS: 'down',
-  ArrowDown: 'down',
-  KeyA: 'left',
-  ArrowLeft: 'left',
-  KeyD: 'right',
-  ArrowRight: 'right',
 }
 
 const keys: Keys = { up: false, down: false, left: false, right: false }
@@ -93,24 +83,38 @@ export default function HotAirBalloonController({
   }
 
   useEffect(() => {
-    const isExit = (e: KeyboardEvent) =>
-      e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ' || e.key === 'Escape' || e.code === 'Escape'
     const down = (e: KeyboardEvent) => {
       if (!activeRef.current) return
-      if (isExit(e)) {
+      if (matchesAction(e, 'exit')) {
         e.preventDefault()
         exitToParachute()
         return
       }
-      const k = keyMap[e.code]
-      if (k) {
-        keys[k] = true
+      if (matchesAction(e, 'forward')) {
+        keys.up = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'back')) {
+        keys.down = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'left')) {
+        keys.left = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'right')) {
+        keys.right = true
         e.preventDefault()
       }
     }
     const up = (e: KeyboardEvent) => {
-      const k = keyMap[e.code]
-      if (k) keys[k] = false
+      if (matchesAction(e, 'forward')) keys.up = false
+      if (matchesAction(e, 'back')) keys.down = false
+      if (matchesAction(e, 'left')) keys.left = false
+      if (matchesAction(e, 'right')) keys.right = false
     }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)

@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import type { RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useStore } from '../store/useStore'
+import { useControls } from '../store/controlsStore'
 import { minimapState } from '../store/minimapState'
 import { walkState } from '../store/walkState'
 import { MAX_SPEED } from './Player'
@@ -57,6 +58,7 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
   const looking = useRef(false)
   const lastX = useRef(0)
   const orbitKeys = useRef({ left: false, right: false })
+  const snapRef = useRef(0)
 
   useEffect(() => {
     const el = gl.domElement
@@ -106,6 +108,13 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     if (flyTarget) return
     const body = target.current
     if (!body) return
+    // Camera snap (touch dock button): reset the free-look orbit so the camera
+    // swings back directly behind the actor.
+    const snapTick = useControls.getState().cameraSnapTick
+    if (snapTick !== snapRef.current) {
+      snapRef.current = snapTick
+      lookYaw.current = 0
+    }
     // Camera sensitivity scales the response speeds (not the input magnitudes):
     // 1 = default, >1 snaps toward the target faster, <1 drifts more smoothly.
     const sd = Math.min(delta, 0.05) * cameraSensitivity

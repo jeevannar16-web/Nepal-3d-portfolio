@@ -11,6 +11,7 @@ import {
 import { Environment } from '@react-three/drei'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useStore } from '../store/useStore'
+import { useControls } from '../store/controlsStore'
 import { transportState } from '../store/transportState'
 import { planeState } from '../store/planeState'
 import { walkHud } from '../store/walkState'
@@ -94,6 +95,7 @@ function Scene3D() {
   const containerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     ;(window as any).__store = useStore
+    ;(window as any).__controls = useControls
     ;(window as any).__scene3dMounted = true
     ;(window as any).__transport = transportState
     ;(window as any).__walkHud = walkHud

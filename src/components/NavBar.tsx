@@ -6,6 +6,7 @@ import type { TimeOfDay } from '../utils/timeOfDay'
 import type { WeatherKind } from '../utils/weather'
 import { ZoneIcon } from './icons'
 import ToggleRow from './ToggleRow'
+import ControlsPanel from './ControlsPanel'
 import { playClick } from '../utils/sounds'
 
 const columnOrder = ['about', 'skills', 'projects', 'story', 'contact']
@@ -47,11 +48,12 @@ const VEHICLES: { mode: TransportMode | 'airplane2'; label: string; hint: string
   },
 ]
 
-type Tab = 'explore' | 'transport' | 'settings' | 'about'
+type Tab = 'explore' | 'transport' | 'controls' | 'settings' | 'about'
 
 const TAB_LABELS: { value: Tab; label: string }[] = [
   { value: 'explore', label: 'Explore' },
   { value: 'transport', label: 'Transport' },
+  { value: 'controls', label: 'Controls' },
   { value: 'settings', label: 'Settings' },
   { value: 'about', label: 'About' },
 ]
@@ -245,9 +247,35 @@ export default function NavBar(): JSX.Element {
       </button>
 
       {open && (
-        <div className="animate-welcome pointer-events-auto mt-3 w-[min(92vw,60rem)] rounded-2xl border border-white/15 bg-slate-900/90 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur">
+        <div className="animate-welcome pointer-events-auto mt-3 flex max-h-[min(calc(100vh-4.5rem),46rem)] w-[min(92vw,62rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950/90 text-slate-100 shadow-2xl shadow-black/60 ring-1 ring-black/40 backdrop-blur-xl">
+          {/* Professional header strip: subtle gradient + brand mark */}
+          <div className="flex items-center gap-2 border-b border-white/5 bg-gradient-to-r from-slate-900 via-slate-900 to-slate-900/70 px-5 py-2.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-400/15 text-amber-300">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3.5 w-3.5"
+                aria-hidden="true"
+              >
+                <path d="M12 3v12" />
+                <path d="M7 10l5 5 5-5" />
+                <path d="M4 20h16" />
+              </svg>
+            </span>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300/80">
+                Nepal Valley
+              </div>
+              <div className="text-[10px] font-semibold text-white/40">Interactive portfolio</div>
+            </div>
+          </div>
+
           {/* Tabs */}
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 px-5 pt-3">
             {TAB_LABELS.map((t) => (
               <button
                 key={t.value}
@@ -256,10 +284,10 @@ export default function NavBar(): JSX.Element {
                   playClick()
                   setTab(t.value)
                 }}
-                className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${
+                className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
                   tab === t.value
-                    ? 'bg-amber-400 text-slate-900'
-                    : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+                    ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/20'
+                    : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
                 }`}
               >
                 {t.label}
@@ -267,6 +295,8 @@ export default function NavBar(): JSX.Element {
             ))}
           </div>
 
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto p-5">
           {/* Explore */}
           {tab === 'explore' && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -350,6 +380,9 @@ export default function NavBar(): JSX.Element {
               </div>
             </div>
           )}
+
+          {/* Controls */}
+          {tab === 'controls' && <ControlsPanel />}
 
           {/* Settings */}
           {tab === 'settings' && (
@@ -478,6 +511,7 @@ export default function NavBar(): JSX.Element {
               </div>
             </div>
           )}
+          </div>
         </div>
       )}
     </nav>

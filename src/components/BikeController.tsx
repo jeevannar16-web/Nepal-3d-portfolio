@@ -10,6 +10,7 @@ import { minimapState } from '../store/minimapState'
 import { driveState } from '../store/driveState'
 import { useStore } from '../store/useStore'
 import { transportState } from '../store/transportState'
+import { matchesAction } from '../store/controlsStore'
 import { BikeModel } from './VehicleModels'
 import BlobShadow from './BlobShadow'
 import Rider from './Rider'
@@ -74,32 +75,38 @@ export default function BikeController({
   }
 
   useEffect(() => {
-    const keyMap: Record<string, 'fwd' | 'back' | 'left' | 'right'> = {
-      KeyW: 'fwd',
-      ArrowUp: 'fwd',
-      KeyS: 'back',
-      ArrowDown: 'back',
-      KeyA: 'left',
-      ArrowLeft: 'left',
-      KeyD: 'right',
-      ArrowRight: 'right',
-    }
     const down = (e: KeyboardEvent) => {
       if (!activeRef.current) return
-      if (e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ' || e.key === 'Escape' || e.code === 'Escape') {
+      if (matchesAction(e, 'exit')) {
         e.preventDefault()
         exit()
         return
       }
-      const k = keyMap[e.code]
-      if (k) {
-        keys.current[k] = true
+      if (matchesAction(e, 'forward')) {
+        keys.current.fwd = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'back')) {
+        keys.current.back = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'left')) {
+        keys.current.left = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'right')) {
+        keys.current.right = true
         e.preventDefault()
       }
     }
     const up = (e: KeyboardEvent) => {
-      const k = keyMap[e.code]
-      if (k) keys.current[k] = false
+      if (matchesAction(e, 'forward')) keys.current.fwd = false
+      if (matchesAction(e, 'back')) keys.current.back = false
+      if (matchesAction(e, 'left')) keys.current.left = false
+      if (matchesAction(e, 'right')) keys.current.right = false
     }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)

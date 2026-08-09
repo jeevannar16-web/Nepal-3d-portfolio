@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
 import { assetUrl } from '../utils/assetUrl'
 import { useStore } from '../store/useStore'
+import { matchesAction } from '../store/controlsStore'
 import { transportState, type TransportPose } from '../store/transportState'
 import { autopilot } from '../store/autoPilot'
 import { minimapState } from '../store/minimapState'
@@ -75,19 +76,6 @@ interface Keys {
   rollRight: boolean
 }
 
-const keyMap: Record<string, keyof Keys> = {
-  KeyW: 'throttleUp',
-  ArrowUp: 'throttleUp',
-  KeyS: 'throttleDown',
-  ArrowDown: 'throttleDown',
-  KeyA: 'yawLeft',
-  ArrowLeft: 'yawLeft',
-  KeyD: 'yawRight',
-  ArrowRight: 'yawRight',
-  KeyQ: 'rollLeft',
-  KeyE: 'rollRight',
-}
-
 const keys: Keys = {
   throttleUp: false,
   throttleDown: false,
@@ -153,24 +141,50 @@ export default function AirplaneController({
   }
 
   useEffect(() => {
-    const isExit = (e: KeyboardEvent) =>
-      e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ' || e.key === 'Escape' || e.code === 'Escape'
     const down = (e: KeyboardEvent) => {
       if (!activeRef.current) return
-      if (isExit(e)) {
+      if (matchesAction(e, 'exit')) {
         e.preventDefault()
         exitToParachute()
         return
       }
-      const k = keyMap[e.code]
-      if (k) {
-        keys[k] = true
+      if (matchesAction(e, 'forward')) {
+        keys.throttleUp = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'back')) {
+        keys.throttleDown = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'left')) {
+        keys.yawLeft = true
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'right')) {
+        keys.yawRight = true
+        e.preventDefault()
+        return
+      }
+      if (e.code === 'KeyQ') {
+        keys.rollLeft = true
+        e.preventDefault()
+        return
+      }
+      if (e.code === 'KeyE') {
+        keys.rollRight = true
         e.preventDefault()
       }
     }
     const up = (e: KeyboardEvent) => {
-      const k = keyMap[e.code]
-      if (k) keys[k] = false
+      if (matchesAction(e, 'forward')) keys.throttleUp = false
+      if (matchesAction(e, 'back')) keys.throttleDown = false
+      if (matchesAction(e, 'left')) keys.yawLeft = false
+      if (matchesAction(e, 'right')) keys.yawRight = false
+      if (e.code === 'KeyQ') keys.rollLeft = false
+      if (e.code === 'KeyE') keys.rollRight = false
     }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)

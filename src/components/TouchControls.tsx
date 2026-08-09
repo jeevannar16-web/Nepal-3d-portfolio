@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { useStore } from '../store/useStore'
+import { useControls, primaryCode } from '../store/controlsStore'
 import { useDeviceType } from '../hooks/useDeviceType'
 import { walkHud } from '../store/walkState'
 
@@ -7,24 +8,18 @@ const STICK_RADIUS = 56
 const DEADZONE = 0.22
 const RUN_PUSH = 0.72
 
-// Every vehicle controller maps the SAME physical keys — W/S/A/D — and reads
-// them from window keydown/keyup listeners gated on their own active state
-// (WalkController even mirrors W/S/A/D into inputState unconditionally). So a
-// single joystick can drive every mode by dispatching synthetic key events;
-// each controller interprets the codes in its own way (throttle vs forward,
-// yaw vs strafe, rise vs flare...). Exit buttons dispatch Escape so the
+// Every vehicle controller maps the SAME physical keys as the walking soldier
+// — and reads them from the shared control bindings in controlsStore, gated on
+// their own active state. So a single joystick can drive every mode by
+// dispatching synthetic key events with the bound codes; each controller
+// interprets the action in its own way (throttle vs forward, yaw vs strafe,
+// rise vs flare...). Exit buttons dispatch the bound exit key so the
 // airplane/balloon bail-out path (parachute) fires exactly like the keyboard.
-const KEY_UP = 'KeyW'
-const KEY_DOWN = 'KeyS'
-const KEY_LEFT = 'KeyA'
-const KEY_RIGHT = 'KeyD'
-const KEY_RUN = 'ShiftLeft'
-const KEY_JUMP = 'Space'
-const KEY_INTERACT = 'KeyE'
-const KEY_EXIT = 'Escape'
 
 function keyEvent(type: 'keydown' | 'keyup', code: string) {
-  window.dispatchEvent(new KeyboardEvent(type, { code, key: code === KEY_EXIT ? 'Escape' : code, bubbles: true }))
+  window.dispatchEvent(
+    new KeyboardEvent(type, { code, key: code === 'Escape' ? 'Escape' : code, bubbles: true }),
+  )
 }
 
 interface StickState {
@@ -38,16 +33,22 @@ interface StickState {
 /**
  * On-screen glass touch controls for touch devices, shown in EVERY mode (not
  * just walking): a dynamic joystick (appears wherever the finger lands on the
- * left side) plus a contextual action button. The joystick maps to W/S/A/D so
- * it drives the on-foot soldier, the car, bike, horse, airplane (throttle +
- * yaw), balloon (rise + drift) and parachute (flare/dive + steer) with the
- * same gesture. "Exit" fires Escape, so bailing out of a plane or balloon
- * opens the parachute just like pressing Z.
+ * left side) plus a vertical dock of action buttons on the right. The joystick
+ * maps to the bound forward/back/left/right actions so it drives the on-foot
+ * soldier, the car, bike, horse, airplane (throttle + yaw), balloon (rise +
+ * drift) and parachute (flare/dive + steer) with the same gesture. The dock
+ * holds Sprint/Jump/Interact while walking and Exit while riding, plus a
+ * camera-snap and a grow/shrink toggle that work in every mode.
  */
 export default function TouchControls(): JSX.Element | null {
   const deviceType = useDeviceType()
   const introDone = useStore((s) => s.introDone)
   const playerMode = useStore((s) => s.playerMode)
+  // Subscribe to the bindings so a rebind instantly re-targets the synthetic
+  // keys (the joystick then drives whatever the player assigned to each action).
+  const bindings = useControls((s) => s.bindings)
+  const requestCameraSnap = useControls((s) => s.requestCameraSnap)
+  const toggleBigMode = useControls((s) => s.toggleBigMode)
 
   const zoneRef = useRef<HTMLDivElement>(null)
   const stickRef = useRef<StickState | null>(null)
@@ -57,6 +58,18 @@ export default function TouchControls(): JSX.Element | null {
 
   const visible = deviceType === 'mobile' && introDone
   const isWalk = playerMode === 'walk'
+
+  // Derive the synthetic key codes straight from the subscribed bindings so a
+  // rebind re-renders here and instantly re-targets the joystick + buttons.
+  const firstSpec = (a: (typeof bindings)[keyof typeof bindings]) => a[0] ?? ''
+  const KEY_UP = firstSpec(bindings.forward)
+  const KEY_DOWN = firstSpec(bindings.back)
+  const KEY_LEFT = firstSpec(bindings.left)
+  const KEY_RIGHT = firstSpec(bindings.right)
+  const KEY_RUN = primaryCode('run')
+  const KEY_JUMP = primaryCode('jump')
+  const KEY_INTERACT = primaryCode('interact')
+  const KEY_EXIT = primaryCode('exit')
 
   const release = useCallback((code: string) => {
     if (!heldRef.current.has(code)) return
@@ -95,7 +108,7 @@ export default function TouchControls(): JSX.Element | null {
       if (allowRun && pushed && !runHeld) press(KEY_RUN)
       if ((!allowRun || !pushed) && runHeld) release(KEY_RUN)
     },
-    [press, release],
+    [press, release, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_RUN],
   )
 
   // Never leave a key stuck: when the controls hide or the mode changes
@@ -197,8 +210,8 @@ export default function TouchControls(): JSX.Element | null {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-20">
-      {/* Dynamic joystick capture zone: left side, clear of the top HUD strip
-          and the bottom-left minimap. */}
+      {/* Dynamic joystick capture zone: left side, clear of the top-left minimap
+          and the top HUD strip. */}
       <div
         ref={zoneRef}
         onPointerDown={startStick}
@@ -206,6 +219,7 @@ export default function TouchControls(): JSX.Element | null {
         onPointerUp={endStick}
         onPointerCancel={endStick}
         onContextMenu={(e) => e.preventDefault()}
+        data-joy=""
         className="pointer-events-auto absolute bottom-[240px] left-0 top-[110px] w-1/2 touch-none select-none"
       />
 
@@ -222,13 +236,23 @@ export default function TouchControls(): JSX.Element | null {
         </>
       )}
 
-      {/* Get in — walk mode only, above the jump/sprint buttons. */}
-      {isWalk && nearVehicle && (
+      {/* Right-side action dock, stacked bottom-up so nothing overlaps. When
+          riding it sits above the bottom-right HUD cluster; when walking the
+          bottom right is free so the dock drops lower. */}
+      <div
+        className={`absolute right-4 flex flex-col items-center gap-3 ${
+          showExit ? 'bottom-44' : 'bottom-28'
+        }`}
+      >
+        {/* Grow / shrink — every mode (touch equivalent of Ctrl+Home). */}
         <button
           type="button"
-          onPointerDown={tapKey(KEY_INTERACT)}
-          className={`${glassBtn} absolute bottom-[150px] right-5 gap-2 px-4 py-3 text-xs font-bold text-amber-300`}
-          aria-label="Get into the nearby vehicle"
+          onPointerDown={(e) => {
+            e.preventDefault()
+            toggleBigMode()
+          }}
+          className={`${glassBtn} h-11 w-11 touch-none`}
+          aria-label="Grow or shrink the model"
         >
           <svg
             viewBox="0 0 24 24"
@@ -237,82 +261,23 @@ export default function TouchControls(): JSX.Element | null {
             strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-4 w-4"
+            className="h-5 w-5 text-sky-300"
             aria-hidden="true"
           >
-            <path d="M12 3v12" />
-            <path d="M7 10l5 5 5-5" />
-            <path d="M4 20h16" />
-          </svg>
-          Get in
-        </button>
-      )}
-
-      {/* Jump — walk mode only. */}
-      {isWalk && (
-        <button
-          type="button"
-          onPointerDown={tapKey(KEY_JUMP)}
-          className={`${glassBtn} absolute right-5 h-16 w-16 touch-none ${
-            nearVehicle ? 'bottom-[238px]' : 'bottom-[150px]'
-          }`}
-          aria-label="Jump"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-7 w-7 text-white/90"
-            aria-hidden="true"
-          >
-            <path d="M12 19V6" />
-            <path d="M5 12l7-7 7 7" />
+            <circle cx="12" cy="12" r="7" />
+            <path d="M12 8v8M8 12h8" />
           </svg>
         </button>
-      )}
 
-      {/* Sprint — walk mode only (joystick push also runs). */}
-      {isWalk && (
+        {/* Camera snap — reset free-look behind the actor, every mode. */}
         <button
           type="button"
-          onPointerDown={holdStart(KEY_RUN)}
-          onPointerUp={holdEnd(KEY_RUN)}
-          onPointerCancel={holdEnd(KEY_RUN)}
-          onPointerLeave={holdEnd(KEY_RUN)}
-          className={`${glassBtn} absolute right-5 h-12 w-12 touch-none ${
-            nearVehicle ? 'bottom-[326px]' : 'bottom-[238px]'
-          }`}
-          aria-label="Sprint"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-5 w-5 text-amber-300"
-            aria-hidden="true"
-          >
-            <path d="M13 3l-1 6 4 3-4 3-1 6" />
-            <path d="M4 14l6-3M8 5l2 6" />
-          </svg>
-        </button>
-      )}
-
-      {/* Exit / bail out — every vehicle. Dispatches Escape so plane/balloon
-          exits go through the parachute bail-out path. */}
-      {showExit && (
-        <button
-          type="button"
-          onPointerDown={tapKey(KEY_EXIT)}
-          className={`${glassBtn} absolute right-5 bottom-[150px] gap-2 px-4 py-3 text-xs font-bold text-red-300`}
-          aria-label={
-            playerMode === 'airplane' || playerMode === 'balloon' ? 'Exit the vehicle (bail out)' : 'Exit the vehicle'
-          }
+          onPointerDown={(e) => {
+            e.preventDefault()
+            requestCameraSnap()
+          }}
+          className={`${glassBtn} h-11 w-11 touch-none`}
+          aria-label="Snap the camera behind you"
         >
           <svg
             viewBox="0 0 24 24"
@@ -321,16 +286,126 @@ export default function TouchControls(): JSX.Element | null {
             strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-4 w-4"
+            className="h-5 w-5 text-emerald-300"
             aria-hidden="true"
           >
-            <path d="M12 4v10" />
-            <path d="M7 9l5 5 5-5" />
-            <path d="M4 20h16" />
+            <circle cx="12" cy="10" r="3" />
+            <path d="M12 19v-6M8 3h8l-1 4H9l-1-4z" />
+            <path d="M12 7v1" />
           </svg>
-          Exit
         </button>
-      )}
+
+        {/* Get in / Interact — walk mode only. Dispatches the bound interact
+            key so it lands in the same enter-vehicle path as the keyboard. */}
+        {isWalk && (
+          <button
+            type="button"
+            onPointerDown={tapKey(KEY_INTERACT)}
+            className={`${glassBtn} gap-2 px-5 py-3 text-xs font-bold ${
+              nearVehicle ? 'text-amber-300' : 'text-white/80'
+            }`}
+            aria-label={nearVehicle ? 'Get into the nearby vehicle' : 'Interact'}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path d="M12 3v12" />
+              <path d="M7 10l5 5 5-5" />
+              <path d="M4 20h16" />
+            </svg>
+            {nearVehicle ? 'Get in' : 'Interact'}
+          </button>
+        )}
+
+        {/* Exit / bail out — every vehicle. Dispatches the bound exit key so
+            plane/balloon exits go through the parachute bail-out path. */}
+        {showExit && (
+          <button
+            type="button"
+            onPointerDown={tapKey(KEY_EXIT)}
+            className={`${glassBtn} gap-2 px-5 py-3 text-xs font-bold text-red-300`}
+            aria-label={
+              playerMode === 'airplane' || playerMode === 'balloon'
+                ? 'Exit the vehicle (bail out)'
+                : 'Exit the vehicle'
+            }
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path d="M12 4v10" />
+              <path d="M7 9l5 5 5-5" />
+              <path d="M4 20h16" />
+            </svg>
+            Exit
+          </button>
+        )}
+
+        {/* Sprint — walk mode only (joystick push also runs). */}
+        {isWalk && (
+          <button
+            type="button"
+            onPointerDown={holdStart(KEY_RUN)}
+            onPointerUp={holdEnd(KEY_RUN)}
+            onPointerCancel={holdEnd(KEY_RUN)}
+            onPointerLeave={holdEnd(KEY_RUN)}
+            className={`${glassBtn} h-12 w-12 touch-none`}
+            aria-label="Sprint"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-5 w-5 text-amber-300"
+              aria-hidden="true"
+            >
+              <path d="M13 3l-1 6 4 3-4 3-1 6" />
+              <path d="M4 14l6-3M8 5l2 6" />
+            </svg>
+          </button>
+        )}
+
+        {/* Jump — walk mode only. */}
+        {isWalk && (
+          <button
+            type="button"
+            onPointerDown={tapKey(KEY_JUMP)}
+            className={`${glassBtn} h-16 w-16 touch-none`}
+            aria-label="Jump"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-7 w-7 text-white/90"
+              aria-hidden="true"
+            >
+              <path d="M12 19V6" />
+              <path d="M5 12l7-7 7 7" />
+            </svg>
+          </button>
+        )}
+      </div>
     </div>
   )
 }
