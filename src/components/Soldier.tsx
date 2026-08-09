@@ -7,6 +7,7 @@ import { assetUrl } from '../utils/assetUrl'
 import { retargetClips } from '../utils/retargetAnimations'
 import { feetLocalY } from '../store/walkState'
 import { useControls } from '../store/controlsStore'
+import { solveArmCCD, type ArmChain } from '../utils/ik'
 import BlobShadow from './BlobShadow'
 
 /**
@@ -21,13 +22,56 @@ const SOLDIER_SCALE = 1
 // "Big" mode (Ctrl+Home) scales the avatar up; the shadow grows with it.
 const BIG_SCALE = 1.6
 
-interface Motion {
+export interface Motion {
   moving: boolean
   running: boolean
   crouching: boolean
   jump: 'anticipate' | 'airborne' | 'land' | null
   /** Current forward speed in m/s, used to pace the gait animation. */
   speed: number
+  /** World-space handlebar grip points while mounted; absent while walking. */
+  riding?: RidingPose
+}
+
+/**
+ * When mounted on a bike/horse/balloon, the rider's arms are posed onto the
+ * handlebars (the Idle clip leaves them hanging loose). These are world-space
+ * grip points + the vehicle's horizontal nose direction, fed in by Rider each
+ * frame. When absent the avatar plays fully as Idle.
+ */
+interface RidingPose {
+  left: THREE.Vector3
+  right: THREE.Vector3
+  /** Vehicle forward (world, horizontal) — aims the hands' grip direction. */
+  barForward: THREE.Vector3
+}
+
+function buildRiderRig(scene: THREE.Object3D): {
+  skeleton: THREE.Skeleton
+  left: ArmChain
+  right: ArmChain
+} | null {
+  let skeleton: THREE.Skeleton | null = null
+  const bones = new Map<string, THREE.Bone>()
+  scene.traverse((o) => {
+    if ((o as THREE.SkinnedMesh).isSkinnedMesh) {
+      skeleton = (o as THREE.SkinnedMesh).skeleton
+    }
+    if ((o as THREE.Bone).isBone) bones.set(o.name, o as THREE.Bone)
+  })
+  if (!skeleton) return null
+  const arm = (side: 'Left' | 'Right'): ArmChain | null => {
+    const clavicle = bones.get(`${side}Shoulder`)
+    const shoulder = bones.get(`${side}Arm`)
+    const elbow = bones.get(`${side}ForeArm`)
+    const hand = bones.get(`${side}Hand`)
+    if (!clavicle || !shoulder || !elbow || !hand) return null
+    return { clavicle, shoulder, elbow, hand }
+  }
+  const left = arm('Left')
+  const right = arm('Right')
+  if (!left || !right) return null
+  return { skeleton, left, right }
 }
 
 const IDLE_MOTION: Motion = {
@@ -171,6 +215,9 @@ export default function Soldier({
     [avatarScene],
   )
   const current = useRef<THREE.AnimationAction | null>(null)
+  const skeletonRef = useRef<THREE.Skeleton | null>(null)
+  const armChainsRef = useRef<{ left: ArmChain; right: ArmChain } | null>(null)
+  const rigBoundRef = useRef(false)
 
   const clips = useMemo(
     () => retargetClips(soldier.animations, soldier.scene, avatarScene),
@@ -279,10 +326,48 @@ export default function Soldier({
       if (action.timeScale !== ts) action.timeScale = ts
     }
     mixer.update(delta)
+    // While mounted, the Idle clip keeps overwriting bone transforms every frame,
+    // so re-pose the arms onto the handlebars AFTER the mix update. Lazily bind
+    // the skeleton on first ride (the scene's bones aren't populated until mount).
+    const riding = motion.riding
+    if (riding && !rigBoundRef.current) {
+      const rig = buildRiderRig(avatarScene)
+      if (rig) {
+        skeletonRef.current = rig.skeleton
+        armChainsRef.current = { left: rig.left, right: rig.right }
+        rigBoundRef.current = true
+      } else {
+        armChainsRef.current = null
+      }
+    }
+    if (riding && skeletonRef.current && armChainsRef.current) {
+      // mixer.update set new LOCAL bone poses (the Idle clip); refresh every
+      // bone's WORLD matrix from the scene root first so CCD reads this frame's
+      // positions rather than the previous render's.
+      avatarScene.updateWorldMatrix(true, true)
+      solveArmCCD(armChainsRef.current.left, riding.left, riding.barForward)
+      solveArmCCD(armChainsRef.current.right, riding.right, riding.barForward)
+      skeletonRef.current.update()
+    }
     ;(window as any).__soldier = {
       clips: [...actions.keys()],
       active: current.current?.getClip().name ?? null,
       want,
+      riding: riding
+        ? {
+            bound: !!skeletonRef.current,
+            target: riding,
+            leftHand: armChainsRef.current
+              ? armChainsRef.current.left.hand.getWorldPosition(new THREE.Vector3())
+              : null,
+            rightHand: armChainsRef.current
+              ? armChainsRef.current.right.hand.getWorldPosition(new THREE.Vector3())
+              : null,
+            shoulderL: armChainsRef.current
+              ? armChainsRef.current.left.clavicle.getWorldPosition(new THREE.Vector3())
+              : null,
+          }
+        : null,
     }
     ;(window as any).__soldierScene = avatarScene
   })

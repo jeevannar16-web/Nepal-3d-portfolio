@@ -219,7 +219,13 @@ export default function BikeController({
       <CuboidCollider args={[0.42, 0.6, 1.05]} friction={0.3} />
       <group ref={visual}>
         <BikeModel />
-        {active && <Rider seat={[0, 0.8, 0]} lean={0.5} />}
+        {active && (
+          <Rider
+            seat={[0, 0.8, 0]}
+            lean={0.5}
+            grip={{ left: [-0.2, 0.9, 0.22], right: [0.2, 0.9, 0.22] }}
+          />
+        )}
         <BlobShadow radius={1} y={0.01} />
       </group>
     </RigidBody>

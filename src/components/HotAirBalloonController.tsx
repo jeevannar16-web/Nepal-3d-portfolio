@@ -254,7 +254,12 @@ export default function HotAirBalloonController({
       <CuboidCollider args={[1.2, 2.5, 1.2]} position={[0, 2.5, 0]} />
       <group ref={visual} position={[0, 0, 0]}>
         <primitive object={balloonScene} scale={BALLOON_SCALE} />
-        {active && <Rider seat={[0, GONDOLA_SEAT_Y, 0]} />}
+        {active && (
+          <Rider
+            seat={[0, GONDOLA_SEAT_Y, 0]}
+            grip={{ left: [-0.22, 0.82, 0.02], right: [0.22, 0.82, 0.02] }}
+          />
+        )}
       </group>
       <BlobShadow radius={1.5} y={0.01} />
     </RigidBody>

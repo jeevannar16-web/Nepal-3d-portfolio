@@ -237,7 +237,13 @@ export default function HorseController({
       <CuboidCollider args={[0.55, 0.8, 1.05]} friction={0.3} />
       <group ref={visual}>
         <HorseModel />
-        {active && <Rider seat={[0, 1.05, -0.1]} lean={0.3} />}
+        {active && (
+          <Rider
+            seat={[0, 1.05, -0.1]}
+            lean={0.3}
+            grip={{ left: [-0.12, 0.98, 0.2], right: [0.12, 0.98, 0.2] }}
+          />
+        )}
         <BlobShadow radius={1.2} y={0.01} />
       </group>
     </RigidBody>
