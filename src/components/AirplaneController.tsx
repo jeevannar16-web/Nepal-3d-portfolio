@@ -268,14 +268,15 @@ export default function AirplaneController({
 
     const speed = (MIN_SPEED + throttleLevel.current * (MAX_SPEED - MIN_SPEED)) * thrust
 
-    // Yaw
-    if (keys.yawLeft) heading.current += YAW_RATE * dt
-    if (keys.yawRight) heading.current -= YAW_RATE * dt
+    // Yaw — 'right' action (A/←/Home) yaws up (screen-left), matching the
+    // ground vehicles and the on-foot soldier.
+    if (keys.yawRight) heading.current += YAW_RATE * dt
+    if (keys.yawLeft) heading.current -= YAW_RATE * dt
     heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
 
     // Roll: bank into turns and auto-level when the stick is centred, so the
     // plane stays stable without the player constantly correcting it.
-    const turnBank = (keys.yawRight ? 1 : 0) - (keys.yawLeft ? 1 : 0)
+    const turnBank = (keys.yawLeft ? 1 : 0) - (keys.yawRight ? 1 : 0)
     const inputRoll = (keys.rollLeft ? 1 : 0) - (keys.rollRight ? 1 : 0)
     const targetRoll = clamp(inputRoll + turnBank * TURN_BANK, -1, 1)
     rollAngle.current += (targetRoll * ROLL_GAIN - rollAngle.current) * (1 - Math.pow(2, -dt * 4))

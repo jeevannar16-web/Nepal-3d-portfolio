@@ -329,7 +329,7 @@ export default function Player({ bodyRef, active }: PlayerProps): JSX.Element {
     // ---- Steering ----
     const speed = Math.hypot(lin.x, lin.z)
     const speedNorm = clamp(speed / MAX_SPEED, 0, 1)
-    const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0)
+    const steerInput = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
     const effectiveSteer = inReverse ? -steerInput : steerInput
     if (effectiveSteer !== 0) {
       const turnRate = BASE_TURN_RATE * (1 - STEER_SPEED_FALLOFF * speedNorm)

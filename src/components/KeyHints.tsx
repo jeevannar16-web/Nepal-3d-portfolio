@@ -1,5 +1,6 @@
 import { type JSX, type ReactNode } from 'react'
 import { useStore, type PlayerMode } from '../store/useStore'
+import { useDeviceType } from '../hooks/useDeviceType'
 
 function specLabel(spec: string): string {
   const map: Record<string, string> = {
@@ -67,7 +68,12 @@ export default function KeyHints(): JSX.Element {
   const introDone = useStore((s) => s.introDone)
   const isPanelOpen = useStore((s) => s.isPanelOpen)
   const playerMode = useStore((s) => s.playerMode)
+  const deviceType = useDeviceType()
 
+  // On touch devices the on-screen D-pad (TouchControls) already carries the
+  // arrow buttons + Exit in the corners, so a full-width hint bar down there
+  // would just overlap it. Show the keyboard-centric hint bar on desktop only.
+  if (deviceType === 'mobile') return <></>
   if (!introDone || isPanelOpen) return <></>
   // No on-foot hints at the bottom middle: the bar only appears when it has
   // real content to show — riding a vehicle or steering a parachute.
@@ -82,10 +88,10 @@ export default function KeyHints(): JSX.Element {
         {ride && (
           <>
             <Chip>
-              <Key spec="KeyW" />
-              <Key spec="KeyA" />
-              <Key spec="KeyS" />
-              <Key spec="KeyD" />
+              <Key spec="ArrowUp" />
+              <Key spec="ArrowLeft" />
+              <Key spec="ArrowDown" />
+              <Key spec="ArrowRight" />
               <span className="ml-1">Drive</span>
             </Chip>
             <span className="h-3 w-px bg-white/20" />
@@ -94,8 +100,10 @@ export default function KeyHints(): JSX.Element {
         {chute && (
           <>
             <Chip>
-              <Key spec="Home" />
-              <Key spec="End" />
+              <Key spec="ArrowUp" />
+              <Key spec="ArrowDown" />
+              <Key spec="ArrowLeft" />
+              <Key spec="ArrowRight" />
               <span className="ml-1">Steer</span>
             </Chip>
             <span className="h-3 w-px bg-white/20" />

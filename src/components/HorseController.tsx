@@ -144,7 +144,7 @@ export default function HorseController({
     const fwdVel = dir.x * lin.x + dir.z * lin.z
     const absSpeed = Math.abs(fwdVel)
 
-    const steer = (keys.current.left ? 1 : 0) - (keys.current.right ? 1 : 0)
+    const steer = (keys.current.right ? 1 : 0) - (keys.current.left ? 1 : 0)
     if (steer !== 0) {
       const rate = TURN_RATE * (1 - 0.5 * clamp(absSpeed / MAX_SPEED, 0, 1))
       yawVel.current += (steer * rate - yawVel.current) * (1 - Math.exp(-dt * STEER_SMOOTH))
@@ -237,7 +237,7 @@ export default function HorseController({
       <CuboidCollider args={[0.55, 0.8, 1.05]} friction={0.3} />
       <group ref={visual}>
         <HorseModel />
-        {active && <Rider seat={[0, 1.05, 0]} lean={0.2} />}
+        {active && <Rider seat={[0, 1.05, -0.1]} lean={0.3} />}
         <BlobShadow radius={1.2} y={0.01} />
       </group>
     </RigidBody>

@@ -146,7 +146,7 @@ export default function BikeController({
     const fwdVel = dir.x * lin.x + dir.z * lin.z
     const absSpeed = Math.abs(fwdVel)
 
-    const steer = (keys.current.left ? 1 : 0) - (keys.current.right ? 1 : 0)
+    const steer = (keys.current.right ? 1 : 0) - (keys.current.left ? 1 : 0)
     if (steer !== 0) {
       const rate = TURN_RATE * (1 - SPEED_FALLOFF * clamp(absSpeed / MAX_SPEED, 0, 1))
       yawVel.current += (steer * rate - yawVel.current) * (1 - Math.exp(-dt * STEER_SMOOTH))
@@ -219,7 +219,7 @@ export default function BikeController({
       <CuboidCollider args={[0.42, 0.6, 1.05]} friction={0.3} />
       <group ref={visual}>
         <BikeModel />
-        {active && <Rider seat={[0, 0.75, 0]} lean={0.45} />}
+        {active && <Rider seat={[0, 0.8, 0]} lean={0.5} />}
         <BlobShadow radius={1} y={0.01} />
       </group>
     </RigidBody>

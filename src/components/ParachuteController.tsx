@@ -103,10 +103,12 @@ export default function ParachuteController({
       pos.z = cz
     }
 
-    // A/D steer the canopy (same yaw convention as the other vehicles).
+    // A/D steer the canopy. The yaw convention matches every other vehicle and
+    // the on-foot soldier: the 'right' action (A/←/Home) yaws the heading up
+    // (screen-left), the 'left' action (D/→/End) yaws it down (screen-right).
     const steer = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0)
     if (steer !== 0) {
-      heading.current += -steer * YAW_RATE * dt
+      heading.current += steer * YAW_RATE * dt
       heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
     }
 

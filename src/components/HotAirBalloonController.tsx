@@ -182,9 +182,10 @@ export default function HotAirBalloonController({
     const hInput = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
     const drift = dir.clone().multiplyScalar(DRIFT_SPEED * 0.5).addScaledVector(right, hInput * DRIFT_SPEED * 0.5)
 
-    // Yaw
-    if (keys.left) heading.current += YAW_RATE * dt
-    if (keys.right) heading.current -= YAW_RATE * dt
+    // Yaw — same convention as every other vehicle: 'right' action (A/←) yaws
+    // the heading up (screen-left), 'left' action (D/→) yaws it down.
+    if (keys.right) heading.current += YAW_RATE * dt
+    if (keys.left) heading.current -= YAW_RATE * dt
     heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
 
     const cur = rb.linvel()

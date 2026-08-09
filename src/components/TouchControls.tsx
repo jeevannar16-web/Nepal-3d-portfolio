@@ -53,8 +53,12 @@ export default function TouchControls(): JSX.Element | null {
   const firstSpec = (a: (typeof bindings)[keyof typeof bindings]) => a[0] ?? ''
   const KEY_UP = firstSpec(bindings.forward)
   const KEY_DOWN = firstSpec(bindings.back)
-  const KEY_LEFT = firstSpec(bindings.left)
-  const KEY_RIGHT = firstSpec(bindings.right)
+  // The on-screen LEFT arrow must turn the actor to screen-left. The "left"
+  // action is bound to D/→/End (which the user chose to turn RIGHT on screen),
+  // so the screen-left turn lives in the "right" action (A/←/Home) — dispatch
+  // the opposite action on each side to match the arrow icon.
+  const KEY_LEFT = firstSpec(bindings.right)
+  const KEY_RIGHT = firstSpec(bindings.left)
   const KEY_RUN = primaryCode('run')
   const KEY_JUMP = primaryCode('jump')
   const KEY_INTERACT = primaryCode('interact')
