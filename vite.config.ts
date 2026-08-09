@@ -9,6 +9,14 @@ export default defineConfig({
   base: process.env.VITE_BASE || '/',
   plugins: [react(), tailwindcss()],
   server: {
-    allowedHosts: true
+    allowedHosts: true,
+    // Poll the filesystem instead of relying on the OS inotify watcher. The
+    // watcher can silently stop detecting changes (serving stale code to
+    // always-on dev servers), which is exactly what caused repeated "still
+    // seeing old content" reports. Polling can never miss a file change.
+    watch: {
+      usePolling: true,
+      interval: 300
+    }
   }
 })

@@ -1,6 +1,5 @@
-import { useState, type JSX } from 'react'
-import { useStore } from '../store/useStore'
-import { primaryCode, useControls } from '../store/controlsStore'
+import { type JSX, type ReactNode } from 'react'
+import { useStore, type PlayerMode } from '../store/useStore'
 
 function specLabel(spec: string): string {
   const map: Record<string, string> = {
@@ -16,52 +15,109 @@ function specLabel(spec: string): string {
     ShiftRight: 'Shift',
     Space: 'Space',
     KeyE: 'E',
+    Escape: 'Esc',
+    Home: 'Home',
+    End: 'End',
   }
   return map[spec] ?? spec.replace('Key', '').replace(/^Digit/, '')
 }
 
 function Key({ spec }: { spec: string }): JSX.Element {
   return (
-    <kbd className="inline-flex min-w-[1.4rem] items-center justify-center rounded-md border border-white/25 bg-white/15 px-1.5 py-0.5 text-[10px] font-bold text-white">
+    <kbd className="inline-flex min-w-[1.4rem] items-center justify-center rounded-md border border-amber-300/60 bg-gradient-to-b from-amber-400/40 to-amber-600/30 px-1.5 py-0.5 text-[10px] font-black text-amber-100 shadow-[0_0_10px_rgba(251,191,36,0.45)]">
       {specLabel(spec)}
     </kbd>
   )
 }
 
+function Chip({
+  icon,
+  children,
+}: {
+  icon?: boolean
+  children: ReactNode
+}): JSX.Element {
+  return (
+    <span className="flex items-center gap-1 rounded-lg border border-white/10 bg-black/25 px-2 py-1">
+      {icon && (
+        <svg
+          className="h-3.5 w-3.5 text-amber-200"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <rect x="6" y="3" width="12" height="18" rx="6" />
+          <path d="M12 7v4" />
+        </svg>
+      )}
+      {children}
+    </span>
+  )
+}
+
+const isVehicle = (mode: PlayerMode): boolean =>
+  mode === 'car' ||
+  mode === 'bike' ||
+  mode === 'horse' ||
+  mode === 'airplane' ||
+  mode === 'balloon'
+
 export default function KeyHints(): JSX.Element {
   const introDone = useStore((s) => s.introDone)
   const isPanelOpen = useStore((s) => s.isPanelOpen)
-  const [finePointer] = useState(() => window.matchMedia('(pointer: fine)').matches)
+  const playerMode = useStore((s) => s.playerMode)
 
-  if (!introDone || !finePointer || isPanelOpen) return <></>
+  if (!introDone || isPanelOpen) return <></>
+  // No on-foot hints at the bottom middle: the bar only appears when it has
+  // real content to show — riding a vehicle or steering a parachute.
+  if (playerMode === 'walk') return <></>
 
-  const b = useControls.getState().bindings
-  const move = [b.forward[0], b.back[0], b.left[0], b.right[0]]
+  const ride = isVehicle(playerMode)
+  const chute = playerMode === 'parachute'
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
-      <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-full border border-white/10 bg-black/55 px-4 py-2 text-[11px] font-bold text-white/85 shadow-lg shadow-black/40 backdrop-blur-md">
-        <span className="flex items-center gap-1">
-          {move.map((spec) => (
-            <Key key={spec} spec={spec} />
-          ))}
-          <span className="ml-1">Move</span>
-        </span>
-        <span className="text-white/30">·</span>
-        <span className="flex items-center gap-1">
-          <Key spec={primaryCode('run')} />
-          <span className="ml-1">Run</span>
-        </span>
-        <span className="text-white/30">·</span>
-        <span className="flex items-center gap-1">
-          <Key spec={primaryCode('jump')} />
-          <span className="ml-1">Jump</span>
-        </span>
-        <span className="text-white/30">·</span>
-        <span className="flex items-center gap-1">
-          <Key spec={primaryCode('interact')} />
-          <span className="ml-1">Interact</span>
-        </span>
+      <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 via-white/10 to-emerald-500/20 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white/90 shadow-[0_0_28px_rgba(251,191,36,0.4)] backdrop-blur-md">
+        {ride && (
+          <>
+            <Chip>
+              <Key spec="KeyW" />
+              <Key spec="KeyA" />
+              <Key spec="KeyS" />
+              <Key spec="KeyD" />
+              <span className="ml-1">Drive</span>
+            </Chip>
+            <span className="h-3 w-px bg-white/20" />
+          </>
+        )}
+        {chute && (
+          <>
+            <Chip>
+              <Key spec="Home" />
+              <Key spec="End" />
+              <span className="ml-1">Steer</span>
+            </Chip>
+            <span className="h-3 w-px bg-white/20" />
+          </>
+        )}
+        <Chip icon>
+          <span className="ml-1 text-amber-100/90">Mouse Look</span>
+        </Chip>
+        <span className="h-3 w-px bg-white/20" />
+        {ride && (
+          <>
+            <Chip>
+              <Key spec="Escape" />
+              <span className="ml-1">Exit</span>
+            </Chip>
+            <span className="h-3 w-px bg-white/20" />
+          </>
+        )}
+        <Chip>
+          <Key spec="Escape" />
+          <span className="ml-1">Menu</span>
+        </Chip>
       </div>
     </div>
   )

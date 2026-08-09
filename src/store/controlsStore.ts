@@ -23,7 +23,6 @@ export type ControlAction =
   | 'interact'
   | 'exit'
   | 'crouch'
-  | 'sizeToggle'
 
 export const ACTION_ORDER: ControlAction[] = [
   'forward',
@@ -35,7 +34,6 @@ export const ACTION_ORDER: ControlAction[] = [
   'interact',
   'exit',
   'crouch',
-  'sizeToggle',
 ]
 
 export const ACTION_LABELS: Record<ControlAction, string> = {
@@ -48,20 +46,18 @@ export const ACTION_LABELS: Record<ControlAction, string> = {
   interact: 'Interact / get in',
   exit: 'Exit vehicle / bail out',
   crouch: 'Crouch',
-  sizeToggle: 'Grow / shrink model',
 }
 
 export const DEFAULT_BINDINGS: Record<ControlAction, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
   back: ['KeyS', 'ArrowDown'],
-  left: ['KeyA', 'ArrowLeft'],
-  right: ['KeyD', 'ArrowRight'],
+  left: ['KeyD', 'ArrowRight', 'End'],
+  right: ['KeyA', 'ArrowLeft', 'Home'],
   run: ['ShiftLeft', 'ShiftRight', 'Shift+KeyS'],
   jump: ['Space'],
   interact: ['KeyE'],
   exit: ['Escape', 'KeyZ'],
   crouch: ['ControlLeft', 'ControlRight', 'KeyC'],
-  sizeToggle: ['Control+Home'],
 }
 
 interface ControlsState {
@@ -131,6 +127,7 @@ export function keyLabel(spec: string): string {
     ControlLeft: 'Ctrl',
     ControlRight: 'Ctrl',
     Home: 'Home',
+    End: 'End',
     KeyW: 'W',
     KeyA: 'A',
     KeyS: 'S',
@@ -169,14 +166,20 @@ export const useControls = create<ControlsState>()(
       storage: createJSONStorage(() => localStorage),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<ControlsState>
+        const pb = (p.bindings ?? {}) as Partial<Record<ControlAction, string[]>>
         return {
           ...current,
           ...p,
           // Older saved bindings may miss actions added later; always fill
-          // every action from the current defaults.
+          // every action from the current defaults, and keep the turn keys
+          // locked to the standard layout regardless of what an older session
+          // saved — stale Home/End/A/D/arrow placement in localStorage used to
+          // resurface every reload. Standard = left: D, →, End; right: A, ←, Home.
           bindings: {
             ...current.bindings,
-            ...(p.bindings ?? {}),
+            ...pb,
+            left: ['KeyD', 'ArrowRight', 'End'],
+            right: ['KeyA', 'ArrowLeft', 'Home'],
           },
         }
       },

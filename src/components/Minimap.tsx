@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
-import { landmarks } from '../data'
+import { landmarks, zones } from '../data'
 import { roadPaths, RIVER, POND, AIRPORT } from '../world'
 import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
@@ -30,11 +30,15 @@ function MapArt({
   showLabels,
   interactive,
   onPick,
+  hoveredId,
+  onHover,
 }: {
   markerRef: React.RefObject<SVGGElement | null>
   showLabels: boolean
   interactive?: boolean
   onPick?: (id: string) => void
+  hoveredId?: string | null
+  onHover?: (id: string | null) => void
 }): JSX.Element {
   const visited = useStore.getState().visitedZones
   const riverW = Math.max(0.6, (RIVER.width / WORLD) * (V - PAD * 2))
@@ -173,8 +177,22 @@ function MapArt({
         const [lx, lz] = toPx(lm.position[0], lm.position[2])
         const hit = interactive
         const onClick = () => onPick?.(lm.id)
+        const setHover = (v: boolean) => onHover?.(v ? lm.id : null)
         return (
-          <g key={lm.id} onClick={hit ? onClick : undefined} className={hit ? 'cursor-pointer' : ''}>
+          <g
+            key={lm.id}
+            onClick={hit ? onClick : undefined}
+            onMouseEnter={hit ? () => setHover(true) : undefined}
+            onMouseLeave={hit ? () => setHover(false) : undefined}
+            onFocus={hit ? () => setHover(true) : undefined}
+            onBlur={hit ? () => setHover(false) : undefined}
+            tabIndex={hit ? 0 : undefined}
+            role={hit ? 'button' : undefined}
+            className={hit ? 'cursor-pointer' : ''}
+          >
+            {hoveredId === lm.id && (
+              <circle cx={lx} cy={lz} r={4.4} fill="none" stroke="#e5484d" strokeWidth={0.6} />
+            )}
             <circle cx={lx} cy={lz} r={3} fill="#fff" stroke="#7a5c35" strokeWidth={0.4} />
             <circle
               cx={lx}
@@ -240,6 +258,7 @@ export default function Minimap(): JSX.Element | null {
   const compactRef = useRef<SVGGElement>(null)
   const fullRef = useRef<SVGGElement>(null)
   const [open, setOpen] = useState(false)
+  const [hovered, setHovered] = useState<string | null>(null)
   const weakDevice = useRef(shouldReduceGraphics())
 
   useEffect(() => {
@@ -270,6 +289,10 @@ export default function Minimap(): JSX.Element | null {
   }, [open])
 
   if (!introDone) return null
+
+  const hoverLm = hovered ? landmarks.find((lm) => lm.id === hovered) : null
+  const hoverZone = hoverLm ? zones.find((z) => z.key === hoverLm.contentKey) : null
+  const hoverPos = hoverLm ? toPx(hoverLm.position[0], hoverLm.position[2]) : null
 
   return (
     <>
@@ -312,19 +335,48 @@ export default function Minimap(): JSX.Element | null {
               </h2>
               <span className="text-[10px] font-semibold">click a pin to fly</span>
             </div>
-            <div className="aspect-square w-full">
+            <div className="relative aspect-square w-full">
               <MapArt
                 markerRef={fullRef}
                 showLabels
                 interactive
+                hoveredId={hovered}
+                onHover={setHovered}
                 onPick={(id) => {
                   const lm = landmarks.find((l) => l.id === id)
                   if (!lm) return
                   playClick()
                   setOpen(false)
+                  setHovered(null)
                   flyTo(lm.position[0], lm.position[2])
                 }}
               />
+              {hoverLm && hoverPos && (
+                <div
+                  className="pointer-events-none absolute z-10 w-44 -translate-x-1/2 rounded-lg border border-[#a8935f] bg-[#f6f0dd] px-3 py-2 text-[#5a4a2e] shadow-xl shadow-black/40"
+                  style={{
+                    left: `${(hoverPos[0] / V) * 100}%`,
+                    top: `${(hoverPos[1] / V) * 100}%`,
+                    transform: 'translate(-50%, calc(-100% - 10px))',
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-block h-3 w-3 shrink-0 rounded-full border border-[#7a5c35]"
+                      style={{ backgroundColor: hoverLm.color }}
+                    />
+                    <span className="text-xs font-black uppercase tracking-wide">
+                      {hoverLm.label.split(' — ')[0]}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] font-semibold leading-snug text-[#7a5c35]">
+                    {hoverZone ? hoverZone.subtitle : 'Point of interest'}
+                  </p>
+                  <p className="mt-1.5 text-[9px] font-bold uppercase tracking-wider text-[#a8935f]">
+                    Click to fly there
+                  </p>
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-[#a8935f]/50 bg-[#ededed]/80 px-4 py-2 text-[11px] font-semibold">
               {landmarks.map((lm) => (

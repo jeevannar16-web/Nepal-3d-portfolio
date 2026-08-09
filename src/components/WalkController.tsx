@@ -53,6 +53,7 @@ export default function WalkController({
   const body = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
   const heading = useRef(transportState.walk.heading)
+  const yawVel = useRef(0)
   const grounded = useRef(true)
   const crouching = useRef(false)
   const jumpState = useRef<'anticipate' | 'airborne' | 'land' | null>(null)
@@ -147,9 +148,15 @@ export default function WalkController({
         return
       }
       // Run is matched before back so the Shift+S sprint chord resolves to
-      // running instead of being swallowed by the plain-S back binding.
+      // running instead of being swallowed by the plain-S back binding. S is a
+      // forward key, so the chord must ALSO set forward — otherwise Shift+S
+      // would sprint in place and never advance.
       if (matchesAction(e, 'run')) {
         inputState.run = true
+        if (matchesAction(e, 'back')) {
+          fwdCodes.current.add(e.code)
+          inputState.fwd = true
+        }
         e.preventDefault()
         return
       }
@@ -182,12 +189,6 @@ export default function WalkController({
         if (e.repeat) return
         e.preventDefault()
         crouching.current = !crouching.current
-        return
-      }
-      if (matchesAction(e, 'sizeToggle')) {
-        if (e.repeat) return
-        e.preventDefault()
-        useControls.getState().toggleBigMode()
         return
       }
       if (matchesAction(e, 'interact')) {
@@ -234,6 +235,7 @@ export default function WalkController({
       rb.setTranslation({ x: 0, y: -500, z: 0 }, true)
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
       if (visual.current) visual.current.visible = false
+      yawVel.current = 0
       activePrev.current = false
       return
     }
@@ -361,13 +363,24 @@ export default function WalkController({
     // ---- Character-relative control (like the vehicles): W/S move along the
     // soldier's own forward, A/D turn it left/right. S is simply another
     // forward key — the walk cycle always advances and never plays backward. ---
+    // Turning is driven by a yaw VELOCITY that ramps up on keypress and decays
+    // on release (same feel as the vehicles), so the soldier eases into and out
+    // of corners instead of snapping to a fixed turn rate.
     const turnInput = sideInput // A/D turn the heading, -1/+1
-    const turnRate = 4 // rad/s (controlled, never a full swing per press)
+    const turnRate = 4 // rad/s peak yaw velocity while turning
+    const TURN_RESPONSE = 10 // how fast yaw velocity ramps toward the peak
+    const TURN_DAMPING = 6 // how fast yaw velocity decays after release
     // Clamp the per-frame delta so a single keypress or a big delta frame can
     // never spin the model a full turn in one step.
     const maxTurn = THREE.MathUtils.degToRad(30) // 30 deg/frame cap @ 60fps-ish
-    const rawTurn = turnInput * turnRate * delta
-    heading.current += Math.max(-maxTurn, Math.min(maxTurn, rawTurn))
+    if (turnInput !== 0) {
+      yawVel.current +=
+        (turnInput * turnRate - yawVel.current) * (1 - Math.exp(-delta * TURN_RESPONSE))
+    } else {
+      yawVel.current *= Math.exp(-delta * TURN_DAMPING)
+      if (Math.abs(yawVel.current) < 0.001) yawVel.current = 0
+    }
+    heading.current += Math.max(-maxTurn, Math.min(maxTurn, yawVel.current * delta))
     heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
 
     const targetVel = new THREE.Vector3()

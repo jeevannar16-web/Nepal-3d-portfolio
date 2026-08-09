@@ -59,6 +59,12 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
   const lastX = useRef(0)
   const orbitKeys = useRef({ left: false, right: false })
   const snapRef = useRef(0)
+  // On a mount/dismount the active actor's heading can differ from the one the
+  // camera was chasing, so the orbit would swing around. Ease faster for a
+  // short fade right after a mode switch so the view glides onto the new actor
+  // instead of sweeping across the world (no jitter, no long swing).
+  const prevMode = useRef(playerMode)
+  const modeFade = useRef(0)
 
   useEffect(() => {
     const el = gl.domElement
@@ -108,6 +114,12 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     if (flyTarget) return
     const body = target.current
     if (!body) return
+    // Detect a mode switch (mount/dismount): arm a short fast-ease fade.
+    if (playerMode !== prevMode.current) {
+      prevMode.current = playerMode
+      modeFade.current = 0.6
+    }
+    if (modeFade.current > 0) modeFade.current -= delta
     // Camera snap (touch dock button): reset the free-look orbit so the camera
     // swings back directly behind the actor.
     const snapTick = useControls.getState().cameraSnapTick
@@ -148,8 +160,11 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
 
     // Chase the actor's heading in every mode (including on foot) so A/D turns
     // swing the view with the soldier — Free Fire-style full control, where W
-    // always leads into the screen and the world sweeps past on corners.
-    const chase = 1 - Math.pow(2, -sd * (active ? 30 : 6))
+    // always leads into the screen and the world sweeps past on corners. Right
+    // after a mode switch the chase tightens so the camera lands on the new
+    // actor's heading promptly instead of sweeping around a big heading jump.
+    const fade = modeFade.current > 0 ? 14 : 0
+    const chase = 1 - Math.pow(2, -sd * (active ? 30 : 6 + fade))
     const targetYaw = minimapState.heading + lookYaw.current
     camYaw.current += (targetYaw - camYaw.current) * chase
 

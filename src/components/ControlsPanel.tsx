@@ -129,7 +129,7 @@ export default function ControlsPanel(): JSX.Element {
         <div className="mt-2 rounded-lg border border-amber-400/20 bg-amber-400/5 px-2 py-1.5 text-[11px] font-semibold text-amber-100/70">
           {prompt
             ? 'Press the new key (Esc cancels)'
-            : 'Tip: hold Shift+S to run, Ctrl+Home to grow or shrink the model.'}
+            : 'Tip: hold Shift+S to run, Home and End turn left and right.'}
         </div>
       </section>
 

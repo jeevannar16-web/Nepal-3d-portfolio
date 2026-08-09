@@ -296,7 +296,14 @@ export default function Soldier({
         scale={bigMode ? BIG_SCALE : 1}
         position={[0, bigMode ? (1 - BIG_SCALE) * feetLocalY.current : 0, 0]}
       >
-        <primitive object={avatarScene} scale={SOLDIER_SCALE} />
+        {/* The retargeted soldier clips bake the avatar's body facing the
+            model's -Z axis (the soldier rig's front in glTF world space), while
+            the game treats +Z as forward (movement, heading and camera all use
+            +Z). Flip the avatar 180° so its face leads the walk/run/ride in
+            every mode. */}
+        <group rotation={[0, Math.PI, 0]}>
+          <primitive object={avatarScene} scale={SOLDIER_SCALE} />
+        </group>
       </group>
       <BlobShadow radius={bigMode ? 0.8 * BIG_SCALE : 0.8} y={feetLocalY.current + 0.01} />
     </group>
