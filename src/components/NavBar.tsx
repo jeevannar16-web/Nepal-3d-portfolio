@@ -7,6 +7,8 @@ import type { WeatherKind } from '../utils/weather'
 import { ZoneIcon } from './icons'
 import ToggleRow from './ToggleRow'
 import ControlsPanel from './ControlsPanel'
+import KeyboardShortcuts from './KeyboardShortcuts'
+import KeyHints from './KeyHints'
 import { playClick } from '../utils/sounds'
 
 const columnOrder = ['about', 'skills', 'projects', 'story', 'contact']
@@ -208,6 +210,7 @@ export default function NavBar(): JSX.Element {
   }
 
   return (
+    <>
     <nav
       ref={rootRef}
       className="pointer-events-none absolute right-5 top-5 z-30 flex flex-col items-end"
@@ -248,51 +251,77 @@ export default function NavBar(): JSX.Element {
 
       {open && (
         <div className="animate-welcome pointer-events-auto mt-3 flex max-h-[min(calc(100vh-4.5rem),46rem)] w-[min(92vw,62rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950/90 text-slate-100 shadow-2xl shadow-black/60 ring-1 ring-black/40 backdrop-blur-xl">
-          {/* Professional header strip: subtle gradient + brand mark */}
-          <div className="flex items-center gap-2 border-b border-white/5 bg-gradient-to-r from-slate-900 via-slate-900 to-slate-900/70 px-5 py-2.5">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-400/15 text-amber-300">
+          {/* Professional header strip: subtle gradient + brand mark + close */}
+          <div className="flex items-center justify-between border-b border-white/5 bg-gradient-to-r from-slate-900 via-slate-900 to-slate-900/70 px-5 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-400/15 text-amber-300">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3v12" />
+                  <path d="M7 10l5 5 5-5" />
+                  <path d="M4 20h16" />
+                </svg>
+              </span>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300/80">
+                  Nepal Valley
+                </div>
+                <div className="text-[10px] font-semibold text-white/40">Interactive portfolio</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label="Close menu"
+              onClick={() => {
+                playClick()
+                setOpen(false)
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white"
+            >
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="2.5"
                 strokeLinecap="round"
-                strokeLinejoin="round"
                 className="h-3.5 w-3.5"
                 aria-hidden="true"
               >
-                <path d="M12 3v12" />
-                <path d="M7 10l5 5 5-5" />
-                <path d="M4 20h16" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="18" y1="6" x2="6" y2="18" />
               </svg>
-            </span>
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300/80">
-                Nepal Valley
-              </div>
-              <div className="text-[10px] font-semibold text-white/40">Interactive portfolio</div>
-            </div>
+            </button>
           </div>
 
-          {/* Tabs */}
-          <div className="flex flex-wrap gap-1.5 px-5 pt-3">
-            {TAB_LABELS.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => {
-                  playClick()
-                  setTab(t.value)
-                }}
-                className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
-                  tab === t.value
-                    ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/20'
-                    : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          {/* Segmented tab bar */}
+          <div className="flex flex-wrap gap-1 px-5 pt-3">
+            <div className="flex flex-wrap gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+              {TAB_LABELS.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => {
+                    playClick()
+                    setTab(t.value)
+                  }}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                    tab === t.value
+                      ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/20'
+                      : 'text-white/60 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Body */}
@@ -385,6 +414,7 @@ export default function NavBar(): JSX.Element {
               key bindings first, then sound/graphics, touch & UI, and world. */}
           {tab === 'settings' && (
             <div className="space-y-3">
+              <KeyboardShortcuts />
               <ControlsPanel />
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -548,8 +578,16 @@ export default function NavBar(): JSX.Element {
             </div>
           )}
           </div>
+
+          {/* Footer strip */}
+          <div className="flex items-center justify-between border-t border-white/5 bg-slate-900/60 px-5 py-2 text-[10px] font-semibold text-white/35">
+            <span>Nepal Valley · Interactive 3D portfolio</span>
+            <span>Esc closes this menu</span>
+          </div>
         </div>
       )}
     </nav>
+    <KeyHints />
+    </>
   )
 }

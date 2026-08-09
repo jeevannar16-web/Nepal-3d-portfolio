@@ -41,6 +41,8 @@ export default function TouchControls(): JSX.Element | null {
   const toggleBigMode = useControls((s) => s.toggleBigMode)
 
   const heldRef = useRef<Set<string>>(new Set())
+  const [pressedSet, setPressedSet] = useState<Set<string>>(new Set())
+  const flashRef = useRef<Record<string, number>>({})
   const [nearVehicle, setNearVehicle] = useState(false)
 
   const visible = deviceType === 'mobile' && introDone
@@ -58,7 +60,37 @@ export default function TouchControls(): JSX.Element | null {
   const KEY_INTERACT = primaryCode('interact')
   const KEY_EXIT = primaryCode('exit')
 
+  // Light haptic tick so every press has tactile confirmation on phones that
+  // support it; wrapped in try so a blocked Vibrate API never throws.
+  const buzz = () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(12)
+    } catch {
+      /* no-op */
+    }
+  }
+
+  const markDown = (code: string) => {
+    buzz()
+    setPressedSet((prev) => {
+      if (prev.has(code)) return prev
+      const n = new Set(prev)
+      n.add(code)
+      return n
+    })
+  }
+
+  const markUp = (code: string) => {
+    setPressedSet((prev) => {
+      if (!prev.has(code)) return prev
+      const n = new Set(prev)
+      n.delete(code)
+      return n
+    })
+  }
+
   const release = useCallback((code: string) => {
+    markUp(code)
     if (!heldRef.current.has(code)) return
     heldRef.current.delete(code)
     keyEvent('keyup', code)
@@ -74,6 +106,7 @@ export default function TouchControls(): JSX.Element | null {
   )
 
   const releaseAll = useCallback(() => {
+    setPressedSet((prev) => (prev.size ? new Set() : prev))
     heldRef.current.forEach((code) => keyEvent('keyup', code))
     heldRef.current.clear()
   }, [])
@@ -104,17 +137,26 @@ export default function TouchControls(): JSX.Element | null {
 
   if (!visible) return null
 
+  const pressed = (code: string) => pressedSet.has(code)
+
   const glassBtn =
-    'pointer-events-auto flex items-center justify-center rounded-full border border-white/15 bg-black/40 shadow-lg shadow-black/40 backdrop-blur transition active:scale-95 select-none'
+    'pointer-events-auto flex items-center justify-center rounded-full border border-white/15 bg-black/40 shadow-lg shadow-black/40 backdrop-blur transition select-none'
+
+  const pressedCls =
+    ' border-amber-400/70 bg-amber-400/20 text-amber-200 scale-95 shadow-amber-400/20'
 
   // One-shot action buttons: tap dispatches a single keydown (jump/interact/
-  // exit are edge-triggered or event-driven). Run is held while pressed.
+  // exit are edge-triggered or event-driven) with a brief pressed flash.
   const tapKey = (code: string) => (e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault()
+    markDown(code)
+    window.clearTimeout(flashRef.current[code])
+    flashRef.current[code] = window.setTimeout(() => markUp(code), 160)
     keyEvent('keydown', code)
   }
   const holdStart = (code: string) => (e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault()
+    markDown(code)
     press(code)
   }
   const holdEnd = (code: string) => () => release(code)
@@ -122,16 +164,19 @@ export default function TouchControls(): JSX.Element | null {
   const showExit = playerMode !== 'walk' && playerMode !== 'parachute'
 
   // Sizes scale with the uiScale setting (0.75x..1.5x).
-  const padBtn = Math.round(56 * uiScale)
-  const runBtn = Math.round(60 * uiScale)
-  const bigBtn = Math.round(44 * uiScale)
-  const jumpBtn = Math.round(64 * uiScale)
+  const padBtn = Math.round(60 * uiScale)
+  const runBtn = Math.round(64 * uiScale)
+  const bigBtn = Math.round(46 * uiScale)
+  const jumpBtn = Math.round(66 * uiScale)
   const icon = Math.round(24 * uiScale)
   const iconSm = Math.round(18 * uiScale)
   const gap = Math.round(12 * uiScale)
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-20">
+    <div
+      className="pointer-events-none fixed inset-0 z-20 [-webkit-touch-callout:none]"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {/* Direction pad — fixed, bottom-left. Holds the bound direction keys;
           the center button is Run (hold to sprint while walking). */}
       <div
@@ -145,7 +190,7 @@ export default function TouchControls(): JSX.Element | null {
           onPointerUp={holdEnd(KEY_UP)}
           onPointerCancel={holdEnd(KEY_UP)}
           onPointerLeave={holdEnd(KEY_UP)}
-          className={`${glassBtn} touch-none`}
+          className={`${glassBtn} touch-none${pressed(KEY_UP) ? pressedCls : ''}`}
           style={{ width: padBtn, height: padBtn }}
           aria-label="Forward"
         >
@@ -171,7 +216,7 @@ export default function TouchControls(): JSX.Element | null {
           onPointerUp={holdEnd(KEY_LEFT)}
           onPointerCancel={holdEnd(KEY_LEFT)}
           onPointerLeave={holdEnd(KEY_LEFT)}
-          className={`${glassBtn} touch-none`}
+          className={`${glassBtn} touch-none${pressed(KEY_LEFT) ? pressedCls : ''}`}
           style={{ width: padBtn, height: padBtn }}
           aria-label="Turn left"
         >
@@ -198,7 +243,7 @@ export default function TouchControls(): JSX.Element | null {
               onPointerUp={holdEnd(KEY_RUN)}
               onPointerCancel={holdEnd(KEY_RUN)}
               onPointerLeave={holdEnd(KEY_RUN)}
-              className={`${glassBtn} absolute touch-none`}
+              className={`${glassBtn} absolute touch-none${pressed(KEY_RUN) ? pressedCls : ''}`}
               style={{ width: runBtn, height: runBtn }}
               aria-label="Run"
             >
@@ -225,7 +270,7 @@ export default function TouchControls(): JSX.Element | null {
           onPointerUp={holdEnd(KEY_RIGHT)}
           onPointerCancel={holdEnd(KEY_RIGHT)}
           onPointerLeave={holdEnd(KEY_RIGHT)}
-          className={`${glassBtn} touch-none`}
+          className={`${glassBtn} touch-none${pressed(KEY_RIGHT) ? pressedCls : ''}`}
           style={{ width: padBtn, height: padBtn }}
           aria-label="Turn right"
         >
@@ -251,7 +296,7 @@ export default function TouchControls(): JSX.Element | null {
           onPointerUp={holdEnd(KEY_DOWN)}
           onPointerCancel={holdEnd(KEY_DOWN)}
           onPointerLeave={holdEnd(KEY_DOWN)}
-          className={`${glassBtn} touch-none`}
+          className={`${glassBtn} touch-none${pressed(KEY_DOWN) ? pressedCls : ''}`}
           style={{ width: padBtn, height: padBtn }}
           aria-label="Back"
         >
@@ -285,9 +330,12 @@ export default function TouchControls(): JSX.Element | null {
           type="button"
           onPointerDown={(e) => {
             e.preventDefault()
+            markDown('grow')
+            window.clearTimeout(flashRef.current['grow'])
+            flashRef.current['grow'] = window.setTimeout(() => markUp('grow'), 160)
             toggleBigMode()
           }}
-          className={`${glassBtn} touch-none`}
+          className={`${glassBtn} touch-none${pressed('grow') ? pressedCls : ''}`}
           style={{ width: bigBtn, height: bigBtn }}
           aria-label="Grow or shrink the model"
         >
@@ -312,9 +360,12 @@ export default function TouchControls(): JSX.Element | null {
           type="button"
           onPointerDown={(e) => {
             e.preventDefault()
+            markDown('snap')
+            window.clearTimeout(flashRef.current['snap'])
+            flashRef.current['snap'] = window.setTimeout(() => markUp('snap'), 160)
             requestCameraSnap()
           }}
-          className={`${glassBtn} touch-none`}
+          className={`${glassBtn} touch-none${pressed('snap') ? pressedCls : ''}`}
           style={{ width: bigBtn, height: bigBtn }}
           aria-label="Snap the camera behind you"
         >
@@ -342,7 +393,11 @@ export default function TouchControls(): JSX.Element | null {
             type="button"
             onPointerDown={tapKey(KEY_INTERACT)}
             className={`${glassBtn} gap-2 px-5 text-xs font-bold ${
-              nearVehicle ? 'text-amber-300' : 'text-white/80'
+              pressed(KEY_INTERACT)
+                ? pressedCls
+                : nearVehicle
+                  ? 'text-amber-300'
+                  : 'text-white/80'
             }`}
             style={{ height: bigBtn }}
             aria-label={nearVehicle ? 'Get into the nearby vehicle' : 'Interact'}
@@ -372,7 +427,9 @@ export default function TouchControls(): JSX.Element | null {
           <button
             type="button"
             onPointerDown={tapKey(KEY_EXIT)}
-            className={`${glassBtn} gap-2 px-5 text-xs font-bold text-red-300`}
+            className={`${glassBtn} gap-2 px-5 text-xs font-bold text-red-300${
+              pressed(KEY_EXIT) ? pressedCls : ''
+            }`}
             style={{ height: bigBtn }}
             aria-label={
               playerMode === 'airplane' || playerMode === 'balloon'
@@ -403,7 +460,7 @@ export default function TouchControls(): JSX.Element | null {
           <button
             type="button"
             onPointerDown={tapKey(KEY_JUMP)}
-            className={`${glassBtn} touch-none`}
+            className={`${glassBtn} touch-none${pressed(KEY_JUMP) ? pressedCls : ''}`}
             style={{ width: jumpBtn, height: jumpBtn }}
             aria-label="Jump"
           >

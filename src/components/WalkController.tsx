@@ -129,6 +129,12 @@ export default function WalkController({
     }
   }
 
+  // Physical keys currently acting as forward / back. Tracked by code so that
+  // when "Backward walking" is off (default) and S doubles as forward, holding
+  // W + S and releasing one never drops the other.
+  const fwdCodes = useRef(new Set<string>())
+  const backCodes = useRef(new Set<string>())
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       // Movement keys are tracked even while the soldier is riding (hidden), so
@@ -136,6 +142,7 @@ export default function WalkController({
       // player steps out — no need to release and re-press the key after
       // dismounting. Everything resolves through the shared control bindings.
       if (matchesAction(e, 'forward')) {
+        fwdCodes.current.add(e.code)
         inputState.fwd = true
         e.preventDefault()
         return
@@ -149,9 +156,16 @@ export default function WalkController({
       }
       if (matchesAction(e, 'back')) {
         // Backward walking is off by default (can be enabled in Settings →
-        // Controls), so S only reads as back when the player opted in.
-        if (useControls.getState().backwardEnabled) inputState.back = true
+        // Controls). While off, S / ArrowDown still move the model AHEAD so a
+        // forward keypress always advances — never walks the soldier backward.
         e.preventDefault()
+        if (useControls.getState().backwardEnabled) {
+          backCodes.current.add(e.code)
+          inputState.back = true
+        } else {
+          fwdCodes.current.add(e.code)
+          inputState.fwd = true
+        }
         return
       }
       if (matchesAction(e, 'left')) {
@@ -188,8 +202,19 @@ export default function WalkController({
       }
     }
     const up = (e: KeyboardEvent) => {
-      if (matchesAction(e, 'forward')) inputState.fwd = false
-      if (matchesAction(e, 'back')) inputState.back = false
+      if (matchesAction(e, 'forward')) {
+        fwdCodes.current.delete(e.code)
+        if (fwdCodes.current.size === 0) inputState.fwd = false
+      }
+      if (matchesAction(e, 'back')) {
+        if (useControls.getState().backwardEnabled) {
+          backCodes.current.delete(e.code)
+          if (backCodes.current.size === 0) inputState.back = false
+        } else {
+          fwdCodes.current.delete(e.code)
+          if (fwdCodes.current.size === 0) inputState.fwd = false
+        }
+      }
       if (matchesAction(e, 'left')) inputState.left = false
       if (matchesAction(e, 'right')) inputState.right = false
       if (matchesAction(e, 'run')) inputState.run = false

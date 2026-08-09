@@ -142,7 +142,7 @@ export default function ControlsPanel(): JSX.Element {
         </div>
         <ToggleRow
           label="Backward walking"
-          hint="S walks backward (off by default)"
+          hint="Off by default: S / Down move forward instead, so you never walk back"
           on={backwardEnabled}
           onToggle={() => setBackwardEnabled(!backwardEnabled)}
         />
