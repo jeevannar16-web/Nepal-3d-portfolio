@@ -4,13 +4,9 @@ import { useControls, primaryCode } from '../store/controlsStore'
 import { useDeviceType } from '../hooks/useDeviceType'
 import { walkHud } from '../store/walkState'
 
-const STICK_RADIUS = 56
-const DEADZONE = 0.22
-const RUN_PUSH = 0.72
-
 // Every vehicle controller maps the SAME physical keys as the walking soldier
 // — and reads them from the shared control bindings in controlsStore, gated on
-// their own active state. So a single joystick can drive every mode by
+// their own active state. So a single direction pad can drive every mode by
 // dispatching synthetic key events with the bound codes; each controller
 // interprets the action in its own way (throttle vs forward, yaw vs strafe,
 // rise vs flare...). Exit buttons dispatch the bound exit key so the
@@ -22,45 +18,36 @@ function keyEvent(type: 'keydown' | 'keyup', code: string) {
   )
 }
 
-interface StickState {
-  id: number
-  ox: number
-  oy: number
-  x: number
-  y: number
-}
-
 /**
  * On-screen glass touch controls for touch devices, shown in EVERY mode (not
- * just walking): a dynamic joystick (appears wherever the finger lands on the
- * left side) plus a vertical dock of action buttons on the right. The joystick
- * maps to the bound forward/back/left/right actions so it drives the on-foot
- * soldier, the car, bike, horse, airplane (throttle + yaw), balloon (rise +
- * drift) and parachute (flare/dive + steer) with the same gesture. The dock
- * holds Sprint/Jump/Interact while walking and Exit while riding, plus a
- * camera-snap and a grow/shrink toggle that work in every mode.
+ * just walking): a fixed direction pad (forward/back/left/right) plus a Run
+ * button on the left, and a vertical dock of action buttons on the right. The
+ * pad maps to the bound forward/back/left/right actions so it drives the
+ * on-foot soldier, the car, bike, horse, airplane (throttle + yaw), balloon
+ * (rise + drift) and parachute (flare/dive + steer). The dock holds
+ * Jump/Interact while walking and Exit while riding, plus a camera-snap and a
+ * grow/shrink toggle that work in every mode. Button sizes follow the
+ * persisted uiScale setting in Settings → Touch & UI.
  */
 export default function TouchControls(): JSX.Element | null {
   const deviceType = useDeviceType()
   const introDone = useStore((s) => s.introDone)
   const playerMode = useStore((s) => s.playerMode)
+  const uiScale = useStore((s) => s.settings.uiScale)
   // Subscribe to the bindings so a rebind instantly re-targets the synthetic
-  // keys (the joystick then drives whatever the player assigned to each action).
+  // keys (the pad then drives whatever the player assigned to each action).
   const bindings = useControls((s) => s.bindings)
   const requestCameraSnap = useControls((s) => s.requestCameraSnap)
   const toggleBigMode = useControls((s) => s.toggleBigMode)
 
-  const zoneRef = useRef<HTMLDivElement>(null)
-  const stickRef = useRef<StickState | null>(null)
   const heldRef = useRef<Set<string>>(new Set())
-  const [stick, setStick] = useState<StickState | null>(null)
   const [nearVehicle, setNearVehicle] = useState(false)
 
   const visible = deviceType === 'mobile' && introDone
   const isWalk = playerMode === 'walk'
 
   // Derive the synthetic key codes straight from the subscribed bindings so a
-  // rebind re-renders here and instantly re-targets the joystick + buttons.
+  // rebind re-renders here and instantly re-targets the pad + buttons.
   const firstSpec = (a: (typeof bindings)[keyof typeof bindings]) => a[0] ?? ''
   const KEY_UP = firstSpec(bindings.forward)
   const KEY_DOWN = firstSpec(bindings.back)
@@ -91,45 +78,13 @@ export default function TouchControls(): JSX.Element | null {
     heldRef.current.clear()
   }, [])
 
-  const applyStick = useCallback(
-    (nx: number, ny: number, pushed: boolean, allowRun: boolean) => {
-      const want = new Set<string>()
-      if (ny < -DEADZONE) want.add(KEY_UP)
-      else if (ny > DEADZONE) want.add(KEY_DOWN)
-      if (nx < -DEADZONE) want.add(KEY_LEFT)
-      else if (nx > DEADZONE) want.add(KEY_RIGHT)
-      for (const held of [...heldRef.current]) {
-        if (held !== KEY_RUN && !want.has(held)) release(held)
-      }
-      for (const code of want) {
-        if (!heldRef.current.has(code)) press(code)
-      }
-      const runHeld = heldRef.current.has(KEY_RUN)
-      if (allowRun && pushed && !runHeld) press(KEY_RUN)
-      if ((!allowRun || !pushed) && runHeld) release(KEY_RUN)
-    },
-    [press, release, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_RUN],
-  )
-
   // Never leave a key stuck: when the controls hide or the mode changes
-  // (e.g. boarding a vehicle), release everything and re-apply the stick if it
-  // is still being held.
+  // (e.g. boarding a vehicle), release everything.
   const modeRef = useRef(playerMode)
   useEffect(() => {
+    if (modeRef.current !== playerMode) modeRef.current = playerMode
     releaseAll()
-    if (modeRef.current !== playerMode) {
-      modeRef.current = playerMode
-      if (stickRef.current) {
-        const s = stickRef.current
-        applyStick(
-          (s.x - s.ox) / STICK_RADIUS,
-          (s.y - s.oy) / STICK_RADIUS,
-          Math.hypot(s.x - s.ox, s.y - s.oy) > STICK_RADIUS * RUN_PUSH,
-          playerMode === 'walk',
-        )
-      }
-    }
-  }, [visible, playerMode, releaseAll, applyStick])
+  }, [visible, playerMode, releaseAll])
 
   useEffect(() => {
     return () => {
@@ -149,48 +104,6 @@ export default function TouchControls(): JSX.Element | null {
 
   if (!visible) return null
 
-  const startStick = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    const zone = zoneRef.current
-    if (!zone) return
-    zone.setPointerCapture(e.pointerId)
-    const s: StickState = {
-      id: e.pointerId,
-      ox: e.clientX,
-      oy: e.clientY,
-      x: e.clientX,
-      y: e.clientY,
-    }
-    stickRef.current = s
-    setStick(s)
-  }
-
-  const moveStick = (e: React.PointerEvent<HTMLDivElement>) => {
-    const s = stickRef.current
-    if (!s || s.id !== e.pointerId) return
-    let dx = e.clientX - s.ox
-    let dy = e.clientY - s.oy
-    const len = Math.hypot(dx, dy)
-    if (len > STICK_RADIUS) {
-      dx = (dx / len) * STICK_RADIUS
-      dy = (dy / len) * STICK_RADIUS
-    }
-    const nx = dx / STICK_RADIUS
-    const ny = dy / STICK_RADIUS
-    const pushed = len > STICK_RADIUS * RUN_PUSH
-    applyStick(nx, ny, pushed, isWalk)
-    const next = { ...s, x: s.ox + dx, y: s.oy + dy }
-    stickRef.current = next
-    setStick(next)
-  }
-
-  const endStick = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!stickRef.current || stickRef.current.id !== e.pointerId) return
-    releaseAll()
-    stickRef.current = null
-    setStick(null)
-  }
-
   const glassBtn =
     'pointer-events-auto flex items-center justify-center rounded-full border border-white/15 bg-black/40 shadow-lg shadow-black/40 backdrop-blur transition active:scale-95 select-none'
 
@@ -208,41 +121,164 @@ export default function TouchControls(): JSX.Element | null {
 
   const showExit = playerMode !== 'walk' && playerMode !== 'parachute'
 
+  // Sizes scale with the uiScale setting (0.75x..1.5x).
+  const padBtn = Math.round(56 * uiScale)
+  const runBtn = Math.round(60 * uiScale)
+  const bigBtn = Math.round(44 * uiScale)
+  const jumpBtn = Math.round(64 * uiScale)
+  const icon = Math.round(24 * uiScale)
+  const iconSm = Math.round(18 * uiScale)
+  const gap = Math.round(12 * uiScale)
+
   return (
     <div className="pointer-events-none fixed inset-0 z-20">
-      {/* Dynamic joystick capture zone: left side, clear of the top-left minimap
-          and the top HUD strip. */}
+      {/* Direction pad — fixed, bottom-left. Holds the bound direction keys;
+          the center button is Run (hold to sprint while walking). */}
       <div
-        ref={zoneRef}
-        onPointerDown={startStick}
-        onPointerMove={moveStick}
-        onPointerUp={endStick}
-        onPointerCancel={endStick}
-        onContextMenu={(e) => e.preventDefault()}
-        data-joy=""
-        className="pointer-events-auto absolute bottom-[240px] left-0 top-[110px] w-1/2 touch-none select-none"
-      />
-
-      {stick && (
-        <>
-          <div
-            className="pointer-events-none absolute h-[116px] w-[116px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20 bg-black/30 backdrop-blur-sm"
-            style={{ left: stick.ox, top: stick.oy }}
-          />
-          <div
-            className="pointer-events-none absolute h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30 bg-white/25 backdrop-blur"
-            style={{ left: stick.x, top: stick.y }}
-          />
-        </>
-      )}
+        className="pointer-events-auto absolute bottom-6 left-4 grid touch-none select-none grid-cols-3 gap-1"
+        style={{ width: padBtn * 3 + gap * 2 }}
+      >
+        <div />
+        <button
+          type="button"
+          onPointerDown={holdStart(KEY_UP)}
+          onPointerUp={holdEnd(KEY_UP)}
+          onPointerCancel={holdEnd(KEY_UP)}
+          onPointerLeave={holdEnd(KEY_UP)}
+          className={`${glassBtn} touch-none`}
+          style={{ width: padBtn, height: padBtn }}
+          aria-label="Forward"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-white/90"
+            style={{ width: icon, height: icon }}
+            aria-hidden="true"
+          >
+            <path d="M12 19V6" />
+            <path d="M5 12l7-7 7 7" />
+          </svg>
+        </button>
+        <div />
+        <button
+          type="button"
+          onPointerDown={holdStart(KEY_LEFT)}
+          onPointerUp={holdEnd(KEY_LEFT)}
+          onPointerCancel={holdEnd(KEY_LEFT)}
+          onPointerLeave={holdEnd(KEY_LEFT)}
+          className={`${glassBtn} touch-none`}
+          style={{ width: padBtn, height: padBtn }}
+          aria-label="Turn left"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-white/90"
+            style={{ width: icon, height: icon }}
+            aria-hidden="true"
+          >
+            <path d="M19 12H6" />
+            <path d="M12 5l-7 7 7 7" />
+          </svg>
+        </button>
+        <div className="relative flex items-center justify-center">
+          {isWalk && (
+            <button
+              type="button"
+              onPointerDown={holdStart(KEY_RUN)}
+              onPointerUp={holdEnd(KEY_RUN)}
+              onPointerCancel={holdEnd(KEY_RUN)}
+              onPointerLeave={holdEnd(KEY_RUN)}
+              className={`${glassBtn} absolute touch-none`}
+              style={{ width: runBtn, height: runBtn }}
+              aria-label="Run"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-amber-300"
+                style={{ width: icon, height: icon }}
+                aria-hidden="true"
+              >
+                <path d="M13 3l-1 6 4 3-4 3-1 6" />
+                <path d="M4 14l6-3M8 5l2 6" />
+              </svg>
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          onPointerDown={holdStart(KEY_RIGHT)}
+          onPointerUp={holdEnd(KEY_RIGHT)}
+          onPointerCancel={holdEnd(KEY_RIGHT)}
+          onPointerLeave={holdEnd(KEY_RIGHT)}
+          className={`${glassBtn} touch-none`}
+          style={{ width: padBtn, height: padBtn }}
+          aria-label="Turn right"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-white/90"
+            style={{ width: icon, height: icon }}
+            aria-hidden="true"
+          >
+            <path d="M5 12h13" />
+            <path d="M12 5l7 7-7 7" />
+          </svg>
+        </button>
+        <div />
+        <button
+          type="button"
+          onPointerDown={holdStart(KEY_DOWN)}
+          onPointerUp={holdEnd(KEY_DOWN)}
+          onPointerCancel={holdEnd(KEY_DOWN)}
+          onPointerLeave={holdEnd(KEY_DOWN)}
+          className={`${glassBtn} touch-none`}
+          style={{ width: padBtn, height: padBtn }}
+          aria-label="Back"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-white/90"
+            style={{ width: icon, height: icon }}
+            aria-hidden="true"
+          >
+            <path d="M12 5v13" />
+            <path d="M19 12l-7 7-7-7" />
+          </svg>
+        </button>
+        <div />
+      </div>
 
       {/* Right-side action dock, stacked bottom-up so nothing overlaps. When
           riding it sits above the bottom-right HUD cluster; when walking the
           bottom right is free so the dock drops lower. */}
       <div
-        className={`absolute right-4 flex flex-col items-center gap-3 ${
-          showExit ? 'bottom-44' : 'bottom-28'
-        }`}
+        className="absolute right-4 flex flex-col items-center"
+        style={{ gap, bottom: showExit ? 44 * uiScale + 96 : 96 * uiScale }}
       >
         {/* Grow / shrink — every mode (touch equivalent of Ctrl+Home). */}
         <button
@@ -251,7 +287,8 @@ export default function TouchControls(): JSX.Element | null {
             e.preventDefault()
             toggleBigMode()
           }}
-          className={`${glassBtn} h-11 w-11 touch-none`}
+          className={`${glassBtn} touch-none`}
+          style={{ width: bigBtn, height: bigBtn }}
           aria-label="Grow or shrink the model"
         >
           <svg
@@ -261,7 +298,8 @@ export default function TouchControls(): JSX.Element | null {
             strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-5 w-5 text-sky-300"
+            className="text-sky-300"
+            style={{ width: iconSm, height: iconSm }}
             aria-hidden="true"
           >
             <circle cx="12" cy="12" r="7" />
@@ -276,7 +314,8 @@ export default function TouchControls(): JSX.Element | null {
             e.preventDefault()
             requestCameraSnap()
           }}
-          className={`${glassBtn} h-11 w-11 touch-none`}
+          className={`${glassBtn} touch-none`}
+          style={{ width: bigBtn, height: bigBtn }}
           aria-label="Snap the camera behind you"
         >
           <svg
@@ -286,7 +325,8 @@ export default function TouchControls(): JSX.Element | null {
             strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-5 w-5 text-emerald-300"
+            className="text-emerald-300"
+            style={{ width: iconSm, height: iconSm }}
             aria-hidden="true"
           >
             <circle cx="12" cy="10" r="3" />
@@ -301,9 +341,10 @@ export default function TouchControls(): JSX.Element | null {
           <button
             type="button"
             onPointerDown={tapKey(KEY_INTERACT)}
-            className={`${glassBtn} gap-2 px-5 py-3 text-xs font-bold ${
+            className={`${glassBtn} gap-2 px-5 text-xs font-bold ${
               nearVehicle ? 'text-amber-300' : 'text-white/80'
             }`}
+            style={{ height: bigBtn }}
             aria-label={nearVehicle ? 'Get into the nearby vehicle' : 'Interact'}
           >
             <svg
@@ -313,7 +354,8 @@ export default function TouchControls(): JSX.Element | null {
               strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="h-4 w-4"
+              className=""
+              style={{ width: iconSm, height: iconSm }}
               aria-hidden="true"
             >
               <path d="M12 3v12" />
@@ -330,7 +372,8 @@ export default function TouchControls(): JSX.Element | null {
           <button
             type="button"
             onPointerDown={tapKey(KEY_EXIT)}
-            className={`${glassBtn} gap-2 px-5 py-3 text-xs font-bold text-red-300`}
+            className={`${glassBtn} gap-2 px-5 text-xs font-bold text-red-300`}
+            style={{ height: bigBtn }}
             aria-label={
               playerMode === 'airplane' || playerMode === 'balloon'
                 ? 'Exit the vehicle (bail out)'
@@ -344,7 +387,7 @@ export default function TouchControls(): JSX.Element | null {
               strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="h-4 w-4"
+              style={{ width: iconSm, height: iconSm }}
               aria-hidden="true"
             >
               <path d="M12 4v10" />
@@ -355,39 +398,13 @@ export default function TouchControls(): JSX.Element | null {
           </button>
         )}
 
-        {/* Sprint — walk mode only (joystick push also runs). */}
-        {isWalk && (
-          <button
-            type="button"
-            onPointerDown={holdStart(KEY_RUN)}
-            onPointerUp={holdEnd(KEY_RUN)}
-            onPointerCancel={holdEnd(KEY_RUN)}
-            onPointerLeave={holdEnd(KEY_RUN)}
-            className={`${glassBtn} h-12 w-12 touch-none`}
-            aria-label="Sprint"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5 text-amber-300"
-              aria-hidden="true"
-            >
-              <path d="M13 3l-1 6 4 3-4 3-1 6" />
-              <path d="M4 14l6-3M8 5l2 6" />
-            </svg>
-          </button>
-        )}
-
         {/* Jump — walk mode only. */}
         {isWalk && (
           <button
             type="button"
             onPointerDown={tapKey(KEY_JUMP)}
-            className={`${glassBtn} h-16 w-16 touch-none`}
+            className={`${glassBtn} touch-none`}
+            style={{ width: jumpBtn, height: jumpBtn }}
             aria-label="Jump"
           >
             <svg
@@ -397,7 +414,8 @@ export default function TouchControls(): JSX.Element | null {
               strokeWidth="2.4"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="h-7 w-7 text-white/90"
+              className="text-white/90"
+              style={{ width: icon, height: icon }}
               aria-hidden="true"
             >
               <path d="M12 19V6" />

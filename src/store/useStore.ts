@@ -43,7 +43,13 @@ interface PortfolioState {
   flyTarget: { x: number; z: number } | null
   toast: string | null
   welcomeDismissed: boolean
-  settings: { muted: boolean; lowGraphics: boolean; cameraSensitivity: number }
+  settings: {
+    muted: boolean
+    lowGraphics: boolean
+    cameraSensitivity: number
+    /** Multiplier for on-screen button sizes (touch controls). */
+    uiScale: number
+  }
   targetLandmark: string | null
   playerMode: PlayerMode
   setActiveZone: (zone: string | null) => void
@@ -71,6 +77,7 @@ interface PortfolioState {
   toggleMuted: () => void
   toggleLowGraphics: () => void
   setCameraSensitivity: (value: number) => void
+  setUiScale: (value: number) => void
   setTargetLandmark: (id: string | null) => void
 }
 
@@ -127,6 +134,7 @@ export const useStore = create<PortfolioState>()(
         muted: false,
         lowGraphics: detectGraphicsTier() === 'low',
         cameraSensitivity: 1,
+        uiScale: 1,
       },
       targetLandmark: null,
       playerMode: 'walk',
@@ -137,6 +145,10 @@ export const useStore = create<PortfolioState>()(
       setCameraSensitivity: (value) =>
         set((s) => ({
           settings: { ...s.settings, cameraSensitivity: Math.min(2, Math.max(0.5, value)) },
+        })),
+      setUiScale: (value) =>
+        set((s) => ({
+          settings: { ...s.settings, uiScale: Math.min(1.5, Math.max(0.75, value)) },
         })),
       setTargetLandmark: (id) => set({ targetLandmark: id }),
     }),

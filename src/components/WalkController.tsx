@@ -437,6 +437,8 @@ export default function WalkController({
       crouching: motionRef.current.crouching,
       jump: motionRef.current.jump,
     }
+    ;(window as any).__heading = heading.current
+    ;(window as any).__visualRot = visual.current?.rotation.y ?? null
     ;(window as any).__input = inputState
     if (visual.current) visual.current.rotation.y = heading.current
   })

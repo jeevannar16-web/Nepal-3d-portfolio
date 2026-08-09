@@ -46,6 +46,15 @@ export function preloadAllModels(): void {
     '/models/cliff.glb',
     '/models/bush.glb',
     '/models/fence.glb',
+    // Downloaded set pieces (measured with scripts/inspect-glb.mjs)
+    '/models/bigbuilding.glb',
+    '/models/skyscraper.glb',
+    '/models/largebuilding.glb',
+    '/models/officechair.glb',
+    '/models/gasstation.glb',
+    '/models/parkinglot.glb',
+    '/models/villagemarket.glb',
+    '/models/diningset.glb',
   ]
   for (const path of modelPaths) {
     useGLTF.preload(assetUrl(path))

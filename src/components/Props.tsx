@@ -19,6 +19,10 @@ interface PropPlacement {
   scale: number
   /** Optional solid hitbox so walkers and vehicles stop at the object. */
   collider?: ColliderSpec
+  /** Model-local offset to recenter geometry that sits far from the GLB's
+      origin node (measured with scripts/inspect-glb.mjs). Applied before the
+      outer position/rotation/scale, so it moves with the model. */
+  origin?: [number, number, number]
 }
 
 /**
@@ -34,12 +38,15 @@ function Prop({ placement }: { placement: PropPlacement }): JSX.Element {
   const gltf = useGLTF(assetUrl(`/models/${placement.model}`))
   const c = placement.collider
   const mesh = (
-    <primitive
-      object={gltf.scene}
+    <group
       position={placement.position}
       rotation={[0, placement.rotationY ?? 0, 0]}
       scale={placement.scale}
-    />
+    >
+      <group position={placement.origin}>
+        <primitive object={gltf.scene} />
+      </group>
+    </group>
   )
   if (!c) return mesh
   return (
@@ -50,7 +57,11 @@ function Prop({ placement }: { placement: PropPlacement }): JSX.Element {
       colliders={false}
     >
       <CuboidCollider args={c.half} position={[0, c.y ?? c.half[1], 0]} />
-      <primitive object={gltf.scene} scale={placement.scale} />
+      <group scale={placement.scale}>
+        <group position={placement.origin}>
+          <primitive object={gltf.scene} />
+        </group>
+      </group>
     </RigidBody>
   )
 }
@@ -199,6 +210,52 @@ const PROPS: PropPlacement[] = [
     rotationY: -0.3,
     scale: 0.7,
     collider: { half: [2.6, 2.03, 0.17], y: 2.03 },
+  },
+
+  // ---- Downtown cluster west of the tower landmark ----
+  {
+    model: 'bigbuilding.glb',
+    position: [72, 0, -78],
+    rotationY: 0.5,
+    scale: 1.6,
+    collider: { half: [3.8, 4.5, 3.5], y: 4.5 },
+  },
+  {
+    model: 'skyscraper.glb',
+    position: [78, 0, -88],
+    rotationY: 0.2,
+    scale: 6,
+    collider: { half: [3.7, 9.45, 3.7], y: 9.45 },
+  },
+  {
+    model: 'largebuilding.glb',
+    position: [64, 0, -72],
+    rotationY: 1.0,
+    scale: 2.8,
+    collider: { half: [2.9, 2.35, 1.75], y: 2.35 },
+  },
+  { model: 'officechair.glb', position: [70, 0, -92], rotationY: -1.4, scale: 2.5 },
+  {
+    model: 'gasstation.glb',
+    position: [50, 0.4, -64],
+    rotationY: -0.5,
+    scale: 1.2,
+    collider: { half: [5.2, 1.9, 5.0], y: 1.9 },
+  },
+  { model: 'parkinglot.glb', position: [56, 0.02, -70], rotationY: 0.3, scale: 1.2 },
+
+  // ---- Village market stall in the riverside village ----
+  { model: 'villagemarket.glb', position: [58, 0, -22], rotationY: 1.2, scale: 3 },
+
+  // ---- Outdoor dining pavilion in the garden east of the stupa. Geometry
+  //     sits at x+304..356, z-272..-178 in the GLB, so it is recentered. ----
+  {
+    model: 'diningset.glb',
+    position: [58, 0, 12],
+    rotationY: 0.4,
+    scale: 0.2,
+    origin: [-330, 0, 225],
+    collider: { half: [5.2, 3.94, 9.4], y: 3.94 },
   },
 ]
 

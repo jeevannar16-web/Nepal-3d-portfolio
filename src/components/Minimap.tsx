@@ -243,8 +243,7 @@ export default function Minimap(): JSX.Element | null {
   const weakDevice = useRef(shouldReduceGraphics())
 
   useEffect(() => {
-    if (!open && weakDevice.current) return
-    const interval = weakDevice.current ? 64 : 1000 / 30
+    const interval = weakDevice.current && !open ? 500 : 1000 / 30
     let id = setInterval(() => {
       for (const g of [compactRef.current, fullRef.current]) {
         if (!g) continue
@@ -252,7 +251,10 @@ export default function Minimap(): JSX.Element | null {
         g.setAttribute('transform', `translate(${px.toFixed(2)} ${pz.toFixed(2)})`)
         const arrow = g.querySelector('path')
         if (arrow)
-          arrow.setAttribute('transform', `rotate(${(minimapState.heading * 180) / Math.PI})`)
+          arrow.setAttribute(
+            'transform',
+            `rotate(${180 + (minimapState.heading * 180) / Math.PI})`,
+          )
       }
     }, interval)
     return () => clearInterval(id)

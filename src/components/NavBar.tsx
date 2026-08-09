@@ -48,12 +48,11 @@ const VEHICLES: { mode: TransportMode | 'airplane2'; label: string; hint: string
   },
 ]
 
-type Tab = 'explore' | 'transport' | 'controls' | 'settings' | 'about'
+type Tab = 'explore' | 'transport' | 'settings' | 'about'
 
 const TAB_LABELS: { value: Tab; label: string }[] = [
   { value: 'explore', label: 'Explore' },
   { value: 'transport', label: 'Transport' },
-  { value: 'controls', label: 'Controls' },
   { value: 'settings', label: 'Settings' },
   { value: 'about', label: 'About' },
 ]
@@ -74,6 +73,7 @@ export default function NavBar(): JSX.Element {
   const toggleMuted = useStore((s) => s.toggleMuted)
   const toggleLowGraphics = useStore((s) => s.toggleLowGraphics)
   const setCameraSensitivity = useStore((s) => s.setCameraSensitivity)
+  const setUiScale = useStore((s) => s.setUiScale)
   const setActiveZone = useStore((s) => s.setActiveZone)
   const setIsPanelOpen = useStore((s) => s.setIsPanelOpen)
   const markZoneVisited = useStore((s) => s.markZoneVisited)
@@ -381,85 +381,121 @@ export default function NavBar(): JSX.Element {
             </div>
           )}
 
-          {/* Controls */}
-          {tab === 'controls' && <ControlsPanel />}
-
-          {/* Settings */}
+          {/* Settings — a single, professionally grouped panel: controls and
+              key bindings first, then sound/graphics, touch & UI, and world. */}
           {tab === 'settings' && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <section className="flex flex-col rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-widest text-amber-400/90">
-                  Sound & graphics
-                </div>
-                <ToggleRow label="Sound" on={!settings.muted} onToggle={toggleMuted} />
-                <ToggleRow
-                  label="Reduced graphics"
-                  on={settings.lowGraphics}
-                  onToggle={toggleLowGraphics}
-                />
-                <div className="mt-2 px-2">
-                  <div className="flex items-center justify-between text-sm text-slate-200">
-                    <span>Camera sensitivity</span>
-                    <span className="font-bold text-amber-300">
-                      {settings.cameraSensitivity.toFixed(1)}x
-                    </span>
+            <div className="space-y-3">
+              <ControlsPanel />
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <section className="flex flex-col rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-widest text-amber-400/90">
+                    Sound & graphics
                   </div>
-                  <input
-                    type="range"
-                    min={0.5}
-                    max={2}
-                    step={0.1}
-                    value={settings.cameraSensitivity}
-                    onChange={(e) => setCameraSensitivity(parseFloat(e.target.value))}
-                    className="mt-2 w-full accent-amber-400"
-                    aria-label="Camera sensitivity"
+                  <ToggleRow label="Sound" on={!settings.muted} onToggle={toggleMuted} />
+                  <ToggleRow
+                    label="Reduced graphics"
+                    on={settings.lowGraphics}
+                    onToggle={toggleLowGraphics}
                   />
-                </div>
-              </section>
+                  <div className="mt-2 px-2">
+                    <div className="flex items-center justify-between text-sm text-slate-200">
+                      <span>Camera sensitivity</span>
+                      <span className="font-bold text-amber-300">
+                        {settings.cameraSensitivity.toFixed(1)}x
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={2}
+                      step={0.1}
+                      value={settings.cameraSensitivity}
+                      onChange={(e) => setCameraSensitivity(parseFloat(e.target.value))}
+                      className="mt-2 w-full accent-amber-400"
+                      aria-label="Camera sensitivity"
+                    />
+                  </div>
+                </section>
+
+                <section className="flex flex-col rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-widest text-amber-400/90">
+                    Touch & UI
+                  </div>
+                  <div className="px-2">
+                    <div className="flex items-center justify-between text-sm text-slate-200">
+                      <span>On-screen button size</span>
+                      <span className="font-bold text-amber-300">
+                        {Math.round(settings.uiScale * 100)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.75}
+                      max={1.5}
+                      step={0.05}
+                      value={settings.uiScale}
+                      onChange={(e) => setUiScale(parseFloat(e.target.value))}
+                      className="mt-2 w-full accent-amber-400"
+                      aria-label="On-screen button size"
+                    />
+                    <p className="mt-1 px-1 text-[11px] font-semibold leading-snug text-white/50">
+                      Make the on-screen buttons bigger or smaller. Resizes the
+                      joystick, direction pad and action buttons.
+                    </p>
+                  </div>
+                </section>
+              </div>
 
               <section className="flex flex-col rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="mb-2 text-[11px] font-bold uppercase tracking-widest text-amber-400/90">
                   World
                 </div>
-                <div className="mb-1 px-2 text-sm text-slate-200">Time of day</div>
-                <div className="flex flex-wrap gap-2 px-2 pb-2">
-                  {TIMES.map((t) => (
-                    <button
-                      key={t.value}
-                      type="button"
-                      onClick={() => {
-                        playClick()
-                        setTimeOfDay(t.value)
-                      }}
-                      className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-                        timeOfDay === t.value
-                          ? 'bg-amber-400 text-slate-900'
-                          : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="mb-1 px-2 text-sm text-slate-200">Weather</div>
-                <div className="flex flex-wrap gap-2 px-2 pb-2">
-                  {WEATHERS.map((w) => (
-                    <button
-                      key={w.value}
-                      type="button"
-                      onClick={() => {
-                        playClick()
-                        setWeather(w.value)
-                      }}
-                      className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-                        weather === w.value
-                          ? 'bg-amber-400 text-slate-900'
-                          : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                      }`}
-                    >
-                      {w.label}
-                    </button>
-                  ))}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <div className="mb-1 px-2 text-sm text-slate-200">Time of day</div>
+                    <div className="flex flex-wrap gap-2 px-2 pb-2">
+                      {TIMES.map((t) => (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => {
+                            playClick()
+                            setTimeOfDay(t.value)
+                          }}
+                          className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                            timeOfDay === t.value
+                              ? 'bg-amber-400 text-slate-900'
+                              : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-1 px-2 text-sm text-slate-200">Weather</div>
+                    <div className="flex flex-wrap gap-2 px-2 pb-2">
+                      {WEATHERS.map((w) => (
+                        <button
+                          key={w.value}
+                          type="button"
+                          onClick={() => {
+                            playClick()
+                            setWeather(w.value)
+                          }}
+                          className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                            weather === w.value
+                              ? 'bg-amber-400 text-slate-900'
+                              : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                          }`}
+                        >
+                          {w.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -467,7 +503,7 @@ export default function NavBar(): JSX.Element {
                     playClick()
                     setPrefersSimple(true)
                   }}
-                  className="mt-auto flex w-full items-center justify-center rounded-full bg-white/10 px-3 py-2 text-sm font-bold text-white transition hover:bg-white/20"
+                  className="mt-2 flex w-full items-center justify-center rounded-full bg-white/10 px-3 py-2 text-sm font-bold text-white transition hover:bg-white/20"
                 >
                   Prefer a simple page?
                 </button>
