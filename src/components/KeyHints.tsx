@@ -21,7 +21,14 @@ function specLabel(spec: string): string {
     Home: 'Home',
     End: 'End',
   }
-  return map[spec] ?? spec.replace('Key', '').replace(/^Digit/, '')
+  // Chords like 'Shift+KeyS' -> 'Shift+S'.
+  return (
+    map[spec] ??
+    spec
+      .split('+')
+      .map((p) => map[p] ?? p.replace('Key', '').replace(/^Digit/, ''))
+      .join('+')
+  )
 }
 
 function Key({ spec }: { spec: string }): JSX.Element {
@@ -32,27 +39,42 @@ function Key({ spec }: { spec: string }): JSX.Element {
   )
 }
 
+/** One cell of the keypad: the WASD key plus its arrow-key twin, stacked. */
+function PadKey({ spec, arrow }: { spec: string; arrow: string }): JSX.Element {
+  return (
+    <span className="flex flex-col items-center gap-0.5">
+      <Key spec={spec} />
+      {arrow && (
+        <kbd className="inline-flex min-w-[1.2rem] items-center justify-center rounded border border-white/15 bg-white/5 px-1 text-[9px] font-bold text-white/60">
+          {specLabel(arrow)}
+        </kbd>
+      )}
+    </span>
+  )
+}
+
 /** A mini WASD keypad laid out like the real keyboard so a player instantly
- *  sees which key moves which direction. */
+ *  sees which key moves which direction — each WASD key pairs with its arrow
+ *  twin right beneath it. */
 function Pad({
   up,
   down,
   left,
   right,
 }: {
-  up: string
-  down: string
-  left: string
-  right: string
+  up: { spec: string; arrow: string }
+  down: { spec: string; arrow: string }
+  left: { spec: string; arrow: string }
+  right: { spec: string; arrow: string }
 }): JSX.Element {
   return (
-    <span className="grid grid-cols-3 gap-0.5" aria-hidden="true">
+    <span className="grid grid-cols-3 gap-x-1 gap-y-0.5" aria-hidden="true">
       <span />
-      <Key spec={up} />
+      <PadKey spec={up.spec} arrow={up.arrow} />
       <span />
-      <Key spec={left} />
-      <Key spec={down} />
-      <Key spec={right} />
+      <PadKey spec={left.spec} arrow={left.arrow} />
+      <PadKey spec={down.spec} arrow={down.arrow} />
+      <PadKey spec={right.spec} arrow={right.arrow} />
     </span>
   )
 }
@@ -109,6 +131,9 @@ export default function KeyHints(): JSX.Element {
   const walk = playerMode === 'walk'
 
   const first = (action: ControlAction): string => bindings[action]?.[0] ?? ''
+  const arrowFor = (action: ControlAction): string =>
+    bindings[action]?.find((s) => s.startsWith('Arrow')) ?? ''
+
   // NOTE: the 'left'/'right' ACTION names are swapped relative to the physical
   // keys — 'right' is bound to A/←/Home (turns screen-left), 'left' is bound to
   // D/→/End (turns screen-right), matching how the controllers interpret them.
@@ -117,42 +142,56 @@ export default function KeyHints(): JSX.Element {
   const backKey = first('back')
   const screenLeftKey = first('right')
   const screenRightKey = first('left')
-  const arrowKeys = ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight']
 
   const movementLabel = walk ? 'Move' : ride ? 'Drive' : 'Steer'
 
-  const AllKeys = ({ action }: { action: ControlAction }) => (
-    <>
-      {bindings[action].map((spec) => (
-        <Key key={spec} spec={spec} />
-      ))}
-    </>
-  )
+  const AllKeys = ({ action, dedupe = false }: { action: ControlAction; dedupe?: boolean }) => {
+    const specs = bindings[action]
+    if (!dedupe) {
+      return (
+        <>
+          {specs.map((spec) => (
+            <Key key={spec} spec={spec} />
+          ))}
+        </>
+      )
+    }
+    // Collapse duplicate labels (e.g. ShiftLeft + ShiftRight both render
+    // "Shift") while keeping genuinely different keys like the Shift+S chord.
+    const seen = new Set<string>()
+    return (
+      <>
+        {specs
+          .filter((spec) => {
+            const label = specLabel(spec)
+            if (seen.has(label)) return false
+            seen.add(label)
+            return true
+          })
+          .map((spec) => (
+            <Key key={spec} spec={spec} />
+          ))}
+      </>
+    )
+  }
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
       <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 via-white/10 to-emerald-500/20 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white/90 shadow-[0_0_28px_rgba(251,191,36,0.45)] backdrop-blur-md">
         <Chip>
           <Pad
-            up={fwdKey}
-            down={backKey}
-            left={screenLeftKey}
-            right={screenRightKey}
+            up={{ spec: fwdKey, arrow: arrowFor('forward') }}
+            down={{ spec: backKey, arrow: arrowFor('back') }}
+            left={{ spec: screenLeftKey, arrow: arrowFor('right') }}
+            right={{ spec: screenRightKey, arrow: arrowFor('left') }}
           />
           <span className="ml-1">{movementLabel}</span>
-        </Chip>
-        <span className="h-3 w-px bg-white/20" />
-        <Chip>
-          {arrowKeys.map((spec) => (
-            <Key key={spec} spec={spec} />
-          ))}
-          <span className="ml-1">Arrows</span>
         </Chip>
         <span className="h-3 w-px bg-white/20" />
         {walk && (
           <>
             <Chip>
-              <AllKeys action="run" />
+              <AllKeys action="run" dedupe />
               <span className="ml-1">Run</span>
             </Chip>
             <span className="h-3 w-px bg-white/20" />
