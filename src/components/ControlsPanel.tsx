@@ -142,10 +142,6 @@ export default function ControlsPanel(): JSX.Element {
           on={bigMode}
           onToggle={() => setBigMode(!bigMode)}
         />
-        <div className="mt-auto px-2 pt-3 text-[11px] font-semibold leading-relaxed text-white/50">
-          Your key choices are saved on this device and reset to defaults with
-          the Reset button.
-        </div>
       </section>
     </div>
   )
