@@ -46,13 +46,17 @@ export default function ContentPanel(): JSX.Element | null {
   const panelClass = exiting ? 'animate-panel-out' : 'animate-panel-in'
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-10">
+    <div className="pointer-events-none absolute inset-0 z-30">
       <div
-        className={`absolute inset-0 bg-slate-950/35 backdrop-blur-[2px] ${containerClass}`}
+        onClick={() => {
+          playClick()
+          setIsPanelOpen(false)
+        }}
+        className={`absolute inset-0 cursor-pointer bg-slate-950/35 backdrop-blur-[2px] ${containerClass}`}
       />
-      <div className="pointer-events-none absolute inset-0 flex items-end justify-center p-6 sm:items-center">
+      <div className="pointer-events-none absolute inset-0 flex items-end justify-center p-4 sm:items-center sm:p-6">
         <div
-          className={`pointer-events-auto w-full max-w-lg rounded-2xl border border-white/15 bg-slate-900/90 p-6 text-slate-100 shadow-2xl sm:p-8 ${panelClass}`}
+          className={`pointer-events-auto flex max-h-[min(calc(100vh-2rem),42rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-900/90 p-6 text-slate-100 shadow-2xl sm:p-8 ${panelClass}`}
         >
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-400/90">
             {zone.subtitle}
@@ -91,6 +95,7 @@ export default function ContentPanel(): JSX.Element | null {
 
           <p className="mb-5 text-sm leading-relaxed text-slate-300">{zone.body}</p>
 
+          <div className="-mx-1 flex-1 space-y-4 overflow-y-auto px-1 pr-2">
           {zone.skills && (
             <div className="flex flex-wrap gap-2">
               {zone.skills.map((skill) => (
@@ -188,6 +193,7 @@ export default function ContentPanel(): JSX.Element | null {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

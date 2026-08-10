@@ -9,10 +9,10 @@ function specLabel(spec: string): string {
     KeyA: 'A',
     KeyS: 'S',
     KeyD: 'D',
-    ArrowUp: 'Up',
-    ArrowDown: 'Down',
-    ArrowLeft: 'Left',
-    ArrowRight: 'Right',
+    ArrowUp: '↑',
+    ArrowDown: '↓',
+    ArrowLeft: '←',
+    ArrowRight: '→',
     ShiftLeft: 'Shift',
     ShiftRight: 'Shift',
     Space: 'Space',
@@ -26,9 +26,34 @@ function specLabel(spec: string): string {
 
 function Key({ spec }: { spec: string }): JSX.Element {
   return (
-    <kbd className="inline-flex min-w-[1.4rem] items-center justify-center rounded-md border border-amber-300/60 bg-gradient-to-b from-amber-400/40 to-amber-600/30 px-1.5 py-0.5 text-[10px] font-black text-amber-100 shadow-[0_0_10px_rgba(251,191,36,0.45)]">
+    <kbd className="inline-flex min-w-[1.5rem] items-center justify-center rounded-md border border-amber-300/60 bg-gradient-to-b from-amber-400/40 to-amber-600/30 px-1.5 py-0.5 text-[11px] font-black text-amber-100 shadow-[0_0_10px_rgba(251,191,36,0.45)]">
       {specLabel(spec)}
     </kbd>
+  )
+}
+
+/** A mini WASD keypad laid out like the real keyboard so a player instantly
+ *  sees which key moves which direction. */
+function Pad({
+  up,
+  down,
+  left,
+  right,
+}: {
+  up: string
+  down: string
+  left: string
+  right: string
+}): JSX.Element {
+  return (
+    <span className="grid grid-cols-3 gap-0.5" aria-hidden="true">
+      <span />
+      <Key spec={up} />
+      <span />
+      <Key spec={left} />
+      <Key spec={down} />
+      <Key spec={right} />
+    </span>
   )
 }
 
@@ -40,7 +65,7 @@ function Chip({
   children: ReactNode
 }): JSX.Element {
   return (
-    <span className="flex items-center gap-1 rounded-lg border border-white/10 bg-black/25 px-2 py-1">
+    <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/25 px-2 py-1">
       {icon && (
         <svg
           className="h-3.5 w-3.5 text-amber-200"
@@ -83,7 +108,20 @@ export default function KeyHints(): JSX.Element {
   const chute = playerMode === 'parachute'
   const walk = playerMode === 'walk'
 
-  const ActionChips = ({ action }: { action: ControlAction }) => (
+  const first = (action: ControlAction): string => bindings[action]?.[0] ?? ''
+  // NOTE: the 'left'/'right' ACTION names are swapped relative to the physical
+  // keys — 'right' is bound to A/←/Home (turns screen-left), 'left' is bound to
+  // D/→/End (turns screen-right), matching how the controllers interpret them.
+  // The keypad is laid out by SCREEN direction, so left goes on the left side.
+  const fwdKey = first('forward')
+  const backKey = first('back')
+  const screenLeftKey = first('right')
+  const screenRightKey = first('left')
+  const arrowKeys = ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight']
+
+  const movementLabel = walk ? 'Move' : ride ? 'Drive' : 'Steer'
+
+  const AllKeys = ({ action }: { action: ControlAction }) => (
     <>
       {bindings[action].map((spec) => (
         <Key key={spec} spec={spec} />
@@ -91,56 +129,41 @@ export default function KeyHints(): JSX.Element {
     </>
   )
 
-return (
+  return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
       <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 via-white/10 to-emerald-500/20 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white/90 shadow-[0_0_28px_rgba(251,191,36,0.45)] backdrop-blur-md">
+        <Chip>
+          <Pad
+            up={fwdKey}
+            down={backKey}
+            left={screenLeftKey}
+            right={screenRightKey}
+          />
+          <span className="ml-1">{movementLabel}</span>
+        </Chip>
+        <span className="h-3 w-px bg-white/20" />
+        <Chip>
+          {arrowKeys.map((spec) => (
+            <Key key={spec} spec={spec} />
+          ))}
+          <span className="ml-1">Arrows</span>
+        </Chip>
+        <span className="h-3 w-px bg-white/20" />
         {walk && (
           <>
             <Chip>
-              <ActionChips action="forward" />
-              <ActionChips action="back" />
-              <ActionChips action="left" />
-              <ActionChips action="right" />
-              <span className="ml-1">Move</span>
-            </Chip>
-            <span className="h-3 w-px bg-white/20" />
-            <Chip>
-              <ActionChips action="run" />
+              <AllKeys action="run" />
               <span className="ml-1">Run</span>
             </Chip>
             <span className="h-3 w-px bg-white/20" />
             <Chip>
-              <ActionChips action="jump" />
+              <AllKeys action="jump" />
               <span className="ml-1">Jump</span>
             </Chip>
             <span className="h-3 w-px bg-white/20" />
             <Chip>
-              <ActionChips action="interact" />
+              <AllKeys action="interact" />
               <span className="ml-1">Interact</span>
-            </Chip>
-            <span className="h-3 w-px bg-white/20" />
-          </>
-        )}
-        {ride && (
-          <>
-            <Chip>
-              <ActionChips action="forward" />
-              <ActionChips action="back" />
-              <ActionChips action="left" />
-              <ActionChips action="right" />
-              <span className="ml-1">Drive</span>
-            </Chip>
-            <span className="h-3 w-px bg-white/20" />
-          </>
-        )}
-        {chute && (
-          <>
-            <Chip>
-              <ActionChips action="forward" />
-              <ActionChips action="back" />
-              <ActionChips action="left" />
-              <ActionChips action="right" />
-              <span className="ml-1">Steer</span>
             </Chip>
             <span className="h-3 w-px bg-white/20" />
           </>
@@ -152,14 +175,14 @@ return (
         {(ride || chute) && (
           <>
             <Chip>
-              <ActionChips action="exit" />
+              <AllKeys action="exit" />
               <span className="ml-1">Exit</span>
             </Chip>
             <span className="h-3 w-px bg-white/20" />
           </>
         )}
         <Chip>
-          <ActionChips action="exit" />
+          <AllKeys action="exit" />
           <span className="ml-1">Menu</span>
         </Chip>
       </div>

@@ -32,6 +32,7 @@ function keyEvent(type: 'keydown' | 'keyup', code: string) {
 export default function TouchControls(): JSX.Element | null {
   const deviceType = useDeviceType()
   const introDone = useStore((s) => s.introDone)
+  const isPanelOpen = useStore((s) => s.isPanelOpen)
   const playerMode = useStore((s) => s.playerMode)
   const uiScale = useStore((s) => s.settings.uiScale)
   // Subscribe to the bindings so a rebind instantly re-targets the synthetic
@@ -45,7 +46,7 @@ export default function TouchControls(): JSX.Element | null {
   const flashRef = useRef<Record<string, number>>({})
   const [nearVehicle, setNearVehicle] = useState(false)
 
-  const visible = deviceType === 'mobile' && introDone
+  const visible = deviceType === 'mobile' && introDone && !isPanelOpen
   const isMobile = deviceType === 'mobile'
   const isWalk = playerMode === 'walk'
 

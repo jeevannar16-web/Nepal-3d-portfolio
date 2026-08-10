@@ -21,13 +21,14 @@ const MODE_NAME = {
 export default function TransportPrompt(): JSX.Element | null {
   const playerMode = useStore((s) => s.playerMode)
   const introDone = useStore((s) => s.introDone)
+  const isPanelOpen = useStore((s) => s.isPanelOpen)
   const deviceType = useDeviceType()
 
   // Mobile already carries the Exit action (plus mode) in the TouchControls dock
   // and the D-pad, so a bottom-center pill would overlap those buttons. Keep this
   // hint on desktop keyboards only, and stay above the desktop KeyHints bar.
   if (deviceType === 'mobile') return null
-  if (!introDone || playerMode === 'walk') return null
+  if (!introDone || isPanelOpen || playerMode === 'walk') return null
 
   return (
     <div className="pointer-events-none absolute bottom-24 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2">
