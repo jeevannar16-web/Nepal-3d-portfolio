@@ -176,24 +176,25 @@ export const useControls = create<ControlsState>()(
     }),
     {
       name: 'nepal-portfolio-controls',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
+      // Sessions saved before v3 stored only the legacy bindings (no
+      // Shift+Arrow run chords). Return a bare object so merge falls back to
+      // the current defaults instead of resurrecting the stale keys.
+      migrate: (persistedState, persistedVersion) => {
+        if ((persistedVersion ?? 0) < 3) return {} as Partial<ControlsState>
+        return persistedState as Partial<ControlsState>
+      },
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<ControlsState>
         const pb = (p.bindings ?? {}) as Partial<Record<ControlAction, string[]>>
         return {
           ...current,
           ...p,
-          // Older saved bindings may miss actions added later; always fill
-          // every action from the current defaults, and keep the turn keys
-          // locked to the standard layout regardless of what an older session
-          // saved — stale Home/End/A/D/arrow placement in localStorage used to
-          // resurface every reload. Standard = left: D, →, End; right: A, ←, Home.
-          // The run chords are also pinned so the Shift+Arrow sprint shortcuts
-          // stay available even if an old session only saved Shift+S.
-          // The run chords are also pinned when the saved session predates
-          // them (only Shift+S) so the Shift+Arrow sprint shortcuts appear;
-          // a run binding that already uses the arrow chords is kept as-is.
+          // Always fill every action from the current defaults first, then let
+          // any freshly-saved custom binding win. The turn keys stay locked to
+          // the standard layout, and the run chords are kept unless the user
+          // explicitly rebound run to a custom arrow combination.
           bindings: {
             ...current.bindings,
             ...pb,
