@@ -33,7 +33,7 @@ function specLabel(spec: string): string {
 
 function Key({ spec }: { spec: string }): JSX.Element {
   return (
-    <kbd className="inline-flex min-w-[1.7rem] items-center justify-center rounded-md border border-amber-200/80 bg-gradient-to-b from-amber-300/90 to-amber-500/60 px-1.5 py-0.5 text-[12px] font-black text-slate-950 shadow-[0_0_12px_rgba(251,191,36,0.65)]">
+    <kbd className="inline-flex min-w-[2rem] items-center justify-center rounded-md border border-amber-200/80 bg-gradient-to-b from-amber-300/90 to-amber-500/60 px-2 py-1 text-[13px] font-black text-slate-950 shadow-[0_0_12px_rgba(251,191,36,0.65)]">
       {specLabel(spec)}
     </kbd>
   )
@@ -75,14 +75,14 @@ function Keypad({
   arrows: { up: string; down: string; left: string; right: string }
 }): JSX.Element {
   return (
-    <span className="flex items-center gap-2" aria-hidden="true">
-      <span className="rounded-lg border-2 border-amber-200/70 bg-black/30 p-1.5">
+    <span className="flex items-center gap-2.5" aria-hidden="true">
+      <span className="rounded-lg border-2 border-amber-200/70 bg-black/30 p-2">
         <Pad {...wasd} />
       </span>
-      <span className="text-base font-black leading-none text-amber-200 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]">
+      <span className="text-lg font-black leading-none text-amber-200 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]">
         =
       </span>
-      <span className="rounded-lg border-2 border-amber-200/70 bg-black/30 p-1.5">
+      <span className="rounded-lg border-2 border-amber-200/70 bg-black/30 p-2">
         <Pad {...arrows} />
       </span>
     </span>
@@ -164,7 +164,7 @@ export default function KeyHints(): JSX.Element {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
-      <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border-2 border-amber-300/60 bg-black/70 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-100 shadow-[0_0_28px_rgba(251,191,36,0.55)] backdrop-blur-md">
+      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1.5 rounded-2xl border-2 border-amber-300/60 bg-black/70 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-100 shadow-[0_0_28px_rgba(251,191,36,0.55)] backdrop-blur-md">
         <Chip>
           <Keypad
             wasd={{

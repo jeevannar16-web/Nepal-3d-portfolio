@@ -64,7 +64,7 @@ export default function Wayfinder(): JSX.Element | null {
   const label = landmark.label.split(' — ')[0]
 
   return (
-    <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2">
+    <div className="absolute bottom-20 left-1/2 z-20 -translate-x-1/2">
       <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-white/15 bg-black/40 py-1.5 pl-2 pr-1.5 backdrop-blur">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/15 text-amber-300">
           <div ref={arrowRef} className="transition-transform duration-150">
