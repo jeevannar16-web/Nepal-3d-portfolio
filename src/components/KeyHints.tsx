@@ -65,8 +65,8 @@ function Pad({
 }
 
 /** One combined movement block: WASD cluster on the left and the arrow
- *  cluster on the right, side by side in the same layout, so a player sees
- *  both ways to move at a glance. */
+ *  cluster on the right, side by side in the same layout, joined by an '='
+ *  so a player sees both ways to move at a glance. */
 function Keypad({
   wasd,
   arrows,
@@ -76,9 +76,15 @@ function Keypad({
 }): JSX.Element {
   return (
     <span className="flex items-center gap-2" aria-hidden="true">
-      <Pad {...wasd} />
-      <span className="h-5 w-px bg-white/25" />
-      <Pad {...arrows} />
+      <span className="rounded-lg border border-amber-200/40 bg-black/30 p-1.5">
+        <Pad {...wasd} />
+      </span>
+      <span className="text-base font-black leading-none text-amber-200 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]">
+        =
+      </span>
+      <span className="rounded-lg border border-white/25 bg-black/30 p-1.5">
+        <Pad {...arrows} />
+      </span>
     </span>
   )
 }
