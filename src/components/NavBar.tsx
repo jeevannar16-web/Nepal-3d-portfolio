@@ -8,23 +8,22 @@ import type { WeatherKind } from '../utils/weather'
 import { ZoneIcon } from './icons'
 import ToggleRow from './ToggleRow'
 import ControlsPanel from './ControlsPanel'
-import KeyboardShortcuts from './KeyboardShortcuts'
 import KeyHints from './KeyHints'
 import { playClick } from '../utils/sounds'
 
 const columnOrder = ['about', 'skills', 'projects', 'story', 'contact']
 
-const TIMES: { value: TimeOfDay; label: string }[] = [
-  { value: 'morning', label: 'Morning' },
-  { value: 'day', label: 'Day' },
-  { value: 'dusk', label: 'Dusk' },
-  { value: 'night', label: 'Night' },
+const TIMES: { value: TimeOfDay; label: string; icon: string }[] = [
+  { value: 'morning', label: 'Morning', icon: '🌅' },
+  { value: 'day', label: 'Day', icon: '☀️' },
+  { value: 'dusk', label: 'Dusk', icon: '🌇' },
+  { value: 'night', label: 'Night', icon: '🌙' },
 ]
 
-const WEATHERS: { value: WeatherKind; label: string }[] = [
-  { value: 'clear', label: 'Clear' },
-  { value: 'rain', label: 'Rain' },
-  { value: 'fog', label: 'Fog' },
+const WEATHERS: { value: WeatherKind; label: string; icon: string; chip: string }[] = [
+  { value: 'clear', label: 'Clear', icon: '☀', chip: 'border-amber-400/40 bg-amber-400/10 text-amber-200' },
+  { value: 'rain', label: 'Rain', icon: '☔', chip: 'border-sky-400/40 bg-sky-400/10 text-sky-200' },
+  { value: 'fog', label: 'Fog', icon: '🌫', chip: 'border-slate-400/40 bg-slate-400/10 text-slate-200' },
 ]
 
 const VEHICLES: { mode: TransportMode | 'airplane2'; label: string; hint: string; flying?: boolean }[] = [
@@ -462,7 +461,6 @@ export default function NavBar(): JSX.Element {
               key bindings first, then sound/graphics, touch & UI, and world. */}
           {tab === 'settings' && (
             <div className="space-y-3">
-              <KeyboardShortcuts />
               <ControlsPanel />
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -541,12 +539,13 @@ export default function NavBar(): JSX.Element {
                             playClick()
                             setTimeOfDay(t.value)
                           }}
-                          className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition ${
                             timeOfDay === t.value
                               ? 'bg-amber-400 text-slate-900'
-                              : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                              : 'border border-white/10 bg-white/5 text-white/70 hover:scale-105 hover:bg-white/10'
                           }`}
                         >
+                          <span className="text-sm leading-none">{t.icon}</span>
                           {t.label}
                         </button>
                       ))}
@@ -563,12 +562,13 @@ export default function NavBar(): JSX.Element {
                             playClick()
                             setWeather(w.value)
                           }}
-                          className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition ${
                             weather === w.value
                               ? 'bg-amber-400 text-slate-900'
-                              : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                              : `border ${w.chip} hover:scale-105`
                           }`}
                         >
+                          <span className="text-sm leading-none">{w.icon}</span>
                           {w.label}
                         </button>
                       ))}
