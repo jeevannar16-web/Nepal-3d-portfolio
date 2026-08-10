@@ -66,6 +66,20 @@ export default function ControlsPanel(): JSX.Element {
 
   const chip = 'rounded-md border border-white/15 bg-white/10 px-2 py-0.5 text-xs font-bold text-amber-200'
 
+  // Collapse duplicate labels (ShiftLeft + ShiftRight both render "Shift").
+  // For run, show only the sprint chords (Shift+S, Shift+↑, Shift+↓) so the
+  // two bare-Shift entries don't clutter the row.
+  const displaySpecs = (action: ControlAction): string[] => {
+    const specs = action === 'run' ? bindings[action].filter((s) => s.includes('+')) : bindings[action]
+    const seen = new Set<string>()
+    return specs.filter((spec) => {
+      const label = keyLabel(spec)
+      if (seen.has(label)) return false
+      seen.add(label)
+      return true
+    })
+  }
+
   return (
     <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
       <section className="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -101,7 +115,7 @@ export default function ControlsPanel(): JSX.Element {
                 {ACTION_LABELS[action]}
               </span>
               <span className="flex shrink-0 items-center gap-1">
-                {bindings[action].map((spec) => (
+                {displaySpecs(action).map((spec) => (
                   <span key={spec} className={chip}>
                     {keyLabel(spec)}
                   </span>

@@ -163,10 +163,13 @@ export default function KeyHints(): JSX.Element {
   const backKey = first('back')
   const screenLeftKey = first('right')
   const screenRightKey = first('left')
-  // Prefer the sprint chords for the hint (Shift+S, Shift+↑/↓); fall back to
-  // the primary Shift binding.
-  const runChords =
-    bindings.run.filter((s) => s.includes('+')).map((s) => specLabel(s)) ?? []
+  // Show a single sprint shortcut for the hint — prefer the Shift+S chord,
+  // fall back to the primary Shift binding.
+  const runKey =
+    bindings.run.find((s) => s === 'Shift+KeyS') ??
+    bindings.run.find((s) => s.includes('+')) ??
+    bindings.run[0] ??
+    ''
 
   const movementLabel = walk ? 'Move' : ride ? 'Drive' : 'Steer'
 
@@ -202,9 +205,7 @@ export default function KeyHints(): JSX.Element {
         {walk && (
           <>
             <Chip>
-              {runChords.map((spec) => (
-                <Key key={spec} spec={spec} />
-              ))}
+              <Key spec={runKey} />
               <span className="ml-1 text-amber-100">Run</span>
             </Chip>
             <span className="h-3 w-px bg-white/25" />
