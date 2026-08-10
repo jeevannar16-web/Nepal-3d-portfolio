@@ -33,7 +33,7 @@ function specLabel(spec: string): string {
 
 function Key({ spec }: { spec: string }): JSX.Element {
   return (
-    <kbd className="inline-flex min-w-[1.5rem] items-center justify-center rounded-md border border-amber-300/60 bg-gradient-to-b from-amber-400/40 to-amber-600/30 px-1.5 py-0.5 text-[11px] font-black text-amber-100 shadow-[0_0_10px_rgba(251,191,36,0.45)]">
+    <kbd className="inline-flex min-w-[1.7rem] items-center justify-center rounded-md border border-amber-200/80 bg-gradient-to-b from-amber-300/90 to-amber-500/60 px-1.5 py-0.5 text-[12px] font-black text-slate-950 shadow-[0_0_12px_rgba(251,191,36,0.65)]">
       {specLabel(spec)}
     </kbd>
   )
@@ -45,7 +45,7 @@ function PadKey({ spec, arrow }: { spec: string; arrow: string }): JSX.Element {
     <span className="flex flex-col items-center gap-0.5">
       <Key spec={spec} />
       {arrow && (
-        <kbd className="inline-flex min-w-[1.2rem] items-center justify-center rounded border border-white/15 bg-white/5 px-1 text-[9px] font-bold text-white/60">
+        <kbd className="inline-flex min-w-[1.3rem] items-center justify-center rounded border border-white/30 bg-white/15 px-1 text-[11px] font-bold text-white">
           {specLabel(arrow)}
         </kbd>
       )}
@@ -177,7 +177,7 @@ export default function KeyHints(): JSX.Element {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
-      <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 via-white/10 to-emerald-500/20 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white/90 shadow-[0_0_28px_rgba(251,191,36,0.45)] backdrop-blur-md">
+      <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border-2 border-amber-300/60 bg-black/70 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-100 shadow-[0_0_28px_rgba(251,191,36,0.55)] backdrop-blur-md">
         <Chip>
           <Pad
             up={{ spec: fwdKey, arrow: arrowFor('forward') }}
@@ -185,45 +185,47 @@ export default function KeyHints(): JSX.Element {
             left={{ spec: screenLeftKey, arrow: arrowFor('right') }}
             right={{ spec: screenRightKey, arrow: arrowFor('left') }}
           />
-          <span className="ml-1">{movementLabel}</span>
+          <span className="ml-1 text-amber-100">{movementLabel}</span>
         </Chip>
-        <span className="h-3 w-px bg-white/20" />
+        <span className="h-3 w-px bg-white/25" />
         {walk && (
           <>
             <Chip>
               <AllKeys action="run" dedupe />
-              <span className="ml-1">Run</span>
+              <span className="ml-1 text-amber-100">Run</span>
             </Chip>
-            <span className="h-3 w-px bg-white/20" />
+            <span className="h-3 w-px bg-white/25" />
             <Chip>
               <AllKeys action="jump" />
-              <span className="ml-1">Jump</span>
+              <span className="ml-1 text-amber-100">Jump</span>
             </Chip>
-            <span className="h-3 w-px bg-white/20" />
+            <span className="h-3 w-px bg-white/25" />
             <Chip>
               <AllKeys action="interact" />
-              <span className="ml-1">Interact</span>
+              <span className="ml-1 text-amber-100">Interact</span>
             </Chip>
-            <span className="h-3 w-px bg-white/20" />
+            <span className="h-3 w-px bg-white/25" />
           </>
         )}
         <Chip icon>
-          <span className="ml-1 text-amber-100/90">Mouse Look</span>
+          <span className="ml-1 text-amber-100">Mouse Look</span>
         </Chip>
-        <span className="h-3 w-px bg-white/20" />
+        <span className="h-3 w-px bg-white/25" />
         {(ride || chute) && (
           <>
             <Chip>
               <AllKeys action="exit" />
-              <span className="ml-1">Exit</span>
+              <span className="ml-1 text-amber-100">Exit</span>
             </Chip>
-            <span className="h-3 w-px bg-white/20" />
+            <span className="h-3 w-px bg-white/25" />
           </>
         )}
-        <Chip>
-          <AllKeys action="exit" />
-          <span className="ml-1">Menu</span>
-        </Chip>
+        {walk && (
+          <Chip>
+            <AllKeys action="exit" />
+            <span className="ml-1 text-amber-100">Menu</span>
+          </Chip>
+        )}
       </div>
     </div>
   )

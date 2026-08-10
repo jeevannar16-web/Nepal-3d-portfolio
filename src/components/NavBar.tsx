@@ -128,6 +128,22 @@ export default function NavBar(): JSX.Element {
     }
   }, [open])
 
+  // Open the menu with Esc or Z while on foot (the same keys used to exit
+  // vehicles when riding). The menu button is otherwise the only way in.
+  useEffect(() => {
+    if (!introDone || open || isPanelOpen) return
+    if (playerMode !== 'walk') return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.code === 'KeyZ') {
+        e.preventDefault()
+        playClick()
+        setOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [introDone, open, isPanelOpen, playerMode])
+
   const openZone = (key: string) => {
     // Nothing can open a panel while the intro is still playing, so the intro
     // overlay and a ContentPanel can never render at the same time.
