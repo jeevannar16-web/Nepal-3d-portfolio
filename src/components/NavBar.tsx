@@ -330,6 +330,7 @@ export default function NavBar(): JSX.Element {
                 <line x1="18" y1="6" x2="6" y2="18" />
               </svg>
             </button>
+            </div>
           </div>
 
           {/* Segmented tab bar */}
