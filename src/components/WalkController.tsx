@@ -141,22 +141,23 @@ export default function WalkController({
       // a held W/S/A/D from the vehicle carries straight over the moment the
       // player steps out — no need to release and re-press the key after
       // dismounting. Everything resolves through the shared control bindings.
-      if (matchesAction(e, 'forward')) {
-        fwdCodes.current.add(e.code)
-        inputState.fwd = true
-        e.preventDefault()
-        return
-      }
-      // Run is matched before back so the Shift+S sprint chord resolves to
-      // running instead of being swallowed by the plain-S back binding. S is a
-      // forward key, so the chord must ALSO set forward — otherwise Shift+S
-      // would sprint in place and never advance.
+      // Run is matched before forward/back so Shift+ArrowUp / Shift+ArrowDown /
+      // Shift+S sprint chords resolve to running instead of being swallowed by
+      // the plain up/down forward bindings. Those keys are forward keys, so a
+      // run chord must ALSO set forward — otherwise the sprint would run in
+      // place and never advance.
       if (matchesAction(e, 'run')) {
         inputState.run = true
-        if (matchesAction(e, 'back')) {
+        if (matchesAction(e, 'forward') || matchesAction(e, 'back')) {
           fwdCodes.current.add(e.code)
           inputState.fwd = true
         }
+        e.preventDefault()
+        return
+      }
+      if (matchesAction(e, 'forward')) {
+        fwdCodes.current.add(e.code)
+        inputState.fwd = true
         e.preventDefault()
         return
       }

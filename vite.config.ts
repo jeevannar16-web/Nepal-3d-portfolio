@@ -10,6 +10,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     allowedHosts: true,
+    hmr: {
+      overlay: false,
+    },
     // Poll the filesystem instead of relying on the OS inotify watcher. The
     // watcher can silently stop detecting changes (serving stale code to
     // always-on dev servers), which is exactly what caused repeated "still
