@@ -76,13 +76,13 @@ function Keypad({
 }): JSX.Element {
   return (
     <span className="flex items-center gap-2" aria-hidden="true">
-      <span className="rounded-lg border border-amber-200/40 bg-black/30 p-1.5">
+      <span className="rounded-lg border-2 border-amber-200/70 bg-black/30 p-1.5">
         <Pad {...wasd} />
       </span>
       <span className="text-base font-black leading-none text-amber-200 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]">
         =
       </span>
-      <span className="rounded-lg border border-white/25 bg-black/30 p-1.5">
+      <span className="rounded-lg border-2 border-amber-200/70 bg-black/30 p-1.5">
         <Pad {...arrows} />
       </span>
     </span>
