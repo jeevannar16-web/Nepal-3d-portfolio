@@ -1,11 +1,14 @@
 import { useEffect, useState, type JSX } from 'react'
 import { useStore } from '../store/useStore'
 import { identity } from '../data'
+import { usePortfolio } from '../hooks/usePortfolio'
 
 export default function IntroOverlay(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
   const introStage = useStore((s) => s.introStage)
   const introCaption = useStore((s) => s.introCaption)
+  const { getIdentity } = usePortfolio()
+  const currentIdentity = getIdentity() ?? identity
   // The identity block only frames the start of the flight — it fades away a
   // few seconds in so it never blocks the airplane view for the whole journey.
   const [identityHidden, setIdentityHidden] = useState(false)
@@ -36,13 +39,13 @@ export default function IntroOverlay(): JSX.Element | null {
         }`}
       >
         <h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-2xl sm:text-6xl">
-          {identity.name}
+          {currentIdentity.name}
         </h1>
         <p className="mt-3 text-sm font-bold uppercase tracking-[0.25em] text-amber-300 drop-shadow-lg sm:text-base">
-          {identity.role}
+          {currentIdentity.role}
         </p>
         <p className="mt-2 text-sm font-semibold text-white/90 drop-shadow">
-          {identity.location}
+          {currentIdentity.location}
         </p>
       </div>
       {stageText ? (

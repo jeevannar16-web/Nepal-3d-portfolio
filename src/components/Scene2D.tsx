@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 import { identity, zones } from '../data'
+import { usePortfolio } from '../hooks/usePortfolio'
 import { ZoneIcon } from './icons'
 import Reveal from './Reveal'
 import { useStore } from '../store/useStore'
@@ -45,6 +46,10 @@ function HeroVisual(): JSX.Element {
 
 export default function Scene2D(): JSX.Element {
   const setPrefersSimple = useStore((s) => s.setPrefersSimple)
+  const { getZones, getIdentity } = usePortfolio()
+  const portfolioZones = getZones()
+  const displayZones = portfolioZones.length > 0 ? portfolioZones : zones
+  const currentIdentity = getIdentity() ?? identity
 
   return (
     <div className="relative h-full overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
@@ -57,9 +62,9 @@ export default function Scene2D(): JSX.Element {
 
       <div className="relative">
         <header className="px-6 pt-8 text-center">
-          <h1 className="text-3xl font-bold text-white">{identity.name}</h1>
+          <h1 className="text-3xl font-bold text-white">{currentIdentity.name}</h1>
           <p className="mt-2 text-slate-300">
-            {identity.role} · {identity.location}
+            {currentIdentity.role} · {currentIdentity.location}
           </p>
           <button
             type="button"
@@ -73,7 +78,7 @@ export default function Scene2D(): JSX.Element {
         </header>
 
         <main className="mx-auto max-w-2xl space-y-6 px-6 py-8">
-          {zones.map((zone, i) => (
+          {displayZones.map((zone, i) => (
             <Reveal key={zone.key} delay={i * 90}>
               <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
                 <div className="flex items-center gap-2.5">

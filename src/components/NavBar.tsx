@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { useStore } from '../store/useStore'
 import { zones, landmarks, identity } from '../data'
+import { usePortfolio } from '../hooks/usePortfolio'
 import { transportState, type TransportMode } from '../store/transportState'
 import type { TimeOfDay } from '../utils/timeOfDay'
 import type { WeatherKind } from '../utils/weather'
@@ -85,10 +86,17 @@ export default function NavBar(): JSX.Element {
   const replayIntro = useStore((s) => s.replayIntro)
   const setPlayerMode = useStore((s) => s.setPlayerMode)
 
+  const { profiles, activeProfile, switchProfile, getZones, getIdentity } =
+    usePortfolio()
+
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<Tab>('explore')
   const [pulse, setPulse] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+
+  const portfolioZones = getZones()
+  const displayZones = portfolioZones.length > 0 ? portfolioZones : zones
+  const currentIdentity = getIdentity() ?? identity
 
   useEffect(() => {
     if (!introDone) return
@@ -126,7 +134,7 @@ export default function NavBar(): JSX.Element {
     if (!introDone) return
     playClick()
     if (markZoneVisited(key)) {
-      const zone = zones.find((z) => z.key === key)
+      const zone = displayZones.find((z) => z.key === key)
       showToast(`${zone?.title ?? 'Zone'} unlocked!`)
     }
     // Remember the zone's landmark so the wayfinder can point the way back.
@@ -277,15 +285,38 @@ export default function NavBar(): JSX.Element {
                 <div className="text-[10px] font-semibold text-white/40">Interactive portfolio</div>
               </div>
             </div>
-            <button
-              type="button"
-              aria-label="Close menu"
-              onClick={() => {
-                playClick()
-                setOpen(false)
-              }}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white"
-            >
+            <div className="flex items-center gap-2">
+              {profiles.length > 1 && (
+                <label className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">
+                    Profile
+                  </span>
+                  <select
+                    value={activeProfile}
+                    onChange={(e) => {
+                      playClick()
+                      switchProfile(e.target.value)
+                    }}
+                    aria-label="Switch portfolio profile"
+                    className="max-w-[9rem] cursor-pointer rounded bg-transparent text-[11px] font-bold text-amber-300 outline-none [&>option]:bg-slate-900"
+                  >
+                    {profiles.map((p) => (
+                      <option key={p.key} value={p.key}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <button
+                type="button"
+                aria-label="Close menu"
+                onClick={() => {
+                  playClick()
+                  setOpen(false)
+                }}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white"
+              >
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -330,7 +361,7 @@ export default function NavBar(): JSX.Element {
           {tab === 'explore' && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {columnOrder.map((key) => {
-                const zone = zones.find((z) => z.key === key)
+                const zone = displayZones.find((z) => z.key === key)
                 if (!zone) return null
                 const active = isPanelOpen && activeZone === zone.key
                 return (
@@ -549,7 +580,7 @@ export default function NavBar(): JSX.Element {
               </div>
               <p className="text-sm font-semibold leading-relaxed text-slate-200">
                 An interactive 3D portfolio built with React Three Fiber, Rapier physics and
-                Vite. Drive around a stylized Kathmandu valley to explore {identity.name}’s work
+                Vite. Drive around a stylized Kathmandu valley to explore {currentIdentity.name}’s work
                 — walk the streets, ride, drive, and fly to every landmark.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
