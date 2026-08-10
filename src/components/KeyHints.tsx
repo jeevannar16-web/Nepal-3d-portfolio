@@ -31,9 +31,21 @@ function specLabel(spec: string): string {
   )
 }
 
-function Key({ spec }: { spec: string }): JSX.Element {
+function Key({
+  spec,
+  color = 'amber',
+}: {
+  spec: string
+  color?: 'amber' | 'sky'
+}): JSX.Element {
+  const palette =
+    color === 'sky'
+      ? 'border-sky-300 bg-gradient-to-b from-sky-200 to-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.65)]'
+      : 'border-amber-300 bg-gradient-to-b from-amber-200 to-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.65)]'
   return (
-    <kbd className="inline-flex min-w-[2rem] items-center justify-center rounded-md border-2 border-amber-300 bg-gradient-to-b from-amber-200 to-amber-400 px-2 py-1 text-[13px] font-black text-slate-950 shadow-[0_0_12px_rgba(251,191,36,0.65)]">
+    <kbd
+      className={`inline-flex min-w-[2rem] items-center justify-center rounded-md border-2 px-2 py-1 text-[13px] font-black text-slate-950 ${palette}`}
+    >
       {specLabel(spec)}
     </kbd>
   )
@@ -46,27 +58,29 @@ function Pad({
   down,
   left,
   right,
+  color,
 }: {
   up: string
   down: string
   left: string
   right: string
+  color?: 'amber' | 'sky'
 }): JSX.Element {
   return (
     <span className="grid grid-cols-3 gap-0.5" aria-hidden="true">
       <span />
-      <Key spec={up} />
+      <Key spec={up} color={color} />
       <span />
-      <Key spec={left} />
-      <Key spec={down} />
-      <Key spec={right} />
+      <Key spec={left} color={color} />
+      <Key spec={down} color={color} />
+      <Key spec={right} color={color} />
     </span>
   )
 }
 
-/** One clean movement board: the WASD cluster and the arrow cluster sit side
- *  by side inside a single bordered board, so a player sees both ways to move
- *  at a glance without extra chrome. */
+/** One movement board: WASD cluster (amber) and arrow cluster (sky) share a
+ *  single bordered board, joined by a clear '=', so both ways to move are
+ *  obvious and visually distinct. */
 function Keypad({
   wasd,
   arrows,
@@ -76,12 +90,14 @@ function Keypad({
 }): JSX.Element {
   return (
     <span
-      className="flex items-center gap-3 rounded-lg border-2 border-amber-300 bg-black/40 px-3 py-2"
+      className="flex items-center gap-2.5 rounded-lg border-2 border-amber-300 bg-gradient-to-b from-black/50 to-black/70 px-3 py-2"
       aria-hidden="true"
     >
-      <Pad {...wasd} />
-      <span className="h-7 w-px bg-white/25" />
-      <Pad {...arrows} />
+      <Pad {...wasd} color="amber" />
+      <span className="text-xl font-black leading-none text-white/80 drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]">
+        =
+      </span>
+      <Pad {...arrows} color="sky" />
     </span>
   )
 }
@@ -165,7 +181,7 @@ export default function KeyHints(): JSX.Element {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
-      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1.5 rounded-2xl border-2 border-amber-300/60 bg-black/70 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-100 shadow-[0_0_28px_rgba(251,191,36,0.55)] backdrop-blur-md">
+      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1.5 rounded-2xl border-2 border-amber-300/70 bg-gradient-to-r from-slate-900/90 via-black/80 to-slate-900/90 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-100 shadow-[0_0_28px_rgba(251,191,36,0.55)] backdrop-blur-md">
         <Chip>
           <Keypad
             wasd={{
