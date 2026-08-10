@@ -45,7 +45,7 @@ function PadKey({ spec, arrow }: { spec: string; arrow: string }): JSX.Element {
     <span className="flex flex-col items-center gap-0.5">
       <Key spec={spec} />
       {arrow && (
-        <kbd className="inline-flex min-w-[1.3rem] items-center justify-center rounded border border-white/30 bg-white/15 px-1 text-[11px] font-bold text-white">
+        <kbd className="inline-flex min-w-[1.4rem] items-center justify-center rounded-md border-2 border-amber-200/70 bg-amber-400/80 px-1 py-0.5 text-[13px] font-black leading-none text-slate-950 shadow-[0_0_8px_rgba(251,191,36,0.7)]">
           {specLabel(arrow)}
         </kbd>
       )}
@@ -222,7 +222,7 @@ export default function KeyHints(): JSX.Element {
         )}
         {walk && (
           <Chip>
-            <AllKeys action="exit" />
+            <Key spec="Escape" />
             <span className="ml-1 text-amber-100">Menu</span>
           </Chip>
         )}

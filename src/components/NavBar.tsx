@@ -128,13 +128,13 @@ export default function NavBar(): JSX.Element {
     }
   }, [open])
 
-  // Open the menu with Esc or Z while on foot (the same keys used to exit
-  // vehicles when riding). The menu button is otherwise the only way in.
+  // Open the menu with Esc while on foot. The menu button is otherwise the
+  // only way in.
   useEffect(() => {
     if (!introDone || open || isPanelOpen) return
     if (playerMode !== 'walk') return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.code === 'KeyZ') {
+      if (e.key === 'Escape') {
         e.preventDefault()
         playClick()
         setOpen(true)
