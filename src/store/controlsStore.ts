@@ -156,13 +156,27 @@ export const useControls = create<ControlsState>()(
             [action]: [spec],
           },
         })),
-      resetBindings: () => set({ bindings: DEFAULT_BINDINGS }),
+      resetBindings: () =>
+        set({
+          bindings: {
+            forward: [...DEFAULT_BINDINGS.forward],
+            back: [...DEFAULT_BINDINGS.back],
+            left: [...DEFAULT_BINDINGS.left],
+            right: [...DEFAULT_BINDINGS.right],
+            run: [...DEFAULT_BINDINGS.run],
+            jump: [...DEFAULT_BINDINGS.jump],
+            interact: [...DEFAULT_BINDINGS.interact],
+            exit: [...DEFAULT_BINDINGS.exit],
+            crouch: [...DEFAULT_BINDINGS.crouch],
+          },
+        }),
       toggleBigMode: () => set((s) => ({ bigMode: !s.bigMode })),
       setBigMode: (on) => set({ bigMode: on }),
       requestCameraSnap: () => set((s) => ({ cameraSnapTick: s.cameraSnapTick + 1 })),
     }),
     {
       name: 'nepal-portfolio-controls',
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<ControlsState>
@@ -175,11 +189,20 @@ export const useControls = create<ControlsState>()(
           // locked to the standard layout regardless of what an older session
           // saved — stale Home/End/A/D/arrow placement in localStorage used to
           // resurface every reload. Standard = left: D, →, End; right: A, ←, Home.
+          // The run chords are also pinned so the Shift+Arrow sprint shortcuts
+          // stay available even if an old session only saved Shift+S.
+          // The run chords are also pinned when the saved session predates
+          // them (only Shift+S) so the Shift+Arrow sprint shortcuts appear;
+          // a run binding that already uses the arrow chords is kept as-is.
           bindings: {
             ...current.bindings,
             ...pb,
             left: ['KeyD', 'ArrowRight', 'End'],
             right: ['KeyA', 'ArrowLeft', 'Home'],
+            run:
+              (pb.run ?? []).some((s) => s.includes('ArrowUp') || s.includes('ArrowDown'))
+                ? [...pb.run!]
+                : DEFAULT_BINDINGS.run,
           },
         }
       },
