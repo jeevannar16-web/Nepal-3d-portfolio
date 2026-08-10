@@ -64,9 +64,10 @@ function Pad({
   )
 }
 
-/** Two matching keypads side by side — WASD on the left, arrow keys on the
- *  right in the same layout, so the one-to-one mapping is obvious. */
-function Keypads({
+/** One combined movement block: WASD cluster on the left and the arrow
+ *  cluster on the right, side by side in the same layout, so a player sees
+ *  both ways to move at a glance. */
+function Keypad({
   wasd,
   arrows,
 }: {
@@ -74,9 +75,9 @@ function Keypads({
   arrows: { up: string; down: string; left: string; right: string }
 }): JSX.Element {
   return (
-    <span className="flex items-center gap-1.5" aria-hidden="true">
+    <span className="flex items-center gap-2" aria-hidden="true">
       <Pad {...wasd} />
-      <span className="text-[10px] font-black text-white/50">=</span>
+      <span className="h-5 w-px bg-white/25" />
       <Pad {...arrows} />
     </span>
   )
@@ -159,7 +160,7 @@ export default function KeyHints(): JSX.Element {
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
       <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border-2 border-amber-300/60 bg-black/70 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-100 shadow-[0_0_28px_rgba(251,191,36,0.55)] backdrop-blur-md">
         <Chip>
-          <Keypads
+          <Keypad
             wasd={{
               up: fwdKey,
               down: backKey,
