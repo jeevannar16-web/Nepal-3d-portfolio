@@ -22,6 +22,18 @@ function Keycap({ spec }: { spec: string }): JSX.Element {
 export default function KeyboardShortcuts(): JSX.Element {
   const bindings = useControls((s) => s.bindings)
 
+  // Collapse duplicate labels (e.g. ShiftLeft + ShiftRight both render
+  // "Shift") while keeping genuinely different keys like the Shift+S chord.
+  const displaySpecs = (action: ControlAction): string[] => {
+    const seen = new Set<string>()
+    return bindings[action].filter((spec) => {
+      const label = keyLabel(spec)
+      if (seen.has(label)) return false
+      seen.add(label)
+      return true
+    })
+  }
+
   return (
     <section className="flex flex-col rounded-xl border border-white/10 bg-white/5 p-3">
       <div className="mb-1 text-[11px] font-bold uppercase tracking-widest text-amber-400/90">
@@ -39,7 +51,7 @@ export default function KeyboardShortcuts(): JSX.Element {
           >
             <span className="text-xs font-semibold text-slate-200">{ACTION_LABELS[action]}</span>
             <span className="flex flex-wrap justify-end gap-1">
-              {bindings[action].map((spec) => (
+              {displaySpecs(action).map((spec) => (
                 <Keycap key={spec} spec={spec} />
               ))}
             </span>

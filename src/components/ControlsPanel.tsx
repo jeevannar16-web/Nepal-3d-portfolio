@@ -125,11 +125,11 @@ export default function ControlsPanel(): JSX.Element {
           ))}
         </div>
 
-        <div className="mt-2 rounded-lg border border-amber-400/20 bg-amber-400/5 px-2 py-1.5 text-[11px] font-semibold text-amber-100/70">
-          {prompt
-            ? 'Press the new key (Esc cancels)'
-            : 'Tip: hold Shift to run, Home turns right, End turns left.'}
-        </div>
+        {prompt && (
+          <div className="mt-2 rounded-lg border border-amber-400/20 bg-amber-400/5 px-2 py-1.5 text-[11px] font-semibold text-amber-100/70">
+            Press the new key (Esc cancels)
+          </div>
+        )}
       </section>
 
       <section className="flex flex-col rounded-xl border border-white/10 bg-white/5 p-3">

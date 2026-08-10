@@ -147,9 +147,9 @@ export default function WalkController({
         e.preventDefault()
         return
       }
-      // Run is matched before back so the Shift+R sprint chord resolves to
+      // Run is matched before back so the Shift+S sprint chord resolves to
       // running instead of being swallowed by the plain-S back binding. S is a
-      // forward key, so the chord must ALSO set forward — otherwise Shift+R
+      // forward key, so the chord must ALSO set forward — otherwise Shift+S
       // would sprint in place and never advance.
       if (matchesAction(e, 'run')) {
         inputState.run = true

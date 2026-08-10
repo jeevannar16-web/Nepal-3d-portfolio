@@ -53,7 +53,7 @@ export const DEFAULT_BINDINGS: Record<ControlAction, string[]> = {
   back: ['KeyS', 'ArrowDown'],
   left: ['KeyD', 'ArrowRight', 'End'],
   right: ['KeyA', 'ArrowLeft', 'Home'],
-  run: ['ShiftLeft', 'ShiftRight', 'Shift+KeyR'],
+  run: ['ShiftLeft', 'ShiftRight', 'Shift+KeyS'],
   jump: ['Space'],
   interact: ['KeyE'],
   exit: ['Escape', 'KeyZ'],

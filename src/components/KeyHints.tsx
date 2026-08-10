@@ -150,9 +150,9 @@ export default function KeyHints(): JSX.Element {
   const backKey = first('back')
   const screenLeftKey = first('right')
   const screenRightKey = first('left')
-  // Prefer the Shift+R sprint chord for the hint; fall back to the primary.
+  // Prefer the Shift+S sprint chord for the hint; fall back to the primary.
   const runKey =
-    bindings.run.find((s) => s === 'Shift+KeyR' || s.includes('+')) ??
+    bindings.run.find((s) => s === 'Shift+KeyS' || s.includes('+')) ??
     bindings.run[0] ??
     ''
 
