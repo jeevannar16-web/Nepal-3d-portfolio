@@ -2,6 +2,15 @@ import { useGLTF } from '@react-three/drei'
 import { assetUrl } from './assetUrl'
 
 /**
+ * Point drei's shared DRACOLoader at the locally vendored decoder (bundled with
+ * three). All .glb are Draco-compressed, so this must run before any
+ * `useGLTF`/`preload` call, otherwise meshes with `KHR_draco_mesh_compression`
+ * fail to load. Textures are WebP (EXT_texture_webp), which three decodes
+ * natively — no extra loader needed.
+ */
+useGLTF.setDecoderPath(assetUrl('/draco/'))
+
+/**
  * Start fetching every .glb up front, the moment the bundle runs, instead of
  * letting each component request its model when it first mounts. Without this
  * the world renders first and the soldier/vehicles/landmarks pop in one by one
