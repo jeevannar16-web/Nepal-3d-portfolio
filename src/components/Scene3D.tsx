@@ -1,14 +1,9 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import * as THREE from 'three'
-import {
-  EffectComposer,
-  Bloom,
-  SSAO,
-  SMAA,
-} from '@react-three/postprocessing'
 import { Environment } from '@react-three/drei'
+const PostFX = lazy(() => import('./PostFX'))
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useStore } from '../store/useStore'
 import { useControls } from '../store/controlsStore'
@@ -262,22 +257,9 @@ function Scene3D() {
         <FlyCamera />
 
         {!lowPower && (
-          <EffectComposer>
-            <Bloom
-              mipmapBlur
-              intensity={0.5}
-              luminanceThreshold={0.8}
-              luminanceSmoothing={0.25}
-              radius={0.7}
-            />
-            <SSAO
-              samples={16}
-              radius={0.3}
-              intensity={3}
-              bias={0.1}
-            />
-            <SMAA />
-          </EffectComposer>
+          <Suspense fallback={null}>
+            <PostFX />
+          </Suspense>
         )}
       </Canvas>
 
