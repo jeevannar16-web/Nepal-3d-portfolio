@@ -1,11 +1,24 @@
 @import 'tailwindcss';
 
 html,
-body,
-#root {
+body {
   margin: 0;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* `height: 100%` resolves to the (buggy, frozen-at-load) `vh` value on iOS, which
+ * clips the canvas under the address bar / leaves a gap behind it. `height:
+ * 100dvh` uses the dynamic visual viewport (updates as the address bar hides). It
+ * must be a definite height (not `min-height`) so the `h-full` canvas container
+ * and every absolute `inset-0` overlay resolve to the real viewport and nothing
+ * splits when the browser goes fullscreen (F11 / device fullscreen). `min-height:
+ * 100vh` is the fallback for browsers without `dvh`. */
+#root {
+  height: 100dvh;
+  min-height: 100vh;
   overflow: hidden;
   font-family: system-ui, -apple-system, sans-serif;
 }
@@ -168,5 +181,29 @@ body,
     opacity: 1;
     transform: none;
     transition: none;
+  }
+}
+
+/*
+ * Mobile responsiveness — safe under the dynamic viewport. Tailwind JIT lets us
+ * use the modern `*dvh` (dynamic viewport height) units so the canvas (and the
+ * full-height root) never gets clipped behind the iOS address bar, and
+ * `env(safe-area-inset-*)` so fixed HUD glass controls stay clear of the home
+ * indicator / Dynamic Island. Font size scales down one step on very small
+ * viewports so dense labels remain readable.
+ */
+html {
+  font-size: 16px;
+}
+
+@media (width <= 640px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+@media (width <= 380px) {
+  html {
+    font-size: 14px;
   }
 }

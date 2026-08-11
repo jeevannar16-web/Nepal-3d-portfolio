@@ -203,7 +203,7 @@ export default function TouchControls(): JSX.Element | null {
       {/* Direction pad — fixed, bottom-left. Holds the bound direction keys;
           the center button is Run (hold to sprint while walking). */}
       <div
-        className="pointer-events-auto absolute bottom-6 left-4 grid touch-none select-none grid-cols-3 gap-1"
+        className="pointer-events-auto absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-4 grid touch-none select-none grid-cols-3 gap-1"
         style={{ width: padBtn * 3 + gap * 2 }}
       >
         <div />
@@ -345,7 +345,7 @@ export default function TouchControls(): JSX.Element | null {
           riding it sits above the bottom-right HUD cluster; when walking the
           bottom right is free so the dock drops lower. */}
       <div
-        className="absolute right-4 flex flex-col items-center"
+        className="absolute right-4 flex flex-col items-center pb-[env(safe-area-inset-bottom)]"
         style={{ gap, bottom: showExit ? 44 * uiScale + 96 : 96 * uiScale }}
       >
         {/* Grow / shrink — every mode (touch equivalent of Ctrl+Home). */}
