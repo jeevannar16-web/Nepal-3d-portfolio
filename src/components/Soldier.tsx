@@ -7,7 +7,7 @@ import { assetUrl } from '../utils/assetUrl'
 import { retargetClips } from '../utils/retargetAnimations'
 import { feetLocalY } from '../store/walkState'
 import { useControls } from '../store/controlsStore'
-import { solveArmCCD, type ArmChain } from '../utils/ik'
+import { solveArmCCD, solveLegCCD, poseGripHand, measureGripAxes, type ArmChain, type GripRig, type LegChain } from '../utils/ik'
 import BlobShadow from './BlobShadow'
 
 /**
@@ -44,12 +44,18 @@ interface RidingPose {
   right: THREE.Vector3
   /** Vehicle forward (world, horizontal) — aims the hands' grip direction. */
   barForward: THREE.Vector3
+  /** World-space foot peg/stirrup targets (ankles rest on these). Optional —
+      when absent the legs stay as the clip poses them (e.g. dangling). */
+  footL?: THREE.Vector3
+  footR?: THREE.Vector3
 }
 
 function buildRiderRig(scene: THREE.Object3D): {
   skeleton: THREE.Skeleton
   left: ArmChain
   right: ArmChain
+  leftLeg: LegChain
+  rightLeg: LegChain
 } | null {
   let skeleton: THREE.Skeleton | null = null
   const bones = new Map<string, THREE.Bone>()
@@ -60,18 +66,61 @@ function buildRiderRig(scene: THREE.Object3D): {
     if ((o as THREE.Bone).isBone) bones.set(o.name, o as THREE.Bone)
   })
   if (!skeleton) return null
+  /** Collect the riding grip for one hand: cached local axes + curl bones. */
+  const gripFor = (side: 'Left' | 'Right', hand: THREE.Bone): GripRig | undefined => {
+    const getBone = (name: string) => bones.get(name) ?? null
+    const axes = measureGripAxes(hand, getBone, side)
+    if (!axes) return undefined
+    const phalanges = (prefix: string) => {
+      const out: THREE.Bone[] = []
+      for (let i = 2; i <= 4; i++) {
+        const b = bones.get(`${prefix}${i}`)
+        if (b) out.push(b)
+      }
+      return out
+    }
+    const index = phalanges(`${side}HandIndex`)
+    const middle = phalanges(`${side}HandMiddle`)
+    const ring = phalanges(`${side}HandRing`)
+    const pinky = phalanges(`${side}HandPinky`)
+    const thumb = phalanges(`${side}HandThumb`)
+    if (index.length !== 3 || middle.length !== 3 || ring.length !== 3 || pinky.length !== 3 || thumb.length !== 3) {
+      return undefined
+    }
+    return {
+      finger: axes.finger,
+      width: axes.width,
+      palm: axes.palm,
+      fingers: [
+        { bones: index, angles: [0.85, 0.8, 0.6] },
+        { bones: middle, angles: [0.9, 0.85, 0.65] },
+        { bones: ring, angles: [0.85, 0.8, 0.6] },
+        { bones: pinky, angles: [0.8, 0.75, 0.55] },
+      ],
+      thumb: { bones: thumb, angles: [0.5, 0.65, 0.8], sign: side === 'Left' ? -1 : 1 },
+    }
+  }
   const arm = (side: 'Left' | 'Right'): ArmChain | null => {
     const clavicle = bones.get(`${side}Shoulder`)
     const shoulder = bones.get(`${side}Arm`)
     const elbow = bones.get(`${side}ForeArm`)
     const hand = bones.get(`${side}Hand`)
     if (!clavicle || !shoulder || !elbow || !hand) return null
-    return { clavicle, shoulder, elbow, hand }
+    return { clavicle, shoulder, elbow, hand, grip: gripFor(side, hand) }
+  }
+  const leg = (side: 'Left' | 'Right'): LegChain | null => {
+    const thigh = bones.get(`${side}UpLeg`)
+    const shin = bones.get(`${side}Leg`)
+    const foot = bones.get(`${side}Foot`)
+    if (!thigh || !shin || !foot) return null
+    return { thigh, shin, foot }
   }
   const left = arm('Left')
   const right = arm('Right')
-  if (!left || !right) return null
-  return { skeleton, left, right }
+  const leftLeg = leg('Left')
+  const rightLeg = leg('Right')
+  if (!left || !right || !leftLeg || !rightLeg) return null
+  return { skeleton, left, right, leftLeg, rightLeg }
 }
 
 const IDLE_MOTION: Motion = {
@@ -217,6 +266,7 @@ export default function Soldier({
   const current = useRef<THREE.AnimationAction | null>(null)
   const skeletonRef = useRef<THREE.Skeleton | null>(null)
   const armChainsRef = useRef<{ left: ArmChain; right: ArmChain } | null>(null)
+  const legChainsRef = useRef<{ left: LegChain; right: LegChain } | null>(null)
   const rigBoundRef = useRef(false)
 
   const clips = useMemo(
@@ -335,9 +385,11 @@ export default function Soldier({
       if (rig) {
         skeletonRef.current = rig.skeleton
         armChainsRef.current = { left: rig.left, right: rig.right }
+        legChainsRef.current = { left: rig.leftLeg, right: rig.rightLeg }
         rigBoundRef.current = true
       } else {
         armChainsRef.current = null
+        legChainsRef.current = null
       }
     }
     if (riding && skeletonRef.current && armChainsRef.current) {
@@ -347,6 +399,17 @@ export default function Soldier({
       avatarScene.updateWorldMatrix(true, true)
       solveArmCCD(armChainsRef.current.left, riding.left, riding.barForward)
       solveArmCCD(armChainsRef.current.right, riding.right, riding.barForward)
+      // Override the CCD's generic hand orientation with a real grip — palm on
+      // the bar, curled fingers wrapping it — using the rig's own local axes.
+      poseGripHand(armChainsRef.current.left, riding.barForward)
+      poseGripHand(armChainsRef.current.right, riding.barForward)
+      // Then plant both feet on their pegs/stirrups (if supplied). The arm and
+      // leg chains are independent (arms hang from the chest, legs from the
+      // hips), so solving legs after arms doesn't disturb the grips.
+      if (legChainsRef.current && riding.footL && riding.footR) {
+        solveLegCCD(legChainsRef.current.left, riding.footL)
+        solveLegCCD(legChainsRef.current.right, riding.footR)
+      }
       skeletonRef.current.update()
     }
     ;(window as any).__soldier = {
@@ -366,6 +429,14 @@ export default function Soldier({
             shoulderL: armChainsRef.current
               ? armChainsRef.current.left.clavicle.getWorldPosition(new THREE.Vector3())
               : null,
+            footL: legChainsRef.current
+              ? legChainsRef.current.left.foot.getWorldPosition(new THREE.Vector3())
+              : null,
+            footR: legChainsRef.current
+              ? legChainsRef.current.right.foot.getWorldPosition(new THREE.Vector3())
+              : null,
+            footTargetL: riding.footL ?? null,
+            footTargetR: riding.footR ?? null,
           }
         : null,
     }

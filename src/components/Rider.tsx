@@ -20,9 +20,20 @@ interface RiderProps {
    * IK-solved onto these each frame. Defaults to a sport-bike crouch.
    */
   grip?: Grip
+  /**
+   * Foot peg/stirrup points in the same seat frame. When supplied the rider's
+   * ankles are IK-solved onto these each frame so the feet rest on the pegs
+   * instead of dangling through the vehicle. Optional (balloons leave it out).
+   */
+  foot?: Foot
 }
 
 type Grip = {
+  left: [number, number, number]
+  right: [number, number, number]
+}
+
+type Foot = {
   left: [number, number, number]
   right: [number, number, number]
 }
@@ -39,7 +50,12 @@ const DEFAULT_GRIP: Grip = {
   right: [0.28, 0.95, 0.55],
 }
 
-export default function Rider({ seat, lean = 0, grip = DEFAULT_GRIP }: RiderProps): JSX.Element {
+export default function Rider({
+  seat,
+  lean = 0,
+  grip = DEFAULT_GRIP,
+  foot,
+}: RiderProps): JSX.Element {
   const motionRef = useRef<Motion>({
     moving: false,
     running: false,
@@ -66,6 +82,15 @@ export default function Rider({ seat, lean = 0, grip = DEFAULT_GRIP }: RiderProp
     g.localToWorld(L)
     g.localToWorld(R)
     motionRef.current.riding = { left: L, right: R, barForward: fwd }
+    if (foot) {
+      const fL = new THREE.Vector3(...foot.left)
+      const fR = new THREE.Vector3(...foot.right)
+      g.localToWorld(fL)
+      g.localToWorld(fR)
+      const riding = motionRef.current.riding
+      riding.footL = fL
+      riding.footR = fR
+    }
   })
 
   return (

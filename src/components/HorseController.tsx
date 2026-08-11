@@ -197,7 +197,13 @@ export default function HorseController({
         // body sway (side-to-side) with speed-dependent frequency and amplitude
         const swayFreq = 3.0 + newFwd * 0.5 // sway faster at speed
         const swayAmp = 0.05 + speedRatio * 0.08 // more sway at speed
-        visual.current.position.x = Math.sin(bobTime.current * swayFreq + Math.PI / 4) * swayAmp
+        const sway = Math.sin(bobTime.current * swayFreq + Math.PI / 4) * swayAmp
+        visual.current.position.x = sway
+        // Body roll: tips into the sway so the gait reads as a real rocking
+        // gallop, plus a lean into the current turn (yawVel) like a living
+        // animal shifting its weight through a corner.
+        const targetRoll = -sway * 1.1 - THREE.MathUtils.clamp(yawVel.current * 0.14, -0.12, 0.12)
+        visual.current.rotation.z = THREE.MathUtils.lerp(visual.current.rotation.z, targetRoll, 0.15)
         // head bob with independent timing offset for realism
         const headBobFreq = 3.5 + newFwd * 0.7
         const headBobAmp = 0.06 + speedRatio * 0.07
@@ -213,6 +219,7 @@ export default function HorseController({
         visual.current.position.y = 0
         visual.current.rotation.x = THREE.MathUtils.lerp(visual.current.rotation.x, 0, 0.2)
         visual.current.position.x = 0
+        visual.current.rotation.z = THREE.MathUtils.lerp(visual.current.rotation.z, 0, 0.2)
         visual.current.userData.gait = 'standing'
       }
       ;(window as any).__horse = {
@@ -239,9 +246,13 @@ export default function HorseController({
         <HorseModel />
         {active && (
           <Rider
-            seat={[0, 1.05, -0.1]}
+            seat={[0, 1.35, -0.1]}
             lean={0.3}
-            grip={{ left: [-0.12, 0.98, 0.2], right: [0.12, 0.98, 0.2] }}
+            grip={{ left: [-0.1, 0.252, 0.508], right: [0.1, 0.252, 0.508] }}
+            foot={{
+              left: [-0.28, -0.463, 0.196],
+              right: [0.28, -0.463, 0.196],
+            }}
           />
         )}
         <BlobShadow radius={1.2} y={0.01} />

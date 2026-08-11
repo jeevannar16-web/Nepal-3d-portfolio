@@ -223,7 +223,11 @@ export default function BikeController({
           <Rider
             seat={[0, 0.8, 0]}
             lean={0.5}
-            grip={{ left: [-0.2, 0.9, 0.22], right: [0.2, 0.9, 0.22] }}
+            grip={{ left: [-0.16, 0.385, 0.371], right: [0.16, 0.385, 0.371] }}
+            foot={{
+              left: [-0.23, -0.333, 0.182],
+              right: [0.23, -0.333, 0.182],
+            }}
           />
         )}
         <BlobShadow radius={1} y={0.01} />
