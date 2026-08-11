@@ -10,7 +10,7 @@ import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 import { transportState, type TransportPose } from '../store/transportState'
 import { walkState, inputState, walkHud, feetLocalY } from '../store/walkState'
-import { useControls, matchesAction } from '../store/controlsStore'
+import { useControls, matchesAction, chordMatches } from '../store/controlsStore'
 import Soldier from './Soldier'
 
 const WALK_SPEED = 3.0
@@ -24,6 +24,9 @@ const JUMP_VEL = 5.5
 const ENTER_RADIUS = 3.6
 const ANTICIPATE_TIME = 0.15
 const LAND_TIME = 0.32
+// Sprint latch: Shift+S toggles running on/off (press once → run until pressed
+// again), independent of the plain-Shift hold-to-run. Only while on foot.
+const RUN_TOGGLE_CHORD = 'Shift+KeyS'
 // Physics capsule is CapsuleCollider[0.55, 0.32]; its bottom (and the soldier
 // model's feet, which sit at the visual group origin) hangs this far below the
 // body centre, so the visual rides the capsule's bottom.
@@ -146,6 +149,27 @@ export default function WalkController({
       // the plain up/down forward bindings. Those keys are forward keys, so a
       // run chord must ALSO set forward — otherwise the sprint would run in
       // place and never advance.
+      //
+      // Shift+S is a latch toggle on top of the plain-Shift hold: press once to
+      // start sprinting, press again to stop. Releasing the chord (or the shift
+      // key alone) does NOT cancel it — the latch survives until the same chord
+      // is pressed a second time.
+      if (
+        activeRef.current &&
+        !e.repeat &&
+        chordMatches(e, RUN_TOGGLE_CHORD)
+      ) {
+        inputState.runToggle = !inputState.runToggle
+        // Turning the latch OFF must also clear any lingering plain-Shift hold,
+        // so sprint truly stops even though Shift is still held for the chord.
+        if (!inputState.runToggle) inputState.run = false
+        if (matchesAction(e, 'forward') || matchesAction(e, 'back')) {
+          fwdCodes.current.add(e.code)
+          inputState.fwd = true
+        }
+        e.preventDefault()
+        return
+      }
       if (matchesAction(e, 'run')) {
         inputState.run = true
         if (matchesAction(e, 'forward') || matchesAction(e, 'back')) {
@@ -207,15 +231,26 @@ export default function WalkController({
       }
       if (matchesAction(e, 'left')) inputState.left = false
       if (matchesAction(e, 'right')) inputState.right = false
-      if (matchesAction(e, 'run')) inputState.run = false
+      // Releasing the Shift+S chord must NOT clear the sprint hold — the latch
+      // keeps running until Shift+S is pressed a second time. Releasing a plain
+      // Shift key also leaves an active latch intact; only clear the plain-Shift
+      // hold when there's no active latch (normal hold-to-run release).
+      if (
+        matchesAction(e, 'run') &&
+        !chordMatches(e, RUN_TOGGLE_CHORD) &&
+        !inputState.runToggle
+      ) {
+        inputState.run = false
+      }
     }
-    const onBlur = () => {
-      fwdCodes.current.clear()
-      inputState.fwd = false
-      inputState.left = false
-      inputState.right = false
-      inputState.run = false
-    }
+  const onBlur = () => {
+    fwdCodes.current.clear()
+    inputState.fwd = false
+    inputState.left = false
+    inputState.right = false
+    inputState.run = false
+    inputState.runToggle = false
+  }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', onBlur)
@@ -232,7 +267,9 @@ export default function WalkController({
     ;(window as any).__walkBody = rb
 
     if (!active) {
-      // Riding a vehicle: park the soldier far below the world, hidden.
+      // Riding a vehicle: park the soldier far below the world, hidden. Clear
+      // any active sprint latch so it can't carry over from on-foot.
+      inputState.runToggle = false
       rb.setTranslation({ x: 0, y: -500, z: 0 }, true)
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
       if (visual.current) visual.current.visible = false
@@ -357,7 +394,7 @@ export default function WalkController({
     const speed =
       (crouching.current
         ? CROUCH_SPEED
-        : inputState.run
+        : inputState.run || inputState.runToggle
           ? SPRINT_SPEED
           : WALK_SPEED) * speedMult
 
@@ -446,7 +483,7 @@ export default function WalkController({
     }
     motionRef.current = {
       moving,
-      running: moving && inputState.run && !crouching.current,
+      running: moving && (inputState.run || inputState.runToggle) && !crouching.current,
       crouching: crouching.current,
       jump: jumpState.current,
       // Free Fire-style: pace the gait to the INTENT (how hard W/S is pressed),

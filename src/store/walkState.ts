@@ -26,6 +26,13 @@ export const inputState = {
   left: false,
   right: false,
   run: false,
+  /**
+   * Shift+S sprint latch: toggled on/off by pressing the `run` chord again, so
+   * the soldier keeps sprinting until the same chord is pressed a second time.
+   * This is independent of the plain-Shift hold (inputState.run) — see
+   * WalkController for the chord handling.
+   */
+  runToggle: false,
   jump: false,
   interact: false,
 }
