@@ -150,20 +150,23 @@ export default function WalkController({
       // run chord must ALSO set forward — otherwise the sprint would run in
       // place and never advance.
       //
-      // Shift+S is a latch toggle on top of the plain-Shift hold: press once to
-      // start sprinting, press again to stop. Releasing the chord (or the shift
-      // key alone) does NOT cancel it — the latch survives until the same chord
-      // is pressed a second time.
+      // Shift+S is a pure toggle: press once → sprint ON (keeps moving forward
+      // automatically), press again → sprint OFF. Releasing the chord or the
+      // Shift key alone does NOT cancel it — the latch survives until the same
+      // chord is pressed a second time. The S key code is tracked in fwdCodes
+      // so releasing it never accidentally clears forward movement while the
+      // latch is active.
       if (
         activeRef.current &&
         !e.repeat &&
         chordMatches(e, RUN_TOGGLE_CHORD)
       ) {
         inputState.runToggle = !inputState.runToggle
-        // Turning the latch OFF must also clear any lingering plain-Shift hold,
-        // so sprint truly stops even though Shift is still held for the chord.
-        if (!inputState.runToggle) inputState.run = false
-        if (matchesAction(e, 'forward') || matchesAction(e, 'back')) {
+        if (!inputState.runToggle) {
+          inputState.run = false
+          fwdCodes.current.clear()
+          inputState.fwd = false
+        } else {
           fwdCodes.current.add(e.code)
           inputState.fwd = true
         }
@@ -223,11 +226,10 @@ export default function WalkController({
     }
     const up = (e: KeyboardEvent) => {
       if (matchesAction(e, 'forward') || matchesAction(e, 'back')) {
-        // Always remove from the set and recompute from its size. Both the
-        // forward and back bindings write into fwdCodes, so either release
-        // simply drops the code — a stale entry could never linger here.
         fwdCodes.current.delete(e.code)
-        inputState.fwd = fwdCodes.current.size > 0
+        if (!inputState.runToggle) {
+          inputState.fwd = fwdCodes.current.size > 0
+        }
       }
       if (matchesAction(e, 'left')) inputState.left = false
       if (matchesAction(e, 'right')) inputState.right = false

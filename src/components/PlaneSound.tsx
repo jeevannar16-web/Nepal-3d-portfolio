@@ -57,14 +57,18 @@ export default function PlaneSound(): JSX.Element {
   const muted = useStore((s) => s.settings.muted)
   const introStage = useStore((s) => s.introStage)
   const introDone = useStore((s) => s.introDone)
-  const started = useRef(false)
   const nodes = useRef<PlaneNodes | null>(null)
 
-  // Build the graph once on mount. Browsers start an AudioContext created
+  // Build the graph every time the intro (re)starts — and tear it down when
+  // the intro hands control over. The old "build once on mount" version left
+  // the audio dead on "Replay intro flight" because the graph was closed and
+  // nulled when the first intro ended. Browsers start an AudioContext created
   // outside a gesture in the "suspended" state, so nothing is audible yet —
   // the first pointer/key/touch resumes it, which unblocks audio while keeping
   // the autoplay policy happy.
   useEffect(() => {
+    if (introDone) return
+
     const Ctor =
       window.AudioContext ??
       (window as unknown as { webkitAudioContext?: typeof AudioContext })
@@ -124,7 +128,6 @@ export default function PlaneSound(): JSX.Element {
     propLfo.start()
     windSource.start()
     nodes.current = { ctx, master, osc1, osc2, filter, propDepth, propLfo, windGain, windSource, windFilter, startAt: ctx.currentTime }
-    started.current = true
 
     // Unlock audio as soon as the browser will allow: immediately (repeat
     // visits where autoplay is permitted) and again on the first gesture.
@@ -158,7 +161,7 @@ export default function PlaneSound(): JSX.Element {
         nodes.current = null
       }
     }
-  }, [])
+  }, [introDone])
 
   useEffect(() => {
     let raf = 0

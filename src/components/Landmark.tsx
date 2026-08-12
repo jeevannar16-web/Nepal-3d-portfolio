@@ -119,7 +119,14 @@ export default function Landmark({ config, playerRef }: LandmarkProps): JSX.Elem
     const rb = playerRef.current
     if (!rb || !visual.current) return
 
-    const p = rb.translation()
+    let p: { x: number; z: number } | null = null
+    try {
+      const t = rb.translation()
+      p = { x: t.x, z: t.z }
+    } catch {
+      return
+    }
+
     const dx = p.x - config.position[0]
     const dz = p.z - config.position[2]
     const dist = Math.sqrt(dx * dx + dz * dz)

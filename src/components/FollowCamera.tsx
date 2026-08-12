@@ -93,6 +93,19 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
       if (e.code === 'KeyE') orbitKeys.current.right = false
     }
     const onCtx = (e: MouseEvent) => e.preventDefault()
+    const onTouchRotate = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.delta) lookYaw.current += detail.delta
+    }
+    // Mobile drag-look: mark the camera as actively looking while the touch
+    // drag is down so releasing settles the orbit back behind the actor (in
+    // vehicles) exactly like the desktop right-drag release does. Without this
+    // the orbit stays wherever the user leaves it, so a car/bike viewed from
+    // the front makes the rider appear to sit backward.
+    const onTouchLook = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail && typeof detail.active === 'boolean') looking.current = detail.active
+    }
 
     el.addEventListener('mousedown', onDown)
     el.addEventListener('contextmenu', onCtx)
@@ -100,6 +113,8 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
     window.addEventListener('mouseup', onUp)
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('touch-rotate', onTouchRotate)
+    window.addEventListener('touch-look', onTouchLook)
     return () => {
       el.removeEventListener('mousedown', onDown)
       el.removeEventListener('contextmenu', onCtx)
@@ -107,6 +122,8 @@ export default function FollowCamera({ target }: FollowCameraProps): JSX.Element
       window.removeEventListener('mouseup', onUp)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('touch-rotate', onTouchRotate)
+      window.removeEventListener('touch-look', onTouchLook)
     }
   }, [gl])
 

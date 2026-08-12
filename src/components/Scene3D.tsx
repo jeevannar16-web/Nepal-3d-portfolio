@@ -100,6 +100,14 @@ function Scene3D() {
 
   const introDone = useStore((s) => s.introDone)
   const playerMode = useStore((s) => s.playerMode)
+  // Workaround for @react-three/rapier#780: when the intro replays, the
+  // controller RigidBodies unmount (removing them from the physics world), but
+  // the shared playerBody ref still points at a dead wrapper. Any call on it
+  // panics the wasm and permanently poisons the world ("recursive use of an
+  // object detected..."), so null the ref the moment the intro starts.
+  useEffect(() => {
+    if (!introDone) playerBody.current = null
+  }, [introDone])
   const setGeo = useStore((s) => s.setGeo)
   const timeOfDay = useStore((s) => s.timeOfDay)
   const setTimeOfDay = useStore((s) => s.setTimeOfDay)

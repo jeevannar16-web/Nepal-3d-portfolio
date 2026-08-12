@@ -57,9 +57,17 @@ export default function TireTracks({ target }: TireTracksProps): JSX.Element {
     const rb = target.current
     if (!rb || !mesh.current) return
 
-    const pos = rb.translation()
-    const lin = rb.linvel()
-    const speed = Math.hypot(lin.x, lin.z)
+    let pos: { x: number; z: number } | null = null
+    let speed = 0
+    try {
+      const t = rb.translation()
+      pos = { x: t.x, z: t.z }
+      const lin = rb.linvel()
+      speed = Math.hypot(lin.x, lin.z)
+    } catch {
+      return
+    }
+
     const heading = minimapState.heading
 
     spawnTimer.current += delta

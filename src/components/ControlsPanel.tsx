@@ -36,7 +36,12 @@ export default function ControlsPanel(): JSX.Element {
     const onKeyDown = (e: KeyboardEvent) => {
       e.preventDefault()
       e.stopPropagation()
+      // A freshly-clicked "Change" button keeps focus, so Space/Enter release
+      // would fire a synthetic click and re-enable listening. Drop focus so a
+      // rebound key can never accidentally re-open it.
+      const blurActive = () => (document.activeElement as HTMLElement | null)?.blur?.()
       if (e.key === 'Escape') {
+        blurActive()
         setRebinding(null)
         setPrompt(false)
         return
@@ -49,10 +54,14 @@ export default function ControlsPanel(): JSX.Element {
       const spec = [...mods, e.code].join('+')
       playClick()
       setBinding(rebinding, spec)
+      blurActive()
       setRebinding(null)
       setPrompt(false)
     }
-    const t = setTimeout(() => setPrompt(false), 6000)
+    const t = setTimeout(() => {
+        setRebinding(null)
+        setPrompt(false)
+      }, 6000)
     window.addEventListener('keydown', onKeyDown, true)
     rebindListener.current = () => {
       window.removeEventListener('keydown', onKeyDown, true)
@@ -91,6 +100,8 @@ export default function ControlsPanel(): JSX.Element {
             type="button"
             onClick={() => {
               playClick()
+              setRebinding(null)
+              setPrompt(false)
               resetBindings()
             }}
             className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold text-white/70 transition hover:bg-white/15 hover:text-white"

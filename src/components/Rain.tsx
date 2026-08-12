@@ -39,8 +39,12 @@ export default function Rain({ target }: RainProps): JSX.Element {
     }
     attr.needsUpdate = true
     if (points.current && target.current) {
-      const p = target.current.translation()
-      points.current.position.set(p.x, 0, p.z)
+      try {
+        const p = target.current.translation()
+        points.current.position.set(p.x, 0, p.z)
+      } catch {
+        // body is stale (e.g. intro flight, mode switch) — skip this frame
+      }
     }
   })
 

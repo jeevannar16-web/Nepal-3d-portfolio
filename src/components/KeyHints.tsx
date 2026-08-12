@@ -1,41 +1,28 @@
-import { type JSX, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type JSX, type ReactNode } from 'react'
 import { useStore, type PlayerMode } from '../store/useStore'
 import { useControls, type ControlAction } from '../store/controlsStore'
 import { useDeviceType } from '../hooks/useDeviceType'
 
-function specLabel(spec: string): string {
-  const map: Record<string, string> = {
-    KeyW: 'W',
-    KeyA: 'A',
-    KeyS: 'S',
-    KeyD: 'D',
-    ArrowUp: '↑',
-    ArrowDown: '↓',
-    ArrowLeft: '←',
-    ArrowRight: '→',
-    ShiftLeft: 'Shift',
-    ShiftRight: 'Shift',
-    Space: 'Space',
-    KeyE: 'E',
-    Escape: 'Esc',
-    Home: 'Home',
-    End: 'End',
-  }
-  // Chords like 'Shift+KeyS' -> 'Shift+S'.
-  return (
-    map[spec] ??
-    spec
-      .split('+')
-      .map((p) => map[p] ?? p.replace('Key', '').replace(/^Digit/, ''))
-      .join('+')
-  )
+const CODE_TO_LABEL: Record<string, string> = {
+  KeyW: 'W', KeyA: 'A', KeyS: 'S', KeyD: 'D',
+  ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+  ShiftLeft: 'Shift', ShiftRight: 'Shift',
+  Space: 'Space', KeyE: 'E', KeyQ: 'Q',
+  Escape: 'Esc', Home: 'Home', End: 'End',
+  ControlLeft: 'Ctrl', ControlRight: 'Ctrl', KeyC: 'C',
+}
+
+function codeLabel(code: string): string {
+  return CODE_TO_LABEL[code] ?? code.replace('Key', '').replace(/^Digit/, '')
 }
 
 function Key({
   spec,
+  on,
   color = 'amber',
 }: {
   spec: string
+  on: boolean
   color?: 'amber' | 'sky'
 }): JSX.Element {
   const palette =
@@ -44,81 +31,67 @@ function Key({
       : 'border-amber-300 bg-gradient-to-b from-amber-200 to-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.65)]'
   return (
     <kbd
-      className={`inline-flex min-w-[2rem] items-center justify-center rounded-md border-2 px-2 py-1 text-[13px] font-black text-slate-950 ${palette}`}
+      className={`shrink-0 inline-flex min-w-[2rem] items-center justify-center rounded-md border-2 px-2 py-1 text-[13px] font-black text-slate-950 transition-all duration-75 ${palette} ${
+        on ? 'scale-110' : 'opacity-40'
+      }`}
     >
-      {specLabel(spec)}
+      {codeLabel(spec)}
     </kbd>
   )
 }
 
-/** A mini keypad laid out like the real keyboard (top / left / bottom /
- *  right cells) so a player instantly sees which key moves which way. */
 function Pad({
-  up,
-  down,
-  left,
-  right,
-  color,
+  up, down, left, right, color, active,
 }: {
   up: string
   down: string
   left: string
   right: string
   color?: 'amber' | 'sky'
+  active: Set<string>
 }): JSX.Element {
+  const is = (spec: string) => active.has(spec)
   return (
     <span className="grid grid-cols-3 gap-0.5" aria-hidden="true">
       <span />
-      <Key spec={up} color={color} />
+      <Key spec={up} color={color} on={is(up)} />
       <span />
-      <Key spec={left} color={color} />
-      <Key spec={down} color={color} />
-      <Key spec={right} color={color} />
+      <Key spec={left} color={color} on={is(left)} />
+      <Key spec={down} color={color} on={is(down)} />
+      <Key spec={right} color={color} on={is(right)} />
     </span>
   )
 }
 
-/** One movement board: WASD cluster (amber) and arrow cluster (sky) share a
- *  single bordered board, joined by a clear '=', so both ways to move are
- *  obvious and visually distinct. */
 function Keypad({
-  wasd,
-  arrows,
+  wasd, arrows, active,
 }: {
   wasd: { up: string; down: string; left: string; right: string }
   arrows: { up: string; down: string; left: string; right: string }
+  active: Set<string>
 }): JSX.Element {
   return (
     <span
-      className="flex items-center gap-2.5 rounded-lg border-2 border-amber-300 bg-gradient-to-b from-black/50 to-black/70 px-3 py-2"
+      className="flex items-center gap-2 rounded-lg border-2 border-amber-300 bg-black/50 px-2.5 py-1.5"
       aria-hidden="true"
     >
-      <Pad {...wasd} color="amber" />
-      <span className="text-xl font-black leading-none text-white/80 drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]">
-        =
-      </span>
-      <Pad {...arrows} color="sky" />
+      <Pad {...wasd} color="amber" active={active} />
+      <span className="text-lg font-black leading-none text-white/60">=</span>
+      <Pad {...arrows} color="sky" active={active} />
     </span>
   )
 }
 
 function Chip({
-  icon,
-  children,
+  children, icon,
 }: {
-  icon?: boolean
   children: ReactNode
+  icon?: boolean
 }): JSX.Element {
   return (
     <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/25 px-2 py-1">
       {icon && (
-        <svg
-          className="h-3.5 w-3.5 text-amber-200"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
+        <svg className="h-3.5 w-3.5 text-amber-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="6" y="3" width="12" height="18" rx="6" />
           <path d="M12 7v4" />
         </svg>
@@ -135,36 +108,51 @@ const isVehicle = (mode: PlayerMode): boolean =>
   mode === 'airplane' ||
   mode === 'balloon'
 
-export default function KeyHints(): JSX.Element {
+export default function KeyHints(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
   const isPanelOpen = useStore((s) => s.isPanelOpen)
   const playerMode = useStore((s) => s.playerMode)
   const deviceType = useDeviceType()
-
   const bindings = useControls((s) => s.bindings)
 
-  // On touch devices the on-screen D-pad (TouchControls) already carries the
-  // arrow buttons + Exit in the corners, so a full-width hint bar down there
-  // would just overlap it. Show the keyboard-centric hint bar on desktop only.
-  if (deviceType === 'mobile') return <></>
-  if (!introDone || isPanelOpen) return <></>
+  const [active, setActive] = useState<Set<string>>(new Set())
+  const heldRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      heldRef.current.add(e.code)
+      setActive(new Set(heldRef.current))
+    }
+    const up = (e: KeyboardEvent) => {
+      heldRef.current.delete(e.code)
+      setActive(new Set(heldRef.current))
+    }
+    const blur = () => {
+      heldRef.current.clear()
+      setActive(new Set())
+    }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    window.addEventListener('blur', blur)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', blur)
+    }
+  }, [])
+
+  if (deviceType === 'mobile') return null
+  if (!introDone || isPanelOpen) return null
 
   const ride = isVehicle(playerMode)
   const chute = playerMode === 'parachute'
   const walk = playerMode === 'walk'
 
   const first = (action: ControlAction): string => bindings[action]?.[0] ?? ''
-
-  // NOTE: the 'left'/'right' ACTION names are swapped relative to the physical
-  // keys — 'right' is bound to A/←/Home (turns screen-left), 'left' is bound to
-  // D/→/End (turns screen-right), matching how the controllers interpret them.
-  // The keypads are laid out by SCREEN direction, so left goes on the left side.
   const fwdKey = first('forward')
   const backKey = first('back')
   const screenLeftKey = first('right')
   const screenRightKey = first('left')
-  // Show a single sprint shortcut for the hint — prefer the Shift+S chord,
-  // fall back to the primary Shift binding.
   const runKey =
     bindings.run.find((s) => s === 'Shift+KeyS') ??
     bindings.run.find((s) => s.includes('+')) ??
@@ -173,49 +161,37 @@ export default function KeyHints(): JSX.Element {
 
   const movementLabel = walk ? 'Move' : ride ? 'Drive' : 'Steer'
 
-  const AllKeys = ({ action }: { action: ControlAction }) => (
-    <>
-      {bindings[action].map((spec) => (
-        <Key key={spec} spec={spec} />
-      ))}
-    </>
-  )
+  const allKeys = (action: ControlAction) =>
+    bindings[action].map((spec) => (
+      <Key key={spec} spec={spec} on={active.has(spec.split('+').pop() ?? spec)} />
+    ))
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
-      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1.5 rounded-2xl border-2 border-amber-300/80 bg-transparent px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1.5 rounded-2xl border-2 border-amber-300/80 bg-black/40 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
         <Chip>
           <Keypad
-            wasd={{
-              up: fwdKey,
-              down: backKey,
-              left: screenLeftKey,
-              right: screenRightKey,
-            }}
-            arrows={{
-              up: 'ArrowUp',
-              down: 'ArrowDown',
-              left: 'ArrowLeft',
-              right: 'ArrowRight',
-            }}
+            wasd={{ up: fwdKey, down: backKey, left: screenLeftKey, right: screenRightKey }}
+            arrows={{ up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }}
+            active={active}
           />
-          <span className="ml-1 text-amber-100">{movementLabel}</span>
+          <span className="ml-1.5 text-amber-100">{movementLabel}</span>
         </Chip>
         <span className="h-3 w-px bg-white/25" />
         {walk && (
           <>
             <Chip>
-              <Key spec={runKey} />
+              <Key spec={runKey} on={active.has(runKey.replace('Shift+', '')) || active.has('ShiftLeft') || active.has('ShiftRight')} />
               <span className="ml-1 text-amber-100">Run</span>
             </Chip>
             <span className="h-3 w-px bg-white/25" />
             <Chip>
-              <AllKeys action="jump" />
+              {allKeys('jump')}
               <span className="ml-1 text-amber-100">Jump</span>
             </Chip>
             <span className="h-3 w-px bg-white/25" />
             <Chip>
-              <AllKeys action="interact" />
+              {allKeys('interact')}
               <span className="ml-1 text-amber-100">Interact</span>
             </Chip>
             <span className="h-3 w-px bg-white/25" />
@@ -228,7 +204,7 @@ export default function KeyHints(): JSX.Element {
         {(ride || chute) && (
           <>
             <Chip>
-              <AllKeys action="exit" />
+              {allKeys('exit')}
               <span className="ml-1 text-amber-100">Exit</span>
             </Chip>
             <span className="h-3 w-px bg-white/25" />
@@ -236,7 +212,7 @@ export default function KeyHints(): JSX.Element {
         )}
         {walk && (
           <Chip>
-            <Key spec="Escape" />
+            <Key spec="Escape" on={active.has('Escape')} />
             <span className="ml-1 text-amber-100">Menu</span>
           </Chip>
         )}

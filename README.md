@@ -23,9 +23,12 @@ scrolling portfolio sites.
   stupa) load from real `.glb` models with soft blob shadows and proximity glow
   rings — click or tap any landmark to open its portfolio section, and a halo
   ring highlights it on hover.
-- **Touch-friendly everywhere** — on mobile, an on-screen joystick + action
-  buttons drive every mode (walk, car, bike, horse, plane, balloon, parachute),
-  not just walking.
+- **Touch-friendly everywhere** — on mobile, a single **Run** button (tap to
+  start/stop sprinting) and a **Jump** button drive on-foot movement; every
+  other control — looking around, steering vehicles, and the camera orbit —
+  happens by dragging the right side of the screen. The camera settles back
+  behind you on release, so the rider always faces forward in cars, bikes and
+  horses on the phone too.
 - **Navigation** — WASD to drive, click-to-fly on the minimap, and a top bar
   that flies the camera between sections with a travelling indicator. The
   minimap tracks your position and heading in every mode.
@@ -104,7 +107,7 @@ scrolling portfolio sites.
 | **Minimap** | Click a landmark to fly the camera to it |
 | **Nav menu** | Explore / Transport / Settings / About tabs |
 | **Click / tap a landmark** | Open its portfolio panel |
-| **Touch** | On-screen joystick + action buttons in every mode (mobile) |
+| **Touch (mobile)** | **Run** button (tap to sprint, tap again to stop), **Jump** button; drag the right side of the screen to look / steer. In a vehicle, an **Exit** button appears to get out |
 
 The top-right menu has four tabs: **Explore** (the portfolio sections),
 **Transport** (hop straight into any vehicle you've parked), **Settings** (sound,

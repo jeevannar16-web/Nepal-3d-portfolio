@@ -106,7 +106,8 @@ export const useStore = create<PortfolioState>()(
       setIsPanelOpen: (open) => set({ isPanelOpen: open }),
       setDeviceType: (device) => set({ deviceType: device }),
       skipIntro: () => set({ introDone: true }),
-      replayIntro: () => set({ introDone: false }),
+      replayIntro: () =>
+        set({ introDone: false, introStage: 'taxi', introCaption: null }),
       setGeo: (country, variant) =>
         set({ visitorCountry: country, introVariant: variant, geoResolved: true }),
       setIntroStage: (stage) => set({ introStage: stage }),
