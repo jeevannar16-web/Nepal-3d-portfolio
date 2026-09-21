@@ -33,14 +33,13 @@ const RUN_TOGGLE_CHORD = 'Shift+KeyS'
 const CAPSULE_HALF_LEN = 0.55 + 0.32
 // Runway top; the intro's scripted exit walk stays on the tarmac (z 84..92).
 const RUNWAY_TOP = 0.04
-// Walking turns: each fresh Left/Right press turns the soldier exactly
-// TURN_STEP in that direction (eased in so it reads as one deliberate 45°
-// step), and while the key STAYS held he keeps rotating gently at
-// TURN_HOLD_RATE — a controlled ~quarter-turn per second, fast enough to aim
-// at anything but never a runaway full-circle spin. Release to stop.
-const TURN_STEP = THREE.MathUtils.degToRad(45)
-const TURN_APPLY_RATE = 12 // how quickly one tap's turn plays out (% remaining per second)
-const TURN_HOLD_RATE = 1.8 // rad/s sustained turn while a turn key is held
+// Walking turns: while a turn key is held the soldier rotates steadily in
+// that direction (TURN_HOLD_RATE), so aiming at anything is smooth and easy.
+// A single continuous hold is capped at TURN_HOLD_MAX — it can never swing a
+// full 360° on its own — and releasing resets the cap. Quick taps give small,
+// precise nudges. Direction flips when "Invert turn direction" is on.
+const TURN_HOLD_RATE = 2.2 // rad/s sustained turn while a turn key is held (~1/4 turn per second)
+const TURN_HOLD_MAX = THREE.MathUtils.degToRad(270) // max rotation per single hold (< 360°)
 
 interface WalkControllerProps {
   bodyRef: React.RefObject<RapierRigidBody | null>
@@ -64,7 +63,7 @@ export default function WalkController({
   const body = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
   const heading = useRef(transportState.walk.heading)
-  const turnStep = useRef(0)
+  const holdTurn = useRef(0)
   const grounded = useRef(true)
   const crouching = useRef(false)
   const jumpState = useRef<'anticipate' | 'airborne' | 'land' | null>(null)
@@ -95,6 +94,7 @@ export default function WalkController({
       rb.setTranslation({ x: tx.x, y: tx.y, z: tx.z }, true)
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
       heading.current = tx.heading
+      holdTurn.current = 0
     }
   }, [active])
 
@@ -207,13 +207,11 @@ export default function WalkController({
       }
       if (matchesAction(e, 'left')) {
         inputState.left = true
-        if (activeRef.current && !e.repeat) turnStep.current -= TURN_STEP
         e.preventDefault()
         return
       }
       if (matchesAction(e, 'right')) {
         inputState.right = true
-        if (activeRef.current && !e.repeat) turnStep.current += TURN_STEP
         e.preventDefault()
         return
       }
@@ -409,23 +407,25 @@ export default function WalkController({
           : WALK_SPEED) * speedMult
 
     // ---- Character-relative control (like the vehicles): W/S move along the
-    // soldier's own forward. A fresh Left/Right press turns him exactly one
-    // TURN_STEP in that direction (eased, so it never snaps or over-rotates),
-    // and holding the key keeps him turning smoothly at TURN_HOLD_RATE until
-    // release — precise taps, flexible direction, no runaway 360°. ----
-    const remaining = turnStep.current
-    if (Math.abs(remaining) > 1e-4) {
-      const applied = remaining * (1 - Math.exp(-delta * TURN_APPLY_RATE))
-      if (Math.abs(applied) < 1e-5) {
-        heading.current += remaining
-        turnStep.current = 0
-      } else {
-        turnStep.current -= applied
-        heading.current += applied
-      }
-    }
+    // soldier's own forward; holding a turn key rotates him steadily so any
+    // direction is reachable. One continuous hold is capped below a full
+    // circle (release and re-press to keep going), so it can never spin 360°
+    // on its own. "Invert turn direction" reverses the A/D + arrow sense.
+    const invertTurn = useStore.getState().settings.invertTurn
     const holdDir = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0)
-    if (holdDir !== 0) heading.current += holdDir * TURN_HOLD_RATE * delta
+    if (holdDir !== 0) {
+      const dir = invertTurn ? -holdDir : holdDir
+      const applied =
+        THREE.MathUtils.clamp(
+          holdTurn.current + dir * TURN_HOLD_RATE * delta,
+          -TURN_HOLD_MAX,
+          TURN_HOLD_MAX,
+        ) - holdTurn.current
+      heading.current += applied
+      holdTurn.current += applied
+    } else {
+      holdTurn.current = 0
+    }
     heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
 
     const targetVel = new THREE.Vector3()

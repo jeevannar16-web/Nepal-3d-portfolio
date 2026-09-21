@@ -49,6 +49,8 @@ interface PortfolioState {
     cameraSensitivity: number
     /** Multiplier for on-screen button sizes (touch controls). */
     uiScale: number
+    /** Flip A/D + arrow turn direction if the player's view is inverted. */
+    invertTurn: boolean
   }
   targetLandmark: string | null
   playerMode: PlayerMode
@@ -78,6 +80,7 @@ interface PortfolioState {
   toggleLowGraphics: () => void
   setCameraSensitivity: (value: number) => void
   setUiScale: (value: number) => void
+  setInvertTurn: (value: boolean) => void
   setTargetLandmark: (id: string | null) => void
 }
 
@@ -136,6 +139,7 @@ export const useStore = create<PortfolioState>()(
         lowGraphics: detectGraphicsTier() === 'low',
         cameraSensitivity: 1,
         uiScale: 1,
+        invertTurn: false,
       },
       targetLandmark: null,
       playerMode: 'walk',
@@ -151,6 +155,8 @@ export const useStore = create<PortfolioState>()(
         set((s) => ({
           settings: { ...s.settings, uiScale: Math.min(1.5, Math.max(0.75, value)) },
         })),
+      setInvertTurn: (value) =>
+        set((s) => ({ settings: { ...s.settings, invertTurn: value } })),
       setTargetLandmark: (id) => set({ targetLandmark: id }),
     }),
     {
