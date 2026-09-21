@@ -110,7 +110,6 @@ const isVehicle = (mode: PlayerMode): boolean =>
 
 export default function KeyHints(): JSX.Element | null {
   const introDone = useStore((s) => s.introDone)
-  const isPanelOpen = useStore((s) => s.isPanelOpen)
   const playerMode = useStore((s) => s.playerMode)
   const deviceType = useDeviceType()
   const bindings = useControls((s) => s.bindings)
@@ -142,7 +141,7 @@ export default function KeyHints(): JSX.Element | null {
   }, [])
 
   if (deviceType === 'mobile') return null
-  if (!introDone || isPanelOpen) return null
+  if (!introDone) return null
 
   const ride = isVehicle(playerMode)
   const chute = playerMode === 'parachute'
@@ -167,7 +166,7 @@ export default function KeyHints(): JSX.Element | null {
     ))
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
       <div className="flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1.5 rounded-2xl border-2 border-amber-300/80 bg-black/40 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
         <Chip>
           <Keypad

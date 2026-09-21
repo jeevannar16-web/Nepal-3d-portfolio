@@ -17,6 +17,21 @@ export default function ContentPanel(): JSX.Element | null {
   const [renderPanel, setRenderPanel] = useState(false)
   const [exiting, setExiting] = useState(false)
 
+  // Esc closes the content panel (and only falls through to the NavBar menu
+  // handler once a panel is no longer open), so closing a story is always
+  // possible straight from the keyboard.
+  useEffect(() => {
+    if (!isPanelOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        playClick()
+        setIsPanelOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isPanelOpen, setIsPanelOpen])
+
   useEffect(() => {
     if (isPanelOpen && activeZone) {
       setExiting(false)

@@ -17,7 +17,7 @@ export default function WelcomeCard(): JSX.Element | null {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center px-4">
-      <div className="animate-welcome pointer-events-auto w-full max-w-sm rounded-2xl border border-white/15 bg-slate-900/85 p-6 text-center shadow-2xl shadow-black/50 backdrop-blur">
+      <div className="animate-welcome pointer-events-auto w-full max-w-sm rounded-2xl border border-white/15 bg-slate-900/85 p-6 text-center shadow-2xl shadow-black/50 backdrop-blur" onClick={dismissWelcome}>
         <h2 className="text-lg font-bold text-white">Welcome to my little world</h2>
         <p className="mt-2 text-sm text-white/80">
           You just touched down — walk around, or press{' '}
