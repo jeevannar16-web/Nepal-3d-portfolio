@@ -51,8 +51,8 @@ export const ACTION_LABELS: Record<ControlAction, string> = {
 export const DEFAULT_BINDINGS: Record<ControlAction, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
   back: ['KeyS', 'ArrowDown'],
-  left: ['KeyD', 'ArrowRight', 'End'],
-  right: ['KeyA', 'ArrowLeft', 'Home'],
+  left: ['KeyA', 'ArrowLeft', 'Home'],
+  right: ['KeyD', 'ArrowRight', 'End'],
   run: ['ShiftLeft', 'ShiftRight', 'Shift+KeyS', 'Shift+ArrowUp', 'Shift+ArrowDown'],
   jump: ['Space'],
   interact: ['KeyE'],
@@ -198,8 +198,10 @@ export const useControls = create<ControlsState>()(
           bindings: {
             ...current.bindings,
             ...pb,
-            left: ['KeyD', 'ArrowRight', 'End'],
-            right: ['KeyA', 'ArrowLeft', 'Home'],
+            // Turn keys stay locked to the standard WASD/arrow layout: the
+            // physical A / Left-arrow turns left, D / Right-arrow turns right.
+            left: ['KeyA', 'ArrowLeft', 'Home'],
+            right: ['KeyD', 'ArrowRight', 'End'],
             run:
               (pb.run ?? []).some((s) => s.includes('ArrowUp') || s.includes('ArrowDown'))
                 ? [...pb.run!]

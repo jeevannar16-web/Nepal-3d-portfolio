@@ -150,8 +150,8 @@ export default function KeyHints(): JSX.Element | null {
   const first = (action: ControlAction): string => bindings[action]?.[0] ?? ''
   const fwdKey = first('forward')
   const backKey = first('back')
-  const screenLeftKey = first('right')
-  const screenRightKey = first('left')
+  const screenLeftKey = first('left')
+  const screenRightKey = first('right')
   const runKey =
     bindings.run.find((s) => s === 'Shift+KeyS') ??
     bindings.run.find((s) => s.includes('+')) ??

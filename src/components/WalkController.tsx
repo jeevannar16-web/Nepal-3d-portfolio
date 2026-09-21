@@ -35,8 +35,11 @@ const CAPSULE_HALF_LEN = 0.55 + 0.32
 const RUNWAY_TOP = 0.04
 // Walking turns are discrete: a Left/Right tap turns the soldier exactly
 // TURN_STEP in that direction, and holding the key never keeps him spinning
-// (no runaway full-circle swing) — every fresh press is one precise nudge.
+// (no runaway full-circle swing). Each tap's turn eases in smoothly at
+// TURN_APPLY_RATE instead of snapping, so a press reads as one deliberate,
+// precise step. Tap again to keep turning.
 const TURN_STEP = THREE.MathUtils.degToRad(45)
+const TURN_APPLY_RATE = 12 // how quickly one tap's turn plays out (% remaining per second)
 
 interface WalkControllerProps {
   bodyRef: React.RefObject<RapierRigidBody | null>
@@ -408,11 +411,18 @@ export default function WalkController({
     // soldier's own forward, and each Left/Right tap turns him exactly one
     // TURN_STEP in that direction. Turning is discrete on purpose: holding a
     // turn key never makes the soldier spin around — each fresh press is a
-    // precise, controllable nudge, so pointing the man is easy. Tap again to
+    // precise, controllable nudge, eased in so it never snaps. Tap again to
     // keep turning. ----
-    if (turnStep.current !== 0) {
-      heading.current += turnStep.current
-      turnStep.current = 0
+    const remaining = turnStep.current
+    if (Math.abs(remaining) > 1e-4) {
+      const applied = remaining * (1 - Math.exp(-delta * TURN_APPLY_RATE))
+      if (Math.abs(applied) < 1e-5) {
+        heading.current += remaining
+        turnStep.current = 0
+      } else {
+        turnStep.current -= applied
+        heading.current += applied
+      }
     }
     heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
 
