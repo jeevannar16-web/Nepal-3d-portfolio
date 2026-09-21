@@ -418,7 +418,14 @@ export default function WalkController({
       jumpBuffer.current = JUMP_BUFFER_TIME
     }
     jumpBuffer.current = Math.max(0, jumpBuffer.current - delta)
-    if (!jumpState.current && (groundedNow || coyote.current > 0)) {
+    // A jump starts ONLY from a requested press (the buffer), never by itself:
+    // it fires immediately on the ground, or within the coyote window right
+    // after stepping off a ledge.
+    if (
+      jumpBuffer.current > 0 &&
+      !jumpState.current &&
+      (groundedNow || coyote.current > 0)
+    ) {
       jumpBuffer.current = 0
       jumpState.current = 'anticipate'
       jumpTimer.current = 0
