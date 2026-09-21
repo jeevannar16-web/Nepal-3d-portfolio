@@ -33,6 +33,10 @@ const RUN_TOGGLE_CHORD = 'Shift+KeyS'
 const CAPSULE_HALF_LEN = 0.55 + 0.32
 // Runway top; the intro's scripted exit walk stays on the tarmac (z 84..92).
 const RUNWAY_TOP = 0.04
+// Walking turns are discrete: a Left/Right tap turns the soldier exactly
+// TURN_STEP in that direction, and holding the key never keeps him spinning
+// (no runaway full-circle swing) — every fresh press is one precise nudge.
+const TURN_STEP = THREE.MathUtils.degToRad(45)
 
 interface WalkControllerProps {
   bodyRef: React.RefObject<RapierRigidBody | null>
@@ -56,7 +60,7 @@ export default function WalkController({
   const body = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
   const heading = useRef(transportState.walk.heading)
-  const yawVel = useRef(0)
+  const turnStep = useRef(0)
   const grounded = useRef(true)
   const crouching = useRef(false)
   const jumpState = useRef<'anticipate' | 'airborne' | 'land' | null>(null)
@@ -199,11 +203,13 @@ export default function WalkController({
       }
       if (matchesAction(e, 'left')) {
         inputState.left = true
+        if (activeRef.current && !e.repeat) turnStep.current -= TURN_STEP
         e.preventDefault()
         return
       }
       if (matchesAction(e, 'right')) {
         inputState.right = true
+        if (activeRef.current && !e.repeat) turnStep.current += TURN_STEP
         e.preventDefault()
         return
       }
@@ -275,7 +281,6 @@ export default function WalkController({
       rb.setTranslation({ x: 0, y: -500, z: 0 }, true)
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
       if (visual.current) visual.current.visible = false
-      yawVel.current = 0
       activePrev.current = false
       return
     }
@@ -392,7 +397,6 @@ export default function WalkController({
     const bigMode = useControls.getState().bigMode
     const speedMult = bigMode ? BIG_SPEED_MULT : 1
     const fwdInput = inputState.fwd ? 1 : 0
-    const sideInput = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0)
     const speed =
       (crouching.current
         ? CROUCH_SPEED
@@ -401,26 +405,15 @@ export default function WalkController({
           : WALK_SPEED) * speedMult
 
     // ---- Character-relative control (like the vehicles): W/S move along the
-    // soldier's own forward, A/D turn it left/right. S is simply another
-    // forward key — the walk cycle always advances and never plays backward. ---
-    // Turning is driven by a yaw VELOCITY that ramps up on keypress and decays
-    // on release (same feel as the vehicles), so the soldier eases into and out
-    // of corners instead of snapping to a fixed turn rate.
-    const turnInput = sideInput // A/D turn the heading, -1/+1
-    const turnRate = 4 // rad/s peak yaw velocity while turning
-    const TURN_RESPONSE = 10 // how fast yaw velocity ramps toward the peak
-    const TURN_DAMPING = 6 // how fast yaw velocity decays after release
-    // Clamp the per-frame delta so a single keypress or a big delta frame can
-    // never spin the model a full turn in one step.
-    const maxTurn = THREE.MathUtils.degToRad(30) // 30 deg/frame cap @ 60fps-ish
-    if (turnInput !== 0) {
-      yawVel.current +=
-        (turnInput * turnRate - yawVel.current) * (1 - Math.exp(-delta * TURN_RESPONSE))
-    } else {
-      yawVel.current *= Math.exp(-delta * TURN_DAMPING)
-      if (Math.abs(yawVel.current) < 0.001) yawVel.current = 0
+    // soldier's own forward, and each Left/Right tap turns him exactly one
+    // TURN_STEP in that direction. Turning is discrete on purpose: holding a
+    // turn key never makes the soldier spin around — each fresh press is a
+    // precise, controllable nudge, so pointing the man is easy. Tap again to
+    // keep turning. ----
+    if (turnStep.current !== 0) {
+      heading.current += turnStep.current
+      turnStep.current = 0
     }
-    heading.current += Math.max(-maxTurn, Math.min(maxTurn, yawVel.current * delta))
     heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
 
     const targetVel = new THREE.Vector3()

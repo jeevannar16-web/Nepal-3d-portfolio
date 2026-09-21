@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { PortfolioData, Profile, ZoneContent } from '../types/portfolio'
+import { assetUrl } from '../utils/assetUrl'
+import { zones as INLINE_ZONES, identity as INLINE_IDENTITY } from '../data'
 
-const FALLBACK_URL = '/data/portfolio.json'
+// Resolved against the site's base (GitHub Pages mounts under
+// /Nepal-3d-portfolio/, where a bare '/data/...' would 404).
+const FALLBACK_URL = assetUrl('/data/portfolio.json')
 
 export function usePortfolio() {
   const [data, setData] = useState<PortfolioData | null>(null)
@@ -25,7 +29,19 @@ export function usePortfolio() {
       } catch (e) {
         if (mounted) {
           setError(e instanceof Error ? e.message : 'Failed to load portfolio')
-          // Data stays null - caller falls back to inline data
+          // The portfolio JSON is missing or unreachable (e.g. subpath hosting):
+          // fall back to the site's bundled content so every section still
+          // opens with real text instead of an empty panel.
+          setData({
+            profiles: [
+              {
+                key: 'default',
+                name: INLINE_IDENTITY.name,
+                identity: INLINE_IDENTITY,
+                zones: INLINE_ZONES,
+              },
+            ],
+          })
         }
       } finally {
         if (mounted) setLoading(false)
