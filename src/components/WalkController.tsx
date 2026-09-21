@@ -9,7 +9,7 @@ import * as THREE from 'three'
 import { minimapState } from '../store/minimapState'
 import { useStore } from '../store/useStore'
 import { transportState, type TransportPose } from '../store/transportState'
-import { walkState, inputState, walkHud, feetLocalY } from '../store/walkState'
+import { walkState, inputState, walkHud, feetLocalY, walkDebug } from '../store/walkState'
 import { useControls, matchesAction, chordMatches } from '../store/controlsStore'
 import Soldier from './Soldier'
 
@@ -20,10 +20,24 @@ const CROUCH_SPEED = 1.4
 // the oversized model still feels deliberate instead of blasting around.
 const BIG_SPEED_MULT = 0.55
 const ACCEL = 24 // snappy acceleration so the gait stays in phase with the body
-const JUMP_VEL = 5.5
+const JUMP_VEL = 5.5 // takeoff impulse — applied once per jump, never re-applied
+const GRAVITY = 9.81 // rapier world gravity, used for the extra fall pull below
+const FALL_GRAVITY_MULT = 1.45 // extra downward accel while falling → decisive descent
+const MAX_FALL_SPEED = -9 // terminal fall speed, clamped every frame
 const ENTER_RADIUS = 3.6
-const ANTICIPATE_TIME = 0.15
-const LAND_TIME = 0.32
+const ANTICIPATE_TIME = 0.12 // brief load-up before the impulse (the jump clip's crouch fades in)
+const LAND_TIME = 0.28 // landing recovery window before control resumes
+// Jump forgiveness: a press slightly off a ledge (coyote) or just before
+// landing (buffer) still fires, but OS key auto-repeat and held touch can never
+// stack jumps — each jump impulse is single-shot.
+const COYOTE_TIME = 0.09
+const JUMP_BUFFER_TIME = 0.13
+// Grounded detection: the capsule's feet sit ~CAPSULE_HALF_LEN below the body
+// centre and the walkable ground (valley floor + runway) is near-flat at y≈0,
+// so a small feet-height band + multi-frame confirm debounce the reading (no
+// slope/fall flicker), and the airborne/landed edges drive a coyote timer.
+const GROUND_PROBE = 0.12
+const GROUND_TICKS = 3
 // Sprint latch: Shift+S toggles running on/off (press once → run until pressed
 // again), independent of the plain-Shift hold-to-run. Only while on foot.
 const RUN_TOGGLE_CHORD = 'Shift+KeyS'
@@ -68,6 +82,10 @@ export default function WalkController({
   const crouching = useRef(false)
   const jumpState = useRef<'anticipate' | 'airborne' | 'land' | null>(null)
   const jumpTimer = useRef(0)
+  const coyote = useRef(0) // seconds still allowed to jump after leaving the ground
+  const jumpBuffer = useRef(0) // remaining window for a buffered jump press
+  const groundedTicks = useRef(0) // consecutive frames inside the ground band
+  const airborneTicks = useRef(0) // consecutive frames outside the ground band
   const scriptTime = useRef(-1)
   const motionRef = useRef({
     moving: false,
@@ -217,6 +235,10 @@ export default function WalkController({
       }
       if (!activeRef.current) return
       if (matchesAction(e, 'jump')) {
+        // OS auto-repeat (holding Space) must not re-request the jump every
+        // tick — jump is edge-triggered through the shared inputState, so only
+        // a resolved physical press starts a jump.
+        if (e.repeat) return
         e.preventDefault()
         inputState.jump = true
         return
@@ -364,36 +386,93 @@ export default function WalkController({
     walkHud.nearVehicle = nearVehicle(pos)
 
     // ---- Grounded check + jump state machine ----
+    // Ground contact is a debounced feet-height reading: the capsule bottom
+    // must sit inside the flat-ground band for GROUND_TICKS consecutive frames
+    // to count as landing (and outside it for as many to count as airborne),
+    // which removes threshold/slope flicker. The grounded→airborne edge feeds
+    // a coyote window, and a jump press is buffered so it fires just after the
+    // hero lands. The impulse is applied exactly once, when 'anticipate' ends;
+    // gravity does the rest of the arc (parabola), with a fall-speed boost so
+    // the descent reads as weight rather than a slow hover.
+    const vel = rb.linvel()
+    const feetY = pos.y - CAPSULE_HALF_LEN
+    const touching = feetY <= GROUND_PROBE
+    if (touching) {
+      groundedTicks.current = Math.min(groundedTicks.current + 1, GROUND_TICKS)
+      airborneTicks.current = 0
+    } else {
+      airborneTicks.current = Math.min(airborneTicks.current + 1, GROUND_TICKS)
+      groundedTicks.current = 0
+    }
+    const wasGrounded = grounded.current
+    const groundedNow = grounded.current
+      ? airborneTicks.current < GROUND_TICKS
+      : groundedTicks.current >= GROUND_TICKS
+    grounded.current = groundedNow
+    if (groundedNow) coyote.current = COYOTE_TIME
+    else coyote.current = Math.max(0, coyote.current - delta)
+
     if (inputState.jump) {
       inputState.jump = false
-      if (grounded.current && !jumpState.current) {
-        jumpState.current = 'anticipate'
-        jumpTimer.current = 0
-      }
+      walkDebug.jumpPulse = performance.now()
+      jumpBuffer.current = JUMP_BUFFER_TIME
     }
-    const vel = rb.linvel()
-    const groundedPhys = pos.y < 1.35 && Math.abs(vel.y) < 0.4
+    jumpBuffer.current = Math.max(0, jumpBuffer.current - delta)
+    if (!jumpState.current && (groundedNow || coyote.current > 0)) {
+      jumpBuffer.current = 0
+      jumpState.current = 'anticipate'
+      jumpTimer.current = 0
+    }
+
     switch (jumpState.current) {
       case 'anticipate':
         jumpTimer.current += delta
         if (jumpTimer.current >= ANTICIPATE_TIME) {
+          // Single upward impulse — never re-applied while airborne.
           rb.applyImpulse({ x: 0, y: JUMP_VEL, z: 0 }, true)
           jumpState.current = 'airborne'
           jumpTimer.current = 0
         }
         break
-      case 'airborne':
-        if (groundedPhys) {
-          jumpState.current = 'land'
-          jumpTimer.current = 0
+      case 'airborne': {
+        // Extra downward pull while falling plus a terminal-speed cap, applied
+        // through the body (never by editing pos/vel directly), so the arc is
+        // a parabola with a decisive landing instead of a weightless drop.
+        if (vel.y < 0) {
+          rb.applyImpulse(
+            { x: 0, y: -GRAVITY * (FALL_GRAVITY_MULT - 1) * delta, z: 0 },
+            true,
+          )
+          if (vel.y < MAX_FALL_SPEED) {
+            rb.setLinvel({ x: vel.x, y: MAX_FALL_SPEED, z: vel.z }, true)
+          }
+        }
+        if (groundedNow && !wasGrounded) {
+          // A jump press buffered right before landing fires immediately on
+          // contact (classic pre-landing → hop); otherwise a landing recovery
+          // plays. Either way the next press can't stack: the buffer is
+          // consumed exactly once here.
+          if (jumpBuffer.current > 0) {
+            jumpBuffer.current = 0
+            jumpState.current = 'anticipate'
+            jumpTimer.current = 0
+          } else {
+            jumpState.current = 'land'
+            jumpTimer.current = 0
+          }
         }
         break
+      }
       case 'land':
+        // Kill any tiny residual bounce so the settle is a clean contact, then
+        // recover. Never zeroes a real upward/downward velocity.
+        if (Math.abs(vel.y) < 0.8) {
+          rb.setLinvel({ x: vel.x, y: 0, z: vel.z }, true)
+        }
         jumpTimer.current += delta
         if (jumpTimer.current >= LAND_TIME) jumpState.current = null
         break
     }
-    grounded.current = groundedPhys
 
     // ---- Movement (character-relative: W/S along heading, A/D turn) ----
     const bigMode = useControls.getState().bigMode
@@ -500,13 +579,24 @@ export default function WalkController({
       speed: moveMag * speed,
     }
     walkState.crouching = crouching.current
+    // Publish the canonical action state for the ?debug=1 overlay — the exact
+    // flags the bottom on-screen controls and the keyboard both drive.
+    walkDebug.forward = inputState.fwd
+    walkDebug.left = inputState.left
+    walkDebug.right = inputState.right
+    walkDebug.jumpState = jumpState.current
+    walkDebug.grounded = groundedNow
+    walkDebug.moving = moving
+    walkDebug.speed = moveMag * speed
+    walkDebug.vy = vel.y
+    walkDebug.heading = heading.current
     ;(window as any).__body = {
       x: pos.x,
       y: pos.y,
       z: pos.z,
       vy: vel.y,
-      groundedPhys,
-       feetY: pos.y - CAPSULE_HALF_LEN,
+      groundedNow,
+      feetY,
       type: active ? 'dynamic' : 'fixed',
     }
     ;(window as any).__motion = {

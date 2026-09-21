@@ -44,3 +44,23 @@ export const inputState = {
 export const walkHud = {
   nearVehicle: false,
 }
+
+/**
+ * Live on-foot facts published every frame by WalkController for the optional
+ * ?debug=1 overlay (MovementDebug). Mutated in place — no React state — so the
+ * overlay can prove the canonical action layer: the keyboard AND the bottom
+ * on-screen controls write the same flags WalkController actually consumes.
+ */
+export const walkDebug = {
+  forward: false,
+  left: false,
+  right: false,
+  /** performance.now() of the last consumed jump request (edge trigger). */
+  jumpPulse: 0,
+  jumpState: null as 'anticipate' | 'airborne' | 'land' | null,
+  grounded: false,
+  moving: false,
+  speed: 0,
+  vy: 0,
+  heading: 0,
+}

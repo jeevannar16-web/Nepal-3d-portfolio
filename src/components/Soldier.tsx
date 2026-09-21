@@ -138,6 +138,28 @@ const IDLE_MOTION: Motion = {
 const WALK_DESIGN_SPEED = 1.6
 const RUN_DESIGN_SPEED = 2.7
 
+// Gait clip selection by intent speed: above GAIT_BLEND the Run clip plays —
+// the game's walk speed (~3.0 m/s) is nearly double the Walk clip's authored
+// 1.6 m/s stride, so Run reads natural there and Walk is kept for slow
+// shuffles/crouch. A hysteresis band stops walk↔run flicker near the
+// threshold; whichever clip is active is still paced by timeScale so the feet
+// stay pinned to the capsule's actual travel.
+const GAIT_BLEND = 2.2
+const GAIT_HYST = 0.25
+
+/** Crossfade length by transition pair (seconds). */
+function transitionTime(from: string, to: string): number {
+  // Jump takeoff/recovery fades fast so the pose never hard-pops; gait↔gait
+  // blends mid-stride; idle↔gait keeps the smooth 0.2s ease.
+  if (from === 'jump' || to === 'jump') return 0.12
+  if (
+    (from === 'walk' && to === 'run') ||
+    (from === 'run' && to === 'walk')
+  )
+    return 0.15
+  return 0.2
+}
+
 const CATEGORIES: Array<{ key: string; re: RegExp }> = [
   { key: 'jump', re: /jump|airborne|anticipate|land/i },
   { key: 'run', re: /run|sprint/i },
@@ -264,6 +286,10 @@ export default function Soldier({
     [avatarScene],
   )
   const current = useRef<THREE.AnimationAction | null>(null)
+  // Last active category ('idle'/'walk'/'run'/'jump') and last gait — for
+  // per-transition fade timing and walk↔run hysteresis.
+  const keyRef = useRef<'idle' | 'walk' | 'run' | 'jump'>('idle')
+  const gaitRef = useRef<'walk' | 'run' | null>(null)
   const skeletonRef = useRef<THREE.Skeleton | null>(null)
   const armChainsRef = useRef<{ left: ArmChain; right: ArmChain } | null>(null)
   const legChainsRef = useRef<{ left: LegChain; right: LegChain } | null>(null)
@@ -337,18 +363,30 @@ export default function Soldier({
 
   useFrame((_, delta) => {
     const motion = motionRef?.current ?? IDLE_MOTION
-    const want = motion.jump
+    const speed = motion.speed ?? 0
+
+    // Pick the gait by intent speed (with hysteresis), then the jump stage.
+    // 'land' is treated as gait: the soldier fades back into idle/run during
+    // the recovery window, so landing never hard-pops from a clamped pose.
+    let gait: 'walk' | 'run' | null = null
+    if (motion.moving) {
+      if (speed >= GAIT_BLEND + GAIT_HYST) gait = 'run'
+      else if (speed <= GAIT_BLEND - GAIT_HYST) gait = 'walk'
+      else gait = gaitRef.current ?? (speed >= GAIT_BLEND ? 'run' : 'walk')
+      gaitRef.current = gait
+    } else {
+      gaitRef.current = null
+    }
+    const inAir = motion.jump === 'anticipate' || motion.jump === 'airborne'
+    const want: 'idle' | 'walk' | 'run' | 'jump' = inAir
       ? 'jump'
-      : motion.running
-        ? 'run'
-        : motion.moving
-          ? 'walk'
-          : 'idle'
+      : (gait ?? 'idle')
     const action = actions.get(want) ?? actions.get('idle')
     if (action && action !== current.current) {
-      current.current?.fadeOut(0.2)
+      const t = transitionTime(keyRef.current, want)
+      current.current?.fadeOut(t)
       if (current.current) {
-        action.reset().fadeIn(0.2).play()
+        action.reset().fadeIn(t).play()
       } else if (action === actions.get('idle')) {
         // First frame and already settled at Idle weight 1 — just unpause so
         // it keeps playing, instead of re-fading from 0 (which would show a
@@ -357,10 +395,11 @@ export default function Soldier({
       } else {
         // First frame but already moving: fade the settled Idle out while the
         // desired action fades in.
-        actions.get('idle')?.fadeOut(0.2)
-        action.reset().fadeIn(0.2).play()
+        actions.get('idle')?.fadeOut(t)
+        action.reset().fadeIn(t).play()
       }
       current.current = action
+      keyRef.current = want
     }
     // Pace the gait to the actual movement speed so the legs always match the
     // capsule: idle/jump play at natural speed, walk/run scale to the current

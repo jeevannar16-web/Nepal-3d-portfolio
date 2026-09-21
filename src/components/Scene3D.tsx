@@ -37,6 +37,7 @@ import FlyCamera from './FlyCamera'
 import Landmarks from './Landmarks'
 import ContentPanel from './ContentPanel'
 import NavBar from './NavBar'
+import MovementDebug from './MovementDebug'
 import TransportPrompt from './TransportPrompt'
 import TravelingIndicator from './TravelingIndicator'
 import Minimap from './Minimap'
@@ -277,6 +278,7 @@ function Scene3D() {
       <Minimap />
       <HudCluster />
       <TouchControls />
+      <MovementDebug />
       <Wayfinder />
       <TravelingIndicator />
       <IntroOverlay />
