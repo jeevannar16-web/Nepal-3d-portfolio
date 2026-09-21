@@ -33,13 +33,14 @@ const RUN_TOGGLE_CHORD = 'Shift+KeyS'
 const CAPSULE_HALF_LEN = 0.55 + 0.32
 // Runway top; the intro's scripted exit walk stays on the tarmac (z 84..92).
 const RUNWAY_TOP = 0.04
-// Walking turns are discrete: a Left/Right tap turns the soldier exactly
-// TURN_STEP in that direction, and holding the key never keeps him spinning
-// (no runaway full-circle swing). Each tap's turn eases in smoothly at
-// TURN_APPLY_RATE instead of snapping, so a press reads as one deliberate,
-// precise step. Tap again to keep turning.
+// Walking turns: each fresh Left/Right press turns the soldier exactly
+// TURN_STEP in that direction (eased in so it reads as one deliberate 45°
+// step), and while the key STAYS held he keeps rotating gently at
+// TURN_HOLD_RATE — a controlled ~quarter-turn per second, fast enough to aim
+// at anything but never a runaway full-circle spin. Release to stop.
 const TURN_STEP = THREE.MathUtils.degToRad(45)
 const TURN_APPLY_RATE = 12 // how quickly one tap's turn plays out (% remaining per second)
+const TURN_HOLD_RATE = 1.8 // rad/s sustained turn while a turn key is held
 
 interface WalkControllerProps {
   bodyRef: React.RefObject<RapierRigidBody | null>
@@ -408,11 +409,10 @@ export default function WalkController({
           : WALK_SPEED) * speedMult
 
     // ---- Character-relative control (like the vehicles): W/S move along the
-    // soldier's own forward, and each Left/Right tap turns him exactly one
-    // TURN_STEP in that direction. Turning is discrete on purpose: holding a
-    // turn key never makes the soldier spin around — each fresh press is a
-    // precise, controllable nudge, eased in so it never snaps. Tap again to
-    // keep turning. ----
+    // soldier's own forward. A fresh Left/Right press turns him exactly one
+    // TURN_STEP in that direction (eased, so it never snaps or over-rotates),
+    // and holding the key keeps him turning smoothly at TURN_HOLD_RATE until
+    // release — precise taps, flexible direction, no runaway 360°. ----
     const remaining = turnStep.current
     if (Math.abs(remaining) > 1e-4) {
       const applied = remaining * (1 - Math.exp(-delta * TURN_APPLY_RATE))
@@ -424,6 +424,8 @@ export default function WalkController({
         heading.current += applied
       }
     }
+    const holdDir = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0)
+    if (holdDir !== 0) heading.current += holdDir * TURN_HOLD_RATE * delta
     heading.current = Math.atan2(Math.sin(heading.current), Math.cos(heading.current))
 
     const targetVel = new THREE.Vector3()
