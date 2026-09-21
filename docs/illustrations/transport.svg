@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b1150"/>
+      <stop offset="0.6" stop-color="#7a3f9e"/>
+      <stop offset="1" stop-color="#f5b06e"/>
+    </linearGradient>
+    <linearGradient id="valley" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f6b3e"/>
+      <stop offset="1" stop-color="#2a4a2c"/>
+    </linearGradient>
+    <radialGradient id="balloon" cx="0.38" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#ff8ab0"/>
+      <stop offset="0.45" stop-color="#c85aa8"/>
+      <stop offset="1" stop-color="#7e14ff"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="640" height="400" fill="url(#sky)"/>
+  <circle cx="120" cy="252" r="26" fill="#ffd166" opacity="0.95"/>
+
+  <polygon points="0,270 90,238 180,258 260,226 350,252 430,232 520,256 600,242 640,258 640,290 0,290" fill="#3a2a63"/>
+  <polygon points="0,290 130,270 250,280 380,266 500,280 620,270 640,276 640,300 0,300" fill="#4a3478"/>
+  <rect y="288" width="640" height="112" fill="url(#valley)"/>
+
+  <!-- Road -->
+  <rect x="0" y="308" width="640" height="28" fill="#b7ae9e"/>
+  <line x1="0" y1="322" x2="640" y2="322" stroke="#f2ede3" stroke-width="3" stroke-dasharray="34 30" opacity="0.85"/>
+
+  <!-- Sports car -->
+  <g>
+    <ellipse cx="150" cy="330" rx="34" ry="4" fill="#ffd166" opacity="0.2"/>
+    <polygon points="126,308 140,302 164,306 170,318 170,330 132,330 128,320" fill="#ff6b35"/>
+    <polygon points="142,306 148,300 158,302 162,308" fill="#ff8f5a"/>
+    <circle cx="136" cy="330" r="6" fill="#1c1c26"/>
+    <circle cx="166" cy="330" r="6" fill="#1c1c26"/>
+  </g>
+
+  <!-- Motorcycle -->
+  <g>
+    <circle cx="300" cy="330" r="6" fill="#1c1c26"/>
+    <circle cx="330" cy="330" r="6" fill="#1c1c26"/>
+    <line x1="302" y1="322" x2="328" y2="320" stroke="#ffb347" stroke-width="4" stroke-linecap="round"/>
+    <line x1="314" y1="322" x2="310" y2="312" stroke="#ffb347" stroke-width="3" stroke-linecap="round"/>
+    <line x1="310" y1="312" x2="299" y2="312" stroke="#1c1c26" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Horse -->
+  <g>
+    <rect x="440" y="332" width="4" height="9" rx="1.5" fill="#5a3a22"/>
+    <rect x="452" y="332" width="4" height="9" rx="1.5" fill="#5a3a22"/>
+    <rect x="466" y="332" width="4" height="9" rx="1.5" fill="#5a3a22"/>
+    <rect x="478" y="332" width="4" height="9" rx="1.5" fill="#5a3a22"/>
+    <ellipse cx="460" cy="326" rx="21" ry="9" fill="#7a5230"/>
+    <polygon points="476,322 488,312 484,328" fill="#7a5230"/>
+    <ellipse cx="489" cy="312" rx="6" ry="4.5" fill="#7a5230"/>
+    <polygon points="486,308 489,302 492,308" fill="#5a3a22"/>
+    <polygon points="489,308 493,303 496,308" fill="#5a3a22"/>
+    <ellipse cx="485" cy="309" rx="1.6" ry="2.4" fill="#f2ede3"/>
+    <path d="M442 324 q-8 2-7 8" stroke="#5a3a22" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Trees -->
+  <polygon points="88,300 100,282 112,300" fill="#22532b"/>
+  <polygon points="218,304 230,286 242,304" fill="#2e6b36"/>
+  <polygon points="384,304 396,286 408,304" fill="#22532b"/>
+  <polygon points="540,304 552,286 564,304" fill="#2e6b36"/>
+
+  <!-- Airplane -->
+  <g>
+    <path d="M150 96 h120 q16 0 16 11 q0 10-14 10 h-122 q-18 0-18-10 q0-11 18-11 z" fill="#f4f1ff"/>
+    <path d="M206 106 q-2-14 2-26 l24 14 z" fill="#d9cdf5"/>
+    <path d="M206 106 q-2 14 2 26 l24 -14 z" fill="#d9cdf5"/>
+    <path d="M256 100 h22 l-5 16 h-17 z" fill="#d9cdf5"/>
+    <circle cx="150" cy="106" r="4" fill="#ff6b35"/>
+    <path d="M30 106 L140 106" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.35" stroke-dasharray="2 12"/>
+  </g>
+
+  <!-- Hot-air balloon -->
+  <g>
+    <path d="M520 66 q40 0 45 46 q3 34-16 54 q-12 15-29 15 q-17 0-29-15 q-19-20-16-54 q5-46 45-46 z" fill="url(#balloon)"/>
+    <path d="M520 66 q40 0 45 46 q3 34-16 54 q-8 9-16 13 q4-7 7-18 q6-20-3-36 q-8-13-19-20 z" fill="#ffffff" opacity="0.18"/>
+    <line x1="508" y1="181" x2="494" y2="194" stroke="#6b4a2e" stroke-width="2.5"/>
+    <line x1="532" y1="181" x2="546" y2="194" stroke="#6b4a2e" stroke-width="2.5"/>
+    <rect x="492" y="194" width="56" height="15" rx="3" fill="#8a5a3b"/>
+  </g>
+</svg>

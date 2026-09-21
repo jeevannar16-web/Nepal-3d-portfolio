@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b0b3a"/>
+      <stop offset="0.55" stop-color="#6b2f8f"/>
+      <stop offset="1" stop-color="#f2a65a"/>
+    </linearGradient>
+    <linearGradient id="valley" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f6b3e"/>
+      <stop offset="1" stop-color="#2a4a2c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="640" height="400" fill="url(#sky)"/>
+  <circle cx="540" cy="258" r="28" fill="#ffd166" opacity="0.95"/>
+
+  <polygon points="0,288 90,252 170,274 250,238 340,268 420,246 500,272 580,256 640,270 640,300 0,300" fill="#3a2a63"/>
+  <polygon points="0,300 120,280 240,290 360,276 480,288 600,280 640,286 640,320 0,320" fill="#4a3478"/>
+  <rect y="295" width="640" height="105" fill="url(#valley)"/>
+
+  <!-- ground glow rings marking explorable zones -->
+  <ellipse cx="320" cy="352" rx="72" ry="14" stroke="#47bfff" stroke-width="2.5" fill="none" opacity="0.5"/>
+  <ellipse cx="500" cy="342" rx="54" ry="11" stroke="#47bfff" stroke-width="2" fill="none" opacity="0.4"/>
+  <ellipse cx="128" cy="346" rx="50" ry="10" stroke="#47bfff" stroke-width="2" fill="none" opacity="0.4"/>
+
+  <!-- City gate -->
+  <g>
+    <rect x="104" y="318" width="10" height="34" fill="#8a6a45"/>
+    <rect x="142" y="318" width="10" height="34" fill="#8a6a45"/>
+    <rect x="102" y="314" width="52" height="8" fill="#5a3f24"/>
+    <polygon points="96,316 128,300 160,316" fill="#4a2f1d"/>
+    <line x1="128" y1="300" x2="128" y2="292" stroke="#f2c14e" stroke-width="2"/>
+  </g>
+
+  <!-- Pagoda temple landmark (centre) -->
+  <g>
+    <rect x="316" y="312" width="8" height="22" fill="#f2c14e"/>
+    <circle cx="320" cy="308" r="4.5" fill="#f2c14e"/>
+    <polygon points="292,324 320,306 348,324 320,317" fill="#4a2f1d"/>
+    <polygon points="284,338 320,318 356,338 320,330" fill="#4a2f1d"/>
+    <rect x="290" y="334" width="60" height="34" fill="#c99a63"/>
+    <polygon points="272,356 320,332 368,356 320,346" fill="#4a2f1d"/>
+    <rect x="312" y="356" width="16" height="14" fill="#3a2313"/>
+  </g>
+  <circle cx="320" cy="330" r="88" stroke="#47bfff" stroke-width="2.5" fill="none" opacity="0.5"/>
+
+  <!-- Stupa -->
+  <g>
+    <rect x="484" y="330" width="34" height="14" fill="#8a6a45"/>
+    <rect x="491" y="310" width="20" height="22" fill="#c99a63"/>
+    <path d="M491 312 a10 10 0 0 1 20 0 z" fill="#f2ede3"/>
+    <rect x="497" y="300" width="6" height="12" fill="#f2c14e"/>
+    <circle cx="500" cy="296" r="4" fill="#f2c14e"/>
+    <line x1="500" y1="292" x2="500" y2="286" stroke="#4a2f1d" stroke-width="2"/>
+  </g>
+
+  <polygon points="236,324 248,302 260,324" fill="#22532b"/>
+  <polygon points="374,330 386,308 398,330" fill="#2e6b36"/>
+  <polygon points="560,330 572,310 584,330" fill="#22532b"/>
+  <ellipse cx="320" cy="360" rx="66" ry="12" fill="#ffd166" opacity="0.18"/>
+</svg>

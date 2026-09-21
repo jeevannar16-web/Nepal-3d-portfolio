@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <linearGradient id="scr" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b0b3a"/>
+      <stop offset="0.6" stop-color="#6b2f8f"/>
+      <stop offset="1" stop-color="#f2a65a"/>
+    </linearGradient>
+    <linearGradient id="vn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f6b3e"/>
+      <stop offset="1" stop-color="#2a4a2c"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="400" fill="#1a0f2e"/>
+
+  <!-- Phone frame -->
+  <rect x="150" y="26" width="340" height="348" rx="30" fill="#2c1a46" stroke="#4b2f73" stroke-width="2"/>
+  <rect x="162" y="38" width="316" height="324" rx="16" fill="url(#scr)"/>
+
+  <!-- mini world inside the screen -->
+  <polygon points="162,272 230,238 320,262 410,236 490,262 570,248 640,264 640,420 162,420" fill="#3a2a63"/>
+  <rect x="162" y="262" width="316" height="100" fill="url(#vn)"/>
+  <path d="M220 300 C 270 310, 300 332, 340 340 C 380 348, 420 344, 478 352" stroke="#b7ae9e" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <circle cx="340" cy="346" r="4" fill="#ff6b35"/>
+  <circle cx="416" cy="334" r="6" fill="#ffd166" opacity="0.35"/>
+  <polygon points="262,276 272,262 282,276" fill="#22532b"/>
+  <polygon points="430,352 440,340 450,352" fill="#2e6b36"/>
+  <circle cx="248" cy="150" r="3" fill="#ffe9c9"/>
+  <circle cx="312" cy="120" r="2.4" fill="#ffe9c9"/>
+  <circle cx="420" cy="140" r="2.6" fill="#ffe9c9"/>
+
+  <!-- notch -->
+  <rect x="285" y="44" width="70" height="10" rx="5" fill="#1a0f2e"/>
+
+  <!-- minimap -->
+  <g>
+    <circle cx="444" cy="76" r="27" fill="#0d0620" opacity="0.75" stroke="#ffffff" stroke-width="2" stroke-opacity="0.6"/>
+    <circle cx="444" cy="76" r="19" fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.25"/>
+    <circle cx="452" cy="82" r="4" fill="#ff6b35"/>
+    <circle cx="430" cy="62" r="3" fill="#ffd166"/>
+  </g>
+
+  <!-- Run button -->
+  <g>
+    <circle cx="212" cy="318" r="28" fill="#000000" opacity="0.55" stroke="#ffffff" stroke-opacity="0.85" stroke-width="2"/>
+    <polygon points="203,322 212,306 221,322" fill="#ffffff" opacity="0.95"/>
+    <rect x="205" y="332" width="14" height="3" rx="1.5" fill="#ffffff" opacity="0.95"/>
+  </g>
+
+  <!-- Jump button -->
+  <g>
+    <circle cx="430" cy="318" r="23" fill="#000000" opacity="0.55" stroke="#ffffff" stroke-opacity="0.85" stroke-width="2"/>
+    <polygon points="423,320 430,306 437,320" fill="#ffffff" opacity="0.95"/>
+    <line x1="430" y1="306" x2="430" y2="300" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.95"/>
+  </g>
+
+  <!-- right-side drag-to-look hint -->
+  <g transform="translate(452 190)">
+    <path d="M-8 -14 a16 16 0 0 1 28 4" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.7"/>
+    <polygon points="21,-16 20,-6 12,-12" fill="#ffffff" opacity="0.7"/>
+  </g>
+</svg>

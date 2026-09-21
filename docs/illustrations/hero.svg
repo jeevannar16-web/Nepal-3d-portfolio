@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b0b3a"/>
+      <stop offset="0.40" stop-color="#542a86"/>
+      <stop offset="0.72" stop-color="#a9528f"/>
+      <stop offset="1" stop-color="#f2a65a"/>
+    </linearGradient>
+    <linearGradient id="valley" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f6b3e"/>
+      <stop offset="1" stop-color="#2a4a2c"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff7d6"/>
+      <stop offset="0.65" stop-color="#ffd166"/>
+      <stop offset="1" stop-color="#f2a65a"/>
+    </radialGradient>
+    <radialGradient id="balloon" cx="0.38" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#ff8ab0"/>
+      <stop offset="0.45" stop-color="#c85aa8"/>
+      <stop offset="1" stop-color="#7e14ff"/>
+    </radialGradient>
+    <radialGradient id="vig" cx="0.5" cy="0.42" r="0.85">
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0a0414" stop-opacity="0.5"/>
+    </radialGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="1280" height="720" fill="url(#sky)"/>
+
+  <!-- Stars -->
+  <g fill="#ffe9c9" opacity="0.85">
+    <circle cx="90" cy="70" r="2"/>
+    <circle cx="230" cy="120" r="1.6"/>
+    <circle cx="380" cy="60" r="2.2"/>
+    <circle cx="520" cy="150" r="1.6"/>
+    <circle cx="680" cy="80" r="2"/>
+    <circle cx="820" cy="170" r="1.7"/>
+    <circle cx="1120" cy="90" r="2.2"/>
+    <circle cx="1230" cy="180" r="1.6"/>
+    <circle cx="150" cy="220" r="1.4"/>
+    <circle cx="960" cy="120" r="1.8"/>
+  </g>
+
+  <!-- Sun -->
+  <circle cx="980" cy="492" r="60" fill="url(#sun)"/>
+  <circle cx="980" cy="492" r="112" fill="#ffd166" opacity="0.28" filter="url(#soft)"/>
+
+  <!-- Far Himalaya ridge -->
+  <polygon points="0,505 0,430 120,410 210,440 300,390 390,420 470,370 560,400 640,350 720,385 820,365 910,410 1000,375 1090,410 1180,380 1280,415 1280,505" fill="#3a2a63"/>
+  <!-- Snow caps -->
+  <g fill="#f4f1ff">
+    <polygon points="452,384 470,370 489,384 474,381 462,382"/>
+    <polygon points="620,362 640,350 660,364 645,361 632,360"/>
+    <polygon points="800,377 820,365 840,379 823,376 812,376"/>
+    <polygon points="982,387 1000,375 1020,388 1004,384 990,386"/>
+  </g>
+
+  <!-- Nearer hills -->
+  <polygon points="0,505 0,470 140,452 240,468 360,440 480,462 600,448 720,455 840,438 960,452 1080,440 1200,452 1280,442 1280,505" fill="#4a3478"/>
+
+  <!-- Valley floor -->
+  <rect x="0" y="505" width="1280" height="215" fill="url(#valley)"/>
+
+  <!-- River -->
+  <path d="M300 505 C 320 540, 280 580, 302 622 C 322 662, 342 700, 352 720" stroke="#7fd1ff" stroke-width="9" fill="none" opacity="0.85" stroke-linecap="round"/>
+
+  <!-- Winding road -->
+  <path d="M-20 690 C 220 660, 300 600, 520 585 C 700 574, 760 560, 900 565 C 1020 568, 1200 585, 1300 600" stroke="#b7ae9e" stroke-width="26" fill="none" stroke-linecap="round"/>
+  <path d="M-20 690 C 220 660, 300 600, 520 585 C 700 574, 760 560, 900 565 C 1020 568, 1200 585, 1300 600" stroke="#f2ede3" stroke-width="3.5" fill="none" stroke-dasharray="38 34" stroke-linecap="round" opacity="0.8"/>
+
+  <!-- Trees -->
+  <g>
+    <polygon points="468,562 480,536 492,562" fill="#22532b"/>
+    <polygon points="560,570 574,540 588,570" fill="#2e6b36"/>
+    <polygon points="606,582 620,552 634,582" fill="#22532b"/>
+    <polygon points="700,562 713,536 726,562" fill="#2e6b36"/>
+    <polygon points="878,552 892,524 906,552" fill="#22532b"/>
+    <polygon points="952,560 966,534 980,560" fill="#2e6b36"/>
+  </g>
+
+  <!-- Houses + prayer flags -->
+  <g>
+    <rect x="238" y="600" width="26" height="18" fill="#d9b17c"/>
+    <polygon points="232,602 251,586 270,602" fill="#7e4b2a"/>
+    <circle cx="248" cy="608" r="2.6" fill="#ffd166"/>
+    <circle cx="258" cy="608" r="2.6" fill="#ffd166"/>
+    <line x1="292" y1="612" x2="292" y2="578" stroke="#a8a09a" stroke-width="2"/>
+    <rect x="294" y="578" width="9" height="7" fill="#47bfff"/>
+    <rect x="294" y="590" width="9" height="7" fill="#ff6b35"/>
+    <rect x="294" y="602" width="9" height="7" fill="#7e14ff"/>
+  </g>
+
+  <!-- Pagoda temple landmark + halo -->
+  <circle cx="152" cy="596" r="118" stroke="#47bfff" stroke-width="3" fill="none" opacity="0.45"/>
+  <circle cx="152" cy="596" r="118" stroke="#47bfff" stroke-width="1.5" fill="none" opacity="0.35" transform="translate(6 0)"/>
+  <g>
+    <rect x="152" y="636" width="7" height="20" fill="#f2c14e"/>
+    <circle cx="155.5" cy="633" r="4" fill="#f2c14e"/>
+    <polygon points="124,644 152,622 180,644 152,638" fill="#4a2f1d"/>
+    <polygon points="112,660 152,636 192,660 152,654" fill="#4a2f1d"/>
+    <rect x="120" y="656" width="64" height="56" fill="#c99a63"/>
+    <rect x="146" y="690" width="12" height="22" fill="#3a2313"/>
+    <polygon points="100,680 152,650 204,680 152,673" fill="#4a2f1d"/>
+  </g>
+
+  <!-- Sports car on the road -->
+  <g>
+    <ellipse cx="618" cy="584" rx="44" ry="5" fill="#ffd166" opacity="0.22"/>
+    <polygon points="586,558 610,552 638,556 646,570 646,580 584,580 580,570" fill="#ff6b35"/>
+    <polygon points="610,556 618,548 632,550 638,560" fill="#ff8f5a"/>
+    <rect x="598" y="564" width="20" height="8" rx="2" fill="#ffd166" opacity="0.9"/>
+    <circle cx="598" cy="580" r="7" fill="#1c1c26"/>
+    <circle cx="642" cy="580" r="7" fill="#1c1c26"/>
+    <circle cx="598" cy="580" r="3" fill="#5a5a68"/>
+    <circle cx="642" cy="580" r="3" fill="#5a5a68"/>
+  </g>
+
+  <!-- Motorcycle -->
+  <g>
+    <circle cx="722" cy="574" r="6" fill="#1c1c26"/>
+    <circle cx="748" cy="574" r="6" fill="#1c1c26"/>
+    <line x1="724" y1="566" x2="746" y2="564" stroke="#ffb347" stroke-width="4" stroke-linecap="round"/>
+    <line x1="732" y1="566" x2="728" y2="556" stroke="#ffb347" stroke-width="3" stroke-linecap="round"/>
+    <line x1="728" y1="556" x2="718" y2="556" stroke="#1c1c26" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Walking soldier -->
+  <g>
+    <circle cx="560" cy="576" r="3.2" fill="#ffd166"/>
+    <rect x="557" y="579" width="6" height="12" rx="2" fill="#2a1436"/>
+    <line x1="558" y1="590" x2="554" y2="598" stroke="#2a1436" stroke-width="2.4" stroke-linecap="round"/>
+    <line x1="563" y1="590" x2="567" y2="598" stroke="#2a1436" stroke-width="2.4" stroke-linecap="round"/>
+  </g>
+
+  <!-- Hot-air balloon -->
+  <g>
+    <path d="M1080 118 q48 0 54 54 q4 40-19 64 q-14 18-35 18 q-21 0-35-18 q-23-24-19-64 q6-54 54-54 z" fill="url(#balloon)"/>
+    <path d="M1080 118 q48 0 54 54 q4 40-19 64 q-9 11-19 15 q5-8 9-22 q7-23-4-42 q-9-16-21-24 z" fill="#ffffff" opacity="0.18"/>
+    <line x1="1064" y1="254" x2="1042" y2="272" stroke="#6b4a2e" stroke-width="2.5"/>
+    <line x1="1096" y1="254" x2="1118" y2="272" stroke="#6b4a2e" stroke-width="2.5"/>
+    <rect x="1040" y="272" width="80" height="20" rx="3" fill="#8a5a3b"/>
+  </g>
+
+  <!-- Airplane flying over the valley -->
+  <g>
+    <path d="M330 168 h196 q20 0 20 14 q0 12-18 12 h-198 q-26 0-26-13 q0-13 26-13 z" fill="#f4f1ff"/>
+    <path d="M428 180 q-3-20 2-38 l34 20 z" fill="#d9cdf5"/>
+    <path d="M428 180 q-3 20 2 38 l34 -20 z" fill="#d9cdf5"/>
+    <path d="M508 172 h30 l-6 22 h-24 z" fill="#d9cdf5"/>
+    <circle cx="330" cy="181" r="5" fill="#ff6b35"/>
+    <path d="M60 178 L320 178" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.35" stroke-dasharray="2 14"/>
+  </g>
+
+  <!-- Vignette -->
+  <rect width="1280" height="720" fill="url(#vig)"/>
+</svg>
