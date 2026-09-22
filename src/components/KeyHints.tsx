@@ -152,6 +152,13 @@ export default function KeyHints(): JSX.Element | null {
   const backKey = first('back')
   const screenLeftKey = first('left')
   const screenRightKey = first('right')
+  // The turn keys are inverted (right-side keys now turn left and vice versa),
+  // so show the actual arrow code bound to each turn action instead of always
+  // placing ArrowLeft/ArrowRight in their physical pad slots.
+  const arrowOf = (action: ControlAction): string =>
+    bindings[action].find((s) => s.startsWith('Arrow')) ?? first(action)
+  const screenLeftArrow = arrowOf('left')
+  const screenRightArrow = arrowOf('right')
   const runKey =
     bindings.run.find((s) => s === 'Shift+KeyS') ??
     bindings.run.find((s) => s.includes('+')) ??
@@ -171,7 +178,7 @@ export default function KeyHints(): JSX.Element | null {
         <Chip>
           <Keypad
             wasd={{ up: fwdKey, down: backKey, left: screenLeftKey, right: screenRightKey }}
-            arrows={{ up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }}
+            arrows={{ up: 'ArrowUp', down: 'ArrowDown', left: screenLeftArrow, right: screenRightArrow }}
             active={active}
           />
           <span className="ml-1.5 text-amber-100">{movementLabel}</span>

@@ -49,8 +49,6 @@ interface PortfolioState {
     cameraSensitivity: number
     /** Multiplier for on-screen button sizes (touch controls). */
     uiScale: number
-    /** Flip A/D + arrow turn direction if the player's view is inverted. */
-    invertTurn: boolean
   }
   targetLandmark: string | null
   playerMode: PlayerMode
@@ -80,7 +78,6 @@ interface PortfolioState {
   toggleLowGraphics: () => void
   setCameraSensitivity: (value: number) => void
   setUiScale: (value: number) => void
-  setInvertTurn: (value: boolean) => void
   setTargetLandmark: (id: string | null) => void
 }
 
@@ -139,7 +136,6 @@ export const useStore = create<PortfolioState>()(
         lowGraphics: detectGraphicsTier() === 'low',
         cameraSensitivity: 1,
         uiScale: 1,
-        invertTurn: false,
       },
       targetLandmark: null,
       playerMode: 'walk',
@@ -155,8 +151,6 @@ export const useStore = create<PortfolioState>()(
         set((s) => ({
           settings: { ...s.settings, uiScale: Math.min(1.5, Math.max(0.75, value)) },
         })),
-      setInvertTurn: (value) =>
-        set((s) => ({ settings: { ...s.settings, invertTurn: value } })),
       setTargetLandmark: (id) => set({ targetLandmark: id }),
     }),
     {
@@ -167,10 +161,15 @@ export const useStore = create<PortfolioState>()(
       // settings object field-by-field on top of the fresh defaults.
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<PortfolioState>
+        const savedSettings = { ...(p.settings ?? {}) } as Record<string, unknown>
+        // The old invertTurn flag was removed when the turn keys were inverted
+        // at the binding level; drop any stale saved copy so it can never leak
+        // back into state as a dead key.
+        delete savedSettings.invertTurn
         return {
           ...current,
           ...p,
-          settings: { ...current.settings, ...(p.settings ?? {}) },
+          settings: { ...current.settings, ...savedSettings },
         }
       },
       // Only the user's durable preferences persist; the transient game state

@@ -51,7 +51,9 @@ const RUNWAY_TOP = 0.04
 // that direction (TURN_HOLD_RATE), so aiming at anything is smooth and easy.
 // A single continuous hold is capped at TURN_HOLD_MAX — it can never swing a
 // full 360° on its own — and releasing resets the cap. Quick taps give small,
-// precise nudges. Direction flips when "Invert turn direction" is on.
+// precise nudges. The turn sense is inverted at the binding level: the
+// physical right-side keys (D / → / End) turn left and the left-side keys
+// (A / ← / Home) turn right.
 const TURN_HOLD_RATE = 2.2 // rad/s sustained turn while a turn key is held (~1/4 turn per second)
 const TURN_HOLD_MAX = THREE.MathUtils.degToRad(270) // max rotation per single hold (< 360°)
 
@@ -496,11 +498,11 @@ export default function WalkController({
     // soldier's own forward; holding a turn key rotates him steadily so any
     // direction is reachable. One continuous hold is capped below a full
     // circle (release and re-press to keep going), so it can never spin 360°
-    // on its own. "Invert turn direction" reverses the A/D + arrow sense.
-    const invertTurn = useStore.getState().settings.invertTurn
+    // on its own. The turn sense is inverted at the binding level (D/→ turns
+    // left, A/← turns right), so holdDir simply maps the pressed direction.
     const holdDir = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0)
     if (holdDir !== 0) {
-      const dir = invertTurn ? -holdDir : holdDir
+      const dir = holdDir
       const applied =
         THREE.MathUtils.clamp(
           holdTurn.current + dir * TURN_HOLD_RATE * delta,

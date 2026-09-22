@@ -51,8 +51,10 @@ export const ACTION_LABELS: Record<ControlAction, string> = {
 export const DEFAULT_BINDINGS: Record<ControlAction, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
   back: ['KeyS', 'ArrowDown'],
-  left: ['KeyA', 'ArrowLeft', 'Home'],
-  right: ['KeyD', 'ArrowRight', 'End'],
+  // Turn direction is inverted on purpose: physical D / Right-arrow / End
+  // turns the character LEFT, physical A / Left-arrow / Home turns RIGHT.
+  left: ['KeyD', 'ArrowRight', 'End'],
+  right: ['KeyA', 'ArrowLeft', 'Home'],
   run: ['ShiftLeft', 'ShiftRight', 'Shift+KeyS', 'Shift+ArrowUp', 'Shift+ArrowDown'],
   jump: ['Space'],
   interact: ['KeyE'],
@@ -176,13 +178,14 @@ export const useControls = create<ControlsState>()(
     }),
     {
       name: 'nepal-portfolio-controls',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
-      // Sessions saved before v3 stored only the legacy bindings (no
-      // Shift+Arrow run chords). Return a bare object so merge falls back to
-      // the current defaults instead of resurrecting the stale keys.
+      // v4 swapped the turn keys (D/→ turns left, A/← turns right) and dropped
+      // the old invert-turn toggle. Reset anything saved before so a stale
+      // stored binding (or a legacy invertTurn flag) can't silently flip the
+      // new inverted layout back to the old one.
       migrate: (persistedState, persistedVersion) => {
-        if ((persistedVersion ?? 0) < 3) return {} as Partial<ControlsState>
+        if ((persistedVersion ?? 0) < 4) return {} as Partial<ControlsState>
         return persistedState as Partial<ControlsState>
       },
       merge: (persisted, current) => {
@@ -193,15 +196,13 @@ export const useControls = create<ControlsState>()(
           ...p,
           // Always fill every action from the current defaults first, then let
           // any freshly-saved custom binding win. The turn keys stay locked to
-          // the standard layout, and the run chords are kept unless the user
-          // explicitly rebound run to a custom arrow combination.
+          // the inverted WASD/arrow layout: physical D / Right-arrow turns
+          // left, A / Left-arrow turns right.
           bindings: {
             ...current.bindings,
             ...pb,
-            // Turn keys stay locked to the standard WASD/arrow layout: the
-            // physical A / Left-arrow turns left, D / Right-arrow turns right.
-            left: ['KeyA', 'ArrowLeft', 'Home'],
-            right: ['KeyD', 'ArrowRight', 'End'],
+            left: ['KeyD', 'ArrowRight', 'End'],
+            right: ['KeyA', 'ArrowLeft', 'Home'],
             run:
               (pb.run ?? []).some((s) => s.includes('ArrowUp') || s.includes('ArrowDown'))
                 ? [...pb.run!]

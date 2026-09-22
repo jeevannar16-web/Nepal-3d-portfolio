@@ -8,7 +8,6 @@ import {
 } from '../store/controlsStore'
 import { playClick } from '../utils/sounds'
 import ToggleRow from './ToggleRow'
-import { useStore } from '../store/useStore'
 
 /**
  * The dedicated Controls / Games panel: every action's current keys shown as
@@ -22,8 +21,6 @@ export default function ControlsPanel(): JSX.Element {
   const resetBindings = useControls((s) => s.resetBindings)
   const bigMode = useControls((s) => s.bigMode)
   const setBigMode = useControls((s) => s.setBigMode)
-  const invertTurn = useStore((s) => s.settings.invertTurn)
-  const setInvertTurn = useStore((s) => s.setInvertTurn)
 
   const [rebinding, setRebinding] = useState<ControlAction | null>(null)
   const [prompt, setPrompt] = useState(false)
@@ -164,12 +161,6 @@ export default function ControlsPanel(): JSX.Element {
         <div className="mb-2 text-[11px] font-bold uppercase tracking-widest text-amber-400/90">
           Quick toggles
         </div>
-        <ToggleRow
-          label="Invert turn direction"
-          hint="Swap left/right turning (helps on some laptop views)"
-          on={invertTurn}
-          onToggle={() => setInvertTurn(!invertTurn)}
-        />
         <ToggleRow
           label="Grow / shrink model"
           hint="Make the character bigger (moves slower)"
