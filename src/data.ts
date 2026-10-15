@@ -19,6 +19,7 @@ export interface ZoneContent {
   contact?: {
     email: string
     github: string
+    linkedin?: string
     leetcode: string
   }
 }
@@ -110,6 +111,7 @@ Today I study at Shivapuri College in Maharajgunj, Kathmandu — a community cam
     contact: {
       email: 'jeevannar16@gmail.com',
       github: 'https://github.com/jeevannar16-web',
+      linkedin: 'https://github.com/Abyssal-oath',  // As requested
       leetcode: 'https://leetcode.com/u/jeevannar16-web',
     },
   },

@@ -166,7 +166,7 @@ export default function Scene2D(): JSX.Element {
                         {zone.contact.email}
                       </div>
                     </a>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       <a
                         href={zone.contact.github}
                         target="_blank"
@@ -181,11 +181,25 @@ export default function Scene2D(): JSX.Element {
                         </div>
                       </a>
                       <a
+                        href={zone.contact.linkedin}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-xl bg-white/5 p-4 text-center transition hover:bg-white/10"
+                      >
+                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                          GitHub
+                        </div>
+                        <div className="mt-1 truncate text-sm font-medium text-amber-300">
+                          Abyssal-oath
+                        </div>
+                      </a>
+                      <a
                         href={zone.contact.leetcode}
                         target="_blank"
                         rel="noreferrer"
                         className="rounded-xl bg-white/5 p-4 text-center transition hover:bg-white/10"
                       >
+
                         <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                           LeetCode
                         </div>
