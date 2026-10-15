@@ -178,7 +178,7 @@ export default function ContentPanel(): JSX.Element | null {
                   {zone.contact.email}
                 </div>
               </a>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <a
                   href={zone.contact.github}
                   target="_blank"
@@ -190,6 +190,19 @@ export default function ContentPanel(): JSX.Element | null {
                   </div>
                   <div className="mt-1 truncate text-sm font-medium text-amber-300">
                     jeevannar16-web
+                  </div>
+                </a>
+                <a
+                  href={zone.contact.linkedin ?? "https://github.com/Abyssal-oath"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl bg-white/5 p-4 text-center transition hover:bg-white/10"
+                >
+                  <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    GitHub
+                  </div>
+                  <div className="mt-1 truncate text-sm font-medium text-amber-300">
+                    Abyssal-oath
                   </div>
                 </a>
                 <a

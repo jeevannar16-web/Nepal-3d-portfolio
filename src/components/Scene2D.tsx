@@ -181,7 +181,7 @@ export default function Scene2D(): JSX.Element {
                         </div>
                       </a>
                       <a
-                        href={(zone.contact as any).linkedin ?? "https://github.com/Abyssal-oath"}
+                        href={zone.contact.linkedin ?? "https://github.com/Abyssal-oath"}
                         target="_blank"
                         rel="noreferrer"
                         className="rounded-xl bg-white/5 p-4 text-center transition hover:bg-white/10"
@@ -199,7 +199,6 @@ export default function Scene2D(): JSX.Element {
                         rel="noreferrer"
                         className="rounded-xl bg-white/5 p-4 text-center transition hover:bg-white/10"
                       >
-
                         <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                           LeetCode
                         </div>
