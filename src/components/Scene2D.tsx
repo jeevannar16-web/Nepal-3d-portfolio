@@ -186,10 +186,10 @@ export default function Scene2D(): JSX.Element {
                         rel="noreferrer"
                         className="rounded-xl bg-white/5 p-4 text-center transition hover:bg-white/10"
                       >
-                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                          GitHub
+                        <div className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                          GitHub Org
                         </div>
-                        <div className="mt-1 truncate text-sm font-medium text-amber-300">
+                        <div className="mt-1 truncate text-sm font-bold text-amber-300">
                           Abyssal-oath
                         </div>
                       </a>
