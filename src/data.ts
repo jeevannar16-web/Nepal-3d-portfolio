@@ -19,7 +19,7 @@ export interface ZoneContent {
   contact?: {
     email: string
     github: string
-    linkedin?: string
+    linkedin: string
     leetcode: string
   }
 }
